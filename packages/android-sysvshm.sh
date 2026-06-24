@@ -16,13 +16,14 @@ if [ ! -f "$SRC_FILE" ]; then
     exit 1
 fi
 
-# Bionic 补丁: 添加 string.h, 修复 ipc64_perm 字段名
+# Bionic 适配: 添加 string.h (android_sysvshm.c 需要 memcpy 等)
+# 注: sys/shm.h 自定义的 debian_ipc_perm 字段名本身就是 __key/__seq,
+# 与源码一致, 无需 sed 替换
 FIXED_SRC="$WORK_DIR/sysvshm_fixed.c"
 {
     echo '#include <string.h>'
     cat "$SRC_FILE"
 } > "$FIXED_SRC"
-sed -i 's/buf->shm_perm.__key/buf->shm_perm.key/g; s/buf->shm_perm.__seq/buf->shm_perm.seq/g' "$FIXED_SRC"
 
 $CC -fPIC -O2 -shared \
     -I"$PREFIX/include" \

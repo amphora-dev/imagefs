@@ -39,6 +39,20 @@ make install
 $STRIP "$PREFIX/lib/libXau.so" 2>/dev/null || true
 cd "$SRC_DIR"
 
+# 2b. 构建 libXdmcp (libxcb 硬依赖, 提供 XDMCP 协议)
+if [ ! -d "libXdmcp-1.1.5" ]; then
+    curl -sL "https://xorg.freedesktop.org/archive/individual/lib/libXdmcp-1.1.5.tar.xz" -o libxdmcp.tar.xz
+    tar xf libxdmcp.tar.xz
+fi
+cd "libXdmcp-1.1.5"
+./configure --host=$ARCH-linux-android --prefix=$PREFIX --libdir=$PREFIX/lib \
+    --enable-shared --disable-static \
+    CFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS"
+make -j$JOBS
+make install
+$STRIP "$PREFIX/lib/libXdmcp.so" 2>/dev/null || true
+cd "$SRC_DIR"
+
 # 3. libxcb 本体
 cd "$PKG_NAME"
 ./configure --host=$ARCH-linux-android --prefix=$PREFIX --libdir=$PREFIX/lib \

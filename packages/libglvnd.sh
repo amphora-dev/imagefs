@@ -14,7 +14,7 @@ cd "$PKG_NAME" && mkdir -p build_dir && cd build_dir
 meson setup --cross-file="$CROSS_FILE" \
     -Dprefix=$PREFIX -Dlibdir=$PREFIX/lib -Dbuildtype=release \
     -Ddefault_library=shared \
-    -Dglx=enabled \
+    -Dglx=disabled \
     -Degl=true \
     -Dgles1=true \
     -Dgles2=true \

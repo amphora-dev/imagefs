@@ -37,8 +37,10 @@ fi
 export CFLAGS="$CFLAGS -Os -fno-asynchronous-unwind-tables -fno-unwind-tables -std=gnu11 -Wno-int-conversion -Wno-error -Wno-incompatible-pointer-types"
 export CXXFLAGS="$CXXFLAGS -Os -fno-asynchronous-unwind-tables -fno-unwind-tables"
 
-# 确保 libsndfile 被检测到 (通过 pkg-config)
-export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
+# 确保 libsndfile 和 openssl 被检测到 (通过 pkg-config)
+export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig:${PKG_CONFIG_PATH:-}"
+export OPENSSL_CFLAGS="-I$PREFIX/include"
+export OPENSSL_LIBS="-L$PREFIX/lib -lssl -lcrypto"
 
 ax_cv_check_cflags__pedantic__Werror__std_gnu11=yes \
 ./configure --host=$ARCH-linux-android \
