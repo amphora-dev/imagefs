@@ -147,8 +147,12 @@ for package in "${SELECTED_PACKAGES[@]}"; do
         FAILED=$((FAILED + 1))
         FAILED_PACKAGES+=("$package")
         error "[$CURRENT/$TOTAL] ❌ $package 失败 (见 $ERR_FILE)"
-        # 显示最后几行错误
-        tail -5 "$ERR_FILE" 2>/dev/null | sed 's/^/    /'
+        # 显示错误详情 (stderr 前 60 行 + stdout 末尾 30 行, 便于 CI 诊断)
+        echo "    ----- stderr (前 60 行) -----"
+        head -60 "$ERR_FILE" 2>/dev/null | sed 's/^/    /'
+        echo "    ----- stdout (末尾 30 行) -----"
+        tail -30 "$LOG_FILE" 2>/dev/null | sed 's/^/    /'
+        echo "    ----- 错误详情结束 -----"
     fi
 done
 
