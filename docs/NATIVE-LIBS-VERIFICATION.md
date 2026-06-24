@@ -72,6 +72,32 @@
 
 源码从 `adrenotools-v819.tzst` 中提取，提供 `get_override_device_uuid` 和 `get_driver_uuid` 钩子函数。
 
+### libproot.so + libproot-loader.so (新)
+
+| 项目 | libproot.so | libproot-loader.so |
+|------|-------------|---------------------|
+| 大小 | 127K | 4.4K |
+| ELF 类型 | PIE executable | Shared object |
+| NEEDED | libm.so, libdl.so, libc.so | (无) |
+| 源文件数 | 70 | 1 (loader.c) |
+
+**注**: `libproot.so` 是 PIE 可执行文件（CMakeLists.txt 中使用 `add_executable`），命名为 .so 是 proot 的惯例。proot 用于用户空间文件系统隔离（chroot 替代方案），但本版本未在 Java 代码中实际启用——仅保留源码供参考。
+
+proot-loader 是 proot 的加载器组件，负责在目标进程内注入系统调用拦截。
+
+### libvirglrenderer.so (新)
+
+| 项目 | 值 |
+|------|------|
+| 大小 | 433K |
+| SONAME | libvirglrenderer.so |
+| NEEDED | libEGL.so, libGLESv2.so, libGLESv3.so, libm.so, libc.so |
+| 源文件 | 37 个 C 文件 (含 Gallium auxiliary + TGSI) |
+
+VirGL 是 Virgil 3D 的 Android 移植版，通过 OpenGL ES 实现 OpenGL 渲染。本版本使用 adrenotools/Vulkan 作为主要 GPU 加速方案，virglrenderer 保留源码但不在主 CMakeLists.txt 中编译。
+
+Java 代码中仅有一个 socket 路径常量引用: `VIRGL_SERVER_PATH = "/tmp/.virgl/V0"`。
+
 ## wrapper.tzst 资源分析
 
 `wrapper.tzst` 包含 6 个 .so + 1 个 ICD JSON：
@@ -155,9 +181,12 @@
 
 ## 结论
 
-1. **从 Pipetto-crypto/winlator (winlator_bionic) 成功编译 9 个原生库**
+1. **从 Pipetto-crypto/winlator (winlator_bionic) 成功编译 12 个原生库**
 2. **5 个 adrenotools 库与 wrapper.tzst 预编译版 NEEDED 完美匹配**
 3. 使用 `c++_shared` STL + `--as-needed` 是匹配 wrapper.tzst 的关键
 4. `libvulkan_wrapper.so` (19M) 是 Mesa Vulkan ICD 包装器，无源码，不可编译
 5. `adrenoutils_extra.c` 可从源码编译，功能为 Adreno UUID 钩子
-6. Pipetto-crypto 版本包含 OpenXR/VR 支持，是 brunodev85 版本不具备的特性
+6. **proot** 完整源码可编译 (libproot.so PIE + libproot-loader.so)，但本版本未在 Java 层启用
+7. **virglrenderer** 完整源码可编译 (libvirglrenderer.so 433K)，但本版本使用 adrenotools/Vulkan 替代
+8. proot 和 virglrenderer 不在主 CMakeLists.txt 中，需独立构建
+9. Pipetto-crypto 版本包含 OpenXR/VR 支持，是 brunodev85 版本不具备的特性

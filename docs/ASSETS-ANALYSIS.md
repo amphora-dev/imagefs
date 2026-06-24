@@ -234,3 +234,60 @@ Extra Flags:  -Wno-error=implicit-function-declaration (Clang 21 兼容)
 | FluidSynth + 依赖 | 音频合成栈 (可从源码编译但未在本项目中) |
 | Proton | Wine 的 Valve 分支 |
 | FEXCore | FEX-Emu (x86_64 模拟器) |
+
+---
+
+## 7. Pipetto-crypto/winlator (winlator_bionic) 资源结构
+
+### 7.1 与 brunodev85 11.1 的关键差异
+
+| 特性 | brunodev85 (11.1) | Pipetto-crypto (7.1.4x-cmod) |
+|------|-------------------|-------------------------------|
+| 根文件系统 | `rootfs.tzst` (63M, 内嵌 APK) | `imagefs.txz` (GitLab 下载, 4 分卷) |
+| Proton | ❌ | ✅ `proton-9.0-arm64ec.txz` + `proton-9.0-x86_64.txz` |
+| FEXCore | ❌ | ✅ `fexcore/` 目录 |
+| Box64 | ❌ | ✅ `box64/` 目录 |
+| wowbox64 | ❌ | ✅ `wowbox64/` 目录 |
+| ddrawrapper | ❌ | ✅ `ddrawrapper/` 目录 |
+| layers.tzst | ❌ | ✅ Vulkan 层 |
+| input_dlls.tzst | ❌ | ✅ 输入 DLL |
+| wrapper.tzst | ❌ | ✅ Mesa Vulkan ICD 包装器 (19M) |
+| extra_libs.tzst | ❌ | ✅ vkBasalt + Mesa 库 |
+| adrenotools 驱动包 | ❌ | ✅ turnip + v819 |
+| graphics_driver | gladio/turnip/virgl/vortek/zink | (使用 wrapper.tzst + adrenotools) |
+| dxwrapper | dxvk/d8vk/box64/wined3d 等 | dxwrapper/ |
+| wincomponents | 9 个闭源组件 | wincomponents/ |
+
+### 7.2 imagefs 下载机制
+
+build.gradle 中的 `downloadImageFS` 任务:
+1. 从 `https://gitlab.com/winlator3/winlator-extra/-/raw/main/imagefs/imagefs.txz.00` 到 `.03` 下载 4 个分卷
+2. 合并为 `imagefs.txz`
+3. 对比 SHA-256 校验和，不匹配则重新下载
+
+### 7.3 Proton 下载机制
+
+build.gradle 中的 `downloadProton` 任务:
+1. 下载 `proton-9.0-arm64ec.txz` (ARM64EC 架构)
+2. 下载 `proton-9.0-x86_64.txz` (x86_64 架构)
+3. 分别校验 SHA-256
+
+### 7.4 原生库编译产物 (12 个)
+
+| 库 | 大小 | 构建方式 | 说明 |
+|----|------|----------|------|
+| libadrenotools.so | 44K | CMake (主构建) | Adreno 驱动加载器 |
+| libhook_impl.so | 38K | CMake (主构建) | Hook 实现 |
+| libmain_hook.so | 3.8K | CMake (主构建) | 主 Hook |
+| libfile_redirect_hook.so | 3.6K | CMake (主构建) | 文件重定向 Hook |
+| libgsl_alloc_hook.so | 3.9K | CMake (主构建) | GSL 内存分配 Hook |
+| libwinlator.so | 115K | CMake (主构建) | 含 OpenXR/ALSA/Vulkan/EGL |
+| libopenxr_loader.so | 379K | CMake (主构建) | OpenXR Loader |
+| libpatchelf.so | 285K | CMake (主构建) | 运行时 ELF SONAME 修改 |
+| adrenoutils_extra.so | 4.4K | CC (独立) | Adreno UUID 钩子 |
+| libproot.so | 127K | CMake (独立) | PIE 可执行文件, 文件系统隔离 |
+| libproot-loader.so | 4.4K | CMake (独立) | proot 加载器 |
+| libvirglrenderer.so | 433K | CMake (独立) | VirGL OpenGL 渲染器 |
+
+> "主构建" = 包含在 `app/src/main/cpp/CMakeLists.txt` 中
+> "独立" = 有源码但不在主 CMakeLists.txt 中, 需单独编译

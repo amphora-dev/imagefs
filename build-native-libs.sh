@@ -8,6 +8,12 @@
 #   - libopenxr_loader.so (OpenXR Loader)
 #   - libpatchelf.so
 #   - adrenoutils_extra.so (从 adrenotools-v819.tzst 提取的源码编译)
+#   - libproot.so (PIE 可执行文件) + libproot-loader.so (文件系统隔离)
+#   - libvirglrenderer.so (VirGL OpenGL 渲染器, 含 Gallium/TGSI)
+#
+# 注: proot 和 virglrenderer 有完整源码但不在主 CMakeLists.txt 中,
+#     需独立构建。proot 用于文件系统隔离(本版本未实际启用, 使用替代方案);
+#     virglrenderer 用于 VirGL OpenGL 渲染(本版本使用 adrenotools/Vulkan 替代)。
 #
 # 构建配置匹配 wrapper.tzst 预编译版本:
 #   - ANDROID_STL=c++_shared (链接 libc++_shared.so)
@@ -62,6 +68,8 @@ ALL_TARGETS=(
     adrenotools
     winlator-native
     adrenoutils-extra
+    proot
+    virglrenderer
 )
 
 if [ $# -gt 0 ]; then
@@ -156,6 +164,62 @@ build_adrenoutils_extra() {
     log "  ✅ adrenoutils_extra.so ($(ls -lh "$OUTPUT_DIR/adrenoutils_extra.so" | awk '{print $5}'))"
 }
 
+# ---- 构建 proot (PIE 可执行文件 + loader) ----
+build_proot() {
+    log "Building proot (PIE executable + loader)..."
+    local BUILD="/tmp/build-proot"
+
+    cmake -B "$BUILD" -S "$WINLATOR_SRC/proot" \
+        -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN" \
+        -DANDROID_ABI="$ANDROID_ABI" \
+        -DANDROID_PLATFORM="$ANDROID_PLATFORM" \
+        -DANDROID_STL="$ANDROID_STL" \
+        -DBUILD_SHARED_LIBS=ON \
+        -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
+        -DCMAKE_C_FLAGS="-Wno-error=implicit-function-declaration -Wno-error=incompatible-pointer-types" \
+        -DCMAKE_SHARED_LINKER_FLAGS="-Wl,--as-needed" 2>&1
+
+    cmake --build "$BUILD" -j"$JOBS" 2>&1
+
+    local libs=(
+        "$BUILD/libproot.so"
+        "$BUILD/libproot-loader.so"
+    )
+
+    for lib in "${libs[@]}"; do
+        if [ -f "$lib" ]; then
+            "$STRIP" --strip-all "$lib" 2>/dev/null
+            cp "$lib" "$OUTPUT_DIR/"
+            log "  ✅ $(basename $lib) ($(ls -lh "$lib" | awk '{print $5}'))"
+        fi
+    done
+}
+
+# ---- 构建 virglrenderer ----
+build_virglrenderer() {
+    log "Building virglrenderer (VirGL OpenGL renderer)..."
+    local BUILD="/tmp/build-virgl"
+
+    cmake -B "$BUILD" -S "$WINLATOR_SRC/virglrenderer" \
+        -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN" \
+        -DANDROID_ABI="$ANDROID_ABI" \
+        -DANDROID_PLATFORM="$ANDROID_PLATFORM" \
+        -DANDROID_STL="$ANDROID_STL" \
+        -DBUILD_SHARED_LIBS=ON \
+        -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
+        -DCMAKE_C_FLAGS="-Wno-error=implicit-function-declaration -Wno-error=incompatible-pointer-types" \
+        -DCMAKE_SHARED_LINKER_FLAGS="-Wl,--as-needed" 2>&1
+
+    cmake --build "$BUILD" -j"$JOBS" 2>&1
+
+    local lib="$BUILD/libvirglrenderer.so"
+    if [ -f "$lib" ]; then
+        "$STRIP" --strip-all "$lib" 2>/dev/null
+        cp "$lib" "$OUTPUT_DIR/"
+        log "  ✅ libvirglrenderer.so ($(ls -lh "$lib" | awk '{print $5}'))"
+    fi
+}
+
 # ---- 主流程 ----
 log "Winlator Android Native Libraries Build (Pipetto-crypto/winlator_bionic)"
 log "NDK: $NDK"
@@ -198,6 +262,22 @@ for target in "${SELECTED[@]}"; do
             else
                 FAILED=$((FAILED + 1))
                 err "Failed to build adrenoutils-extra"
+            fi
+            ;;
+        proot)
+            if build_proot; then
+                SUCCESS=$((SUCCESS + 1))
+            else
+                FAILED=$((FAILED + 1))
+                err "Failed to build proot"
+            fi
+            ;;
+        virglrenderer)
+            if build_virglrenderer; then
+                SUCCESS=$((SUCCESS + 1))
+            else
+                FAILED=$((FAILED + 1))
+                err "Failed to build virglrenderer"
             fi
             ;;
         *)
