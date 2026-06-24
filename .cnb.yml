@@ -26,6 +26,8 @@
     BUILD_DIR: /tmp/imagefs-build
     OUTPUT_DIR: /tmp/imagefs-output
     JOBS: "4"
+    # winlator_bionic 源码 (audio_plugin / android_sysvshm 在仓库根目录)
+    WINLATOR_DIR: /tmp/winlator-bionic
   # NDK 与源码包缓存 (main 分支可读写更新，PR 只读复用)
   volumes:
     - main:/tmp/imagefs-build/cache:copy-on-write
@@ -38,7 +40,18 @@ main:
   push:
     - <<: *build-env
       stages:
-        - name: 构建 imagefs (39 个包)
+        - name: 克隆 winlator_bionic 源码
+          script: |
+            if [ ! -d /tmp/winlator-bionic/.git ]; then
+              git clone --depth 1 -b winlator_bionic --recursive \
+                https://github.com/Pipetto-crypto/winlator.git /tmp/winlator-bionic
+            fi
+            # 验证 imagefs 依赖的源码存在
+            test -f /tmp/winlator-bionic/audio_plugin/module_pcm_android_aserver.c
+            test -f /tmp/winlator-bionic/android_sysvshm/android_sysvshm.c
+            echo "winlator_bionic 源码就绪"
+
+        - name: 构建 imagefs (41 个包)
           script: ./build-all.sh
           timeout: 2h
 
@@ -53,11 +66,6 @@ main:
           allowFailure: true
           timeout: 1h
           script: |
-            # 克隆 winlator_bionic 源码 (含子模块)
-            if [ ! -d /tmp/winlator-bionic/.git ]; then
-              git clone --depth 1 -b winlator_bionic --recursive \
-                https://github.com/Pipetto-crypto/winlator.git /tmp/winlator-bionic
-            fi
             export WINLATOR_SRC=/tmp/winlator-bionic/app/src/main/cpp
             # adrenoutils_extra 需从 APK 资源提取源码，CI 中跳过该单项
             ./build-native-libs.sh adrenotools winlator-native proot virglrenderer
@@ -88,6 +96,14 @@ main:
       volumes:
         - main:/tmp/imagefs-build/cache:copy-on-write-read-only
       stages:
+        - name: 克隆 winlator_bionic 源码
+          script: |
+            if [ ! -d /tmp/winlator-bionic/.git ]; then
+              git clone --depth 1 -b winlator_bionic --recursive \
+                https://github.com/Pipetto-crypto/winlator.git /tmp/winlator-bionic
+            fi
+            test -f /tmp/winlator-bionic/audio_plugin/module_pcm_android_aserver.c
+            test -f /tmp/winlator-bionic/android_sysvshm/android_sysvshm.c
         - name: 构建 imagefs (验证)
           script: ./build-all.sh
           timeout: 2h
@@ -104,7 +120,16 @@ $:
   tag_push:
     - <<: *build-env
       stages:
-        - name: 构建 imagefs (39 个包)
+        - name: 克隆 winlator_bionic 源码
+          script: |
+            if [ ! -d /tmp/winlator-bionic/.git ]; then
+              git clone --depth 1 -b winlator_bionic --recursive \
+                https://github.com/Pipetto-crypto/winlator.git /tmp/winlator-bionic
+            fi
+            test -f /tmp/winlator-bionic/audio_plugin/module_pcm_android_aserver.c
+            test -f /tmp/winlator-bionic/android_sysvshm/android_sysvshm.c
+
+        - name: 构建 imagefs (41 个包)
           script: ./build-all.sh
           timeout: 2h
 
@@ -118,10 +143,6 @@ $:
           allowFailure: true
           timeout: 1h
           script: |
-            if [ ! -d /tmp/winlator-bionic/.git ]; then
-              git clone --depth 1 -b winlator_bionic --recursive \
-                https://github.com/Pipetto-crypto/winlator.git /tmp/winlator-bionic
-            fi
             export WINLATOR_SRC=/tmp/winlator-bionic/app/src/main/cpp
             ./build-native-libs.sh adrenotools winlator-native proot virglrenderer
 

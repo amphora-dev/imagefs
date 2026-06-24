@@ -11,10 +11,12 @@ cd "$SRC_DIR"
 [ -d "$PKG_NAME" ] || { curl -sL "$SRC_URL" -o libxshmfence.tar.xz && tar xf libxshmfence.tar.xz; }
 cd "$PKG_NAME"
 
-# Bionic 有 futex, 但需要定义 _GNU_SOURCE
+# Bionic 无 <linux/futex.h> (用 <sys/futex.h>), configure 的 AC_CHECK_HEADER 会失败
+# 直接禁用 futex 后端, 回退到 pollfd 实现 (功能等价, 不依赖内核 futex 头)
 ./configure --host=$ARCH-linux-android --prefix=$PREFIX --libdir=$PREFIX/lib \
     --enable-shared --disable-static \
     --enable-malloc0returnsnull \
+    --disable-futex \
     xorg_cv_malloc0_returns_null=yes \
     --with-pic \
     CFLAGS="$CFLAGS -D_GNU_SOURCE" LDFLAGS="$LDFLAGS"

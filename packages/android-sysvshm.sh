@@ -26,6 +26,7 @@ sed -i 's/buf->shm_perm.__key/buf->shm_perm.key/g; s/buf->shm_perm.__seq/buf->sh
 
 $CC -fPIC -O2 -shared \
     -I"$PREFIX/include" \
+    -I"$(dirname "$SRC_FILE")" \
     -o "$PREFIX/lib/libsysvshm.so" \
     "$FIXED_SRC" \
     -Wl,-soname,libsysvshm.so \

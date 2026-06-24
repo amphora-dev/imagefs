@@ -46,6 +46,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         bison \
         gettext \
         texinfo \
+        # patchelf: libsndfile/pulseaudio 的 SONAME/NEEDED 修正
+        patchelf \
+        # libglib2.0-dev: 提供 glib-compile-schemas (pulseaudio configure 需要)
+        libglib2.0-dev \
     # meson 保持较新版本 (glib 2.82 / harfbuzz 10.x 要求 >= 0.63)
     && pip3 install --no-cache-dir "meson>=1.3" \
     && rm -rf /var/lib/apt/lists/*

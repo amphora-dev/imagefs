@@ -40,6 +40,7 @@ ALL_PACKAGES=(
     # Tier 4: 图形/显示
     xorgproto
     libxcb
+    xtrans
     libx11
     libxext
     libxfixes
