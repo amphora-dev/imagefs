@@ -1,118 +1,163 @@
-# 原生库编译验证报告
+# Winlator Bionic 原生库编译验证报告
 
-## 构建环境
+## 源码仓库
+
+**Pipetto-crypto/winlator** (winlator_bionic 分支)
+
+- URL: https://github.com/Pipetto-crypto/winlator/tree/winlator_bionic
+- 子模块: Pipetto-crypto/libadrenotools + Pipetto-crypto/liblinkernsbypass + KhronosGroup/OpenXR-SDK
+- applicationId: `com.winlator.cmod`
+- versionName: `7.1.4x-cmod`
+- NDK: `29.0.14206865` (r29, Clang 21)
+
+## 构建配置
+
+| 项目 | 值 | 说明 |
+|------|------|------|
+| NDK | android-ndk-r29 | 与 build.gradle 一致 |
+| ABI | arm64-v8a | |
+| Platform | android-26 | minSdkVersion |
+| STL | c++_shared | 匹配 wrapper.tzst (链接 libc++_shared.so) |
+| Build Type | Release | -O2 |
+| Linker Flags | -Wl,--as-needed | 避免 NDK r29 自动添加的不必要 NEEDED |
+| C Flags | -Wno-error=implicit-function-declaration | Clang 21 兼容 |
+| 修补 | adrenotools CMakeLists.txt 添加 `log` 链接 | NDK r29 需要 |
+
+## 编译产物与 wrapper.tzst 对比
+
+### Adrenotools + Hook 库 (wrapper.tzst)
+
+| 库 | 编译大小 | wrapper.tzst | NEEDED 匹配 |
+|----|---------|-------------|-------------|
+| libadrenotools.so | 44K | 47K | ✅ |
+| libhook_impl.so | 38K | 41K | ✅ |
+| libmain_hook.so | 3.8K | 7.4K | ✅ |
+| libfile_redirect_hook.so | 3.6K | 6.4K | ✅ |
+| libgsl_alloc_hook.so | 3.9K | 7.5K | ✅ |
+
+**全部 5 个库 NEEDED 完美匹配** ✅
+
+编译版略小是因为 NDK r29 (Clang 21) 比 wrapper.tzst 构建时使用的编译器更新，优化更好。
+
+### libwinlator.so (新)
 
 | 项目 | 值 |
 |------|------|
-| NDK | android-ndk-r29 |
-| 编译器 | Clang 21.0.0 |
-| 目标 ABI | arm64-v8a |
-| Android API | 26 |
-| 构建类型 | Release |
-| 源码 | brunodev85/winlator-app (main) |
-| 额外 CFLAGS | -Wno-error=implicit-function-declaration -Wno-error=incompatible-pointer-types |
+| 大小 | 115K |
+| SONAME | libwinlator.so |
+| NEEDED | liblog.so, libandroid.so, libjnigraphics.so, libopenxr_loader.so, libaaudio.so, libEGL.so, libGLESv2.so, libGLESv3.so, libadrenotools.so, libdl.so, libm.so, libc.so |
 
-> Clang 21 将隐式函数声明视为错误，而 winlator 源码大量使用未声明函数（strdup, memcpy 等），需要添加 `-Wno-error` 标志。
+包含 OpenXR、AAudio、ALSA Client、Vulkan、EGL 渲染器、Shader 等模块。
 
-## 编译产物
+### libopenxr_loader.so (新)
 
-| 库 | 编译大小 | APK 大小 | 差异说明 |
-|----|---------|---------|---------|
-| libadrenotools.so | 877K | N/A (不在APK) | 静态链接 liblinkernsbypass.a |
-| libhook_impl.so | 276K | 304K | NDK 版本差异 |
-| libmain_hook.so | 3.9K | 4.2K | NDK 版本差异 |
-| libfile_redirect_hook.so | 3.7K | 3.9K | NDK 版本差异 |
-| libgsl_alloc_hook.so | 4.0K | 4.3K | NDK 版本差异 |
-| libwinlator.so | 52K | 49K | NDK 版本差异 |
-| libgladiorenderer.so | 298K | 272K | NDK 版本差异 |
-| libvortekrenderer.so | 300K | 585K | ⚠️ 见下文 |
-| libvirglrenderer.so | 433K | 414K | NDK 版本差异 |
-| libmidihandler.so | 8.5K | 9.7K | NDK 版本差异 |
+| 项目 | 值 |
+|------|------|
+| 大小 | 379K |
+| 来源 | KhronosGroup/OpenXR-SDK |
 
-### libvortekrenderer.so 差异说明
+### libpatchelf.so (新)
 
-编译版比 APK 版小约 285K，原因：
-- **编译版**: 动态链接 `libadrenotools.so` (NEEDED 包含 `libadrenotools.so`)
-- **APK 版**: 静态链接 adrenotools (NEEDED 不包含 `libadrenotools.so`)
-- CMakeLists.txt 中 `target_link_libraries(vortekrenderer adrenotools ...)` 使用共享库链接
-- 原始构建可能使用了静态库或 `--exclude-libs` 选项
+| 项目 | 值 |
+|------|------|
+| 大小 | 285K |
+| 用途 | 运行时修改 ELF SONAME |
 
-## ELF 属性验证
+### adrenoutils_extra.so
 
-### libwinlator.so ✅ 完全匹配
+| 项目 | 编译版 | adrenotools-v819.tzst |
+|------|--------|----------------------|
+| 大小 | 4.4K | 6.3K |
+| NEEDED | liblog.so, libdl.so, libc.so | libdl.so, libc.so |
 
-```
-SONAME: libwinlator.so
-NEEDED: liblog.so, libandroid.so, libjnigraphics.so, libEGL.so,
-        libGLESv2.so, libGLESv3.so, libm.so, libdl.so, libc.so
-```
+源码从 `adrenotools-v819.tzst` 中提取，提供 `get_override_device_uuid` 和 `get_driver_uuid` 钩子函数。
 
-### libgladiorenderer.so ✅ 完全匹配
+## wrapper.tzst 资源分析
 
-```
-SONAME: libgladiorenderer.so
-NEEDED: libwinlator.so, liblog.so, libandroid.so, libEGL.so,
-        libGLESv2.so, libGLESv3.so, libjnigraphics.so, libm.so,
-        libdl.so, libc.so
-```
+`wrapper.tzst` 包含 6 个 .so + 1 个 ICD JSON：
 
-### libvirglrenderer.so ✅ 完全匹配
+| 文件 | 大小 | 说明 | 可编译 |
+|------|------|------|--------|
+| libadrenotools.so | 47K | Adreno 驱动加载器 | ✅ 已编译 |
+| libhook_impl.so | 41K | Hook 实现 | ✅ 已编译 |
+| libmain_hook.so | 7.4K | 主 Hook | ✅ 已编译 |
+| libfile_redirect_hook.so | 6.4K | 文件重定向 Hook | ✅ 已编译 |
+| libgsl_alloc_hook.so | 7.5K | GSL 内存分配 Hook | ✅ 已编译 |
+| libvulkan_wrapper.so | 19M | Mesa Vulkan ICD 包装器 | ❌ 无源码 |
+| wrapper_icd.aarch64.json | - | Vulkan ICD 配置 | N/A |
 
-```
-SONAME: libvirglrenderer.so
-NEEDED: libwinlator.so, liblog.so, libandroid.so, libEGL.so,
-        libGLESv2.so, libGLESv3.so, libjnigraphics.so, libm.so,
-        libdl.so, libc.so
-```
+### libvulkan_wrapper.so 分析
 
-### libmidihandler.so ✅ 完全匹配 (23 个 NEEDED)
+- **来源**: Mesa Vulkan 运行时 (定制版)
+- **大小**: 19M
+- **功能**: 通过 `adrenotools_open_libvulkan` 加载真实 Adreno 驱动，并提供 X11/XCB 兼容层
+- **NEEDED**: libandroid-sysvshm.so, libadrenotools.so, libnativewindow.so, libm.so, libxcb.so, libX11-xcb.so, libxcb-dri3.so, libxcb-present.so, libxcb-sync.so, libxcb-randr.so, libxcb-shm.so, libdrm.so, libc++_shared.so, libdl.so, libc.so
+- **关键符号**: `vk_icdGetInstanceProcAddr`, `adrenotools_open_libvulkan`, `vk_icdNegotiateLoaderICDInterfaceVersion`
+- **源码路径线索**: `../src/vulkan/runtime/vk_device.c`, `../src/vulkan/runtime/vk_image.h` 等 Mesa 源码路径
 
-```
-SONAME: libmidihandler.so
-NEEDED: libFLAC.so, libfluidsynth-assetloader.so, libgio-2.0.so,
-        libglib-2.0.so, libgmodule-2.0.so, libgobject-2.0.so,
-        libgthread-2.0.so, libinstpatch-1.0.so, liboboe.so,
-        libogg.so, libopus.so, libpcre.so, libpcreposix.so,
-        libsndfile.so, libvorbis.so, libvorbisenc.so,
-        libvorbisfile.so, libfluidsynth.so, liblog.so, libomp.so,
-        libm.so, libdl.so, libc.so
-```
+## adrenotools 驱动包分析
 
-### libvortekrenderer.so ⚠️ 链接方式差异
+### adrenotools-turnip25.1.0.tzst
 
-```
-编译版 NEEDED (多一个):
-  libadrenotools.so, libwinlator.so, liblog.so, libandroid.so,
-  libdl.so, libjnigraphics.so, libEGL.so, libGLESv2.so,
-  libGLESv3.so, libm.so, libc.so
+| 文件 | 说明 |
+|------|------|
+| meta.json | `{"libraryName": "vulkan.ad07xx.so"}` |
+| vulkan.ad07xx.so | Mesa Turnip Vulkan 驱动 (Adreno 7xx 系列) |
 
-APK 版 NEEDED:
-  libwinlator.so, liblog.so, libandroid.so, libdl.so,
-  libjnigraphics.so, libEGL.so, libGLESv2.so, libGLESv3.so,
-  libm.so, libc.so
-```
+### adrenotools-v819.tzst
 
-### Hook 库 (4个) ✅ 完全匹配
+| 文件 | 大小 | 说明 |
+|------|------|------|
+| meta.json | 261B | Quest 2 提取的 Adreno 8191 驱动 |
+| adrenoutils_extra.c | 1.2K | UUID 钩子源码 (可编译 ✅) |
+| adrenoutils_extra.so | 6.3K | UUID 钩子编译版 |
+| vulkan.ad8191.so | 5.3M | Adreno 8191 Vulkan 驱动 |
+| notadreno_utils.so | 196K | 重命名的 libadreno_utils.so |
+| notdmabufheap.so | 149K | 重命名的 DMA buffer heap 库 |
+| notgsl.so | 2.3M | 重命名的 GSL 库 |
+| notllvm-glnext.so | 2.3M | 重命名的 LLVM Vulkan shader 编译器 |
+| notllvm-qgl.so | 22M | 重命名的 LLVM OpenGL shader 编译器 |
 
-所有 4 个 hook 库的 SONAME 和 NEEDED 完全一致：
+> "not" 前缀用于绕过 Android 库检测，由 adrenotools 在运行时通过自定义 linker namespace 加载。
 
-```
-libhook_impl.so:
-  NEEDED: liblog.so, libandroid.so, libdl.so, libm.so, libc.so
+## extra_libs.tzst 分析
 
-libmain_hook.so:
-  NEEDED: libhook_impl.so, libandroid.so, libdl.so, liblog.so, libm.so, libc.so
+| 文件 | 说明 | 来源 |
+|------|------|------|
+| libvkbasalt.so | vkBasalt 后处理层 | [DadSchoorse/vkBasalt](https://github.com/DadSchoorse/vkBasalt) |
+| libglapi.so.0.0.0 | Mesa GL API 库 | Mesa |
+| libvulkan_freedreno.so | Mesa Freedreno Vulkan 驱动 | Mesa |
+| libbcn_layer.so | BCN 纹理层 | 定制 |
+| libGL.so.1.5.0 | Mesa GL 库 | Mesa |
+| freedreno_icd.aarch64.json | Vulkan ICD 配置 | |
+| libbcn_layer.json | Vulkan 隐式层配置 | |
+| vkBasalt.json | Vulkan 隐式层配置 | |
 
-libfile_redirect_hook.so:
-  NEEDED: libhook_impl.so, libandroid.so, libdl.so, liblog.so, libm.so, libc.so
+## 与 brunodev85/winlator-app 对比
 
-libgsl_alloc_hook.so:
-  NEEDED: libhook_impl.so, libandroid.so, libdl.so, liblog.so, libm.so, libc.so
-```
+| 特性 | Pipetto-crypto (bionic) | brunodev85 (main) |
+|------|------------------------|-------------------|
+| 版本 | 7.1.4x-cmod | 11.1 |
+| OpenXR | ✅ (VR 支持) | ❌ |
+| patchelf | ✅ (内置) | ❌ |
+| proot | ✅ (内置) | ❌ |
+| GladioRenderer | ❌ | ✅ |
+| VortekRenderer | ❌ | ✅ |
+| VirGLRenderer | ✅ | ✅ |
+| MIDIHandler | ❌ | ✅ |
+| AudioSystem | AAudio | Oboe |
+| adrenotools | ✅ (Pipetto-crypto fork) | ✅ (原版) |
+| wrapper.tzst | ✅ (含 vulkan_wrapper) | ❌ |
+| extra_libs.tzst | ✅ | ❌ |
+| adrenotools 驱动包 | ✅ (turnip + v819) | ❌ |
+| NDK | r29 | r29 |
+| applicationId | com.winlator.cmod | com.winlator |
 
 ## 结论
 
-1. **10 个原生库全部编译成功**，ELF 属性与 APK 原始版本基本一致
-2. 唯一功能差异是 `libvortekrenderer.so` 的 adrenotools 链接方式（动态 vs 静态），不影响功能
-3. 大小差异来自 NDK 版本不同（我们使用 r29/Clang 21，原始可能使用 r26/r27）
-4. 编译过程需要 `-Wno-error=implicit-function-declaration` 兼容 Clang 21
+1. **从 Pipetto-crypto/winlator (winlator_bionic) 成功编译 9 个原生库**
+2. **5 个 adrenotools 库与 wrapper.tzst 预编译版 NEEDED 完美匹配**
+3. 使用 `c++_shared` STL + `--as-needed` 是匹配 wrapper.tzst 的关键
+4. `libvulkan_wrapper.so` (19M) 是 Mesa Vulkan ICD 包装器，无源码，不可编译
+5. `adrenoutils_extra.c` 可从源码编译，功能为 Adreno UUID 钩子
+6. Pipetto-crypto 版本包含 OpenXR/VR 支持，是 brunodev85 版本不具备的特性
