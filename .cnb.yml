@@ -1,0 +1,151 @@
+# =============================================================================
+# .cnb.yml — winlator bionic imagefs 构建流水线 (CNB 云原生构建)
+# =============================================================================
+# 仓库: https://cnb.cool/atowerlight/winlator-imagefs
+#
+# 触发:
+#   main.push         完整构建 imagefs + native-libs，产物上传为 commit 附件
+#   main.pull_request 仅构建 imagefs 做验证 (不消耗产物配额)
+#   $.tag_push        完整构建 + 创建 Release + 上传产物到 Release 附件
+#
+# 缓存:
+#   - NDK r29 (~1.5GB) 与源码包缓存于 /tmp/imagefs-build/cache (跨构建复用)
+# =============================================================================
+
+# ---- 可复用的构建环境 (YAML 锚点) ----
+.build-env: &build-env
+  docker:
+    build:
+      dockerfile: ci/Dockerfile
+      by:
+        - ci/Dockerfile
+  runner:
+    cpus: 4
+  env:
+    # config.sh 读取的环境变量
+    BUILD_DIR: /tmp/imagefs-build
+    OUTPUT_DIR: /tmp/imagefs-output
+    JOBS: "4"
+  # NDK 与源码包缓存 (main 分支可读写更新，PR 只读复用)
+  volumes:
+    - main:/tmp/imagefs-build/cache:copy-on-write
+
+# =============================================================================
+# main 分支
+# =============================================================================
+main:
+  # ---- push: 完整构建 + 上传产物 ----
+  push:
+    - <<: *build-env
+      stages:
+        - name: 构建 imagefs (39 个包)
+          script: ./build-all.sh
+          timeout: 2h
+
+        - name: 验证关键产物
+          script: |
+            test -f /tmp/imagefs-output/imagefs.txz
+            test -x /tmp/imagefs-build/imagefs/usr/bin/box64
+            echo "imagefs 构建验证通过"
+            ls -lh /tmp/imagefs-output/
+
+        - name: 构建 native-libs (winlator 原生库)
+          allowFailure: true
+          timeout: 1h
+          script: |
+            # 克隆 winlator_bionic 源码 (含子模块)
+            if [ ! -d /tmp/winlator-bionic/.git ]; then
+              git clone --depth 1 -b winlator_bionic --recursive \
+                https://github.com/Pipetto-crypto/winlator.git /tmp/winlator-bionic
+            fi
+            export WINLATOR_SRC=/tmp/winlator-bionic/app/src/main/cpp
+            # adrenoutils_extra 需从 APK 资源提取源码，CI 中跳过该单项
+            ./build-native-libs.sh adrenotools winlator-native proot virglrenderer
+
+        - name: 收集产物
+          script: |
+            mkdir -p artifacts
+            cp /tmp/imagefs-output/imagefs.txz artifacts/
+            cp /tmp/imagefs-output/imagefs.txz.sha256sum artifacts/
+            # native-libs 打包 (构建失败则跳过)
+            if ls output/native-libs/*.so >/dev/null 2>&1; then
+              tar cJf artifacts/native-libs.tar.xz -C output native-libs
+            fi
+            echo "=== 产物清单 ==="
+            ls -lh artifacts/
+
+        - name: 上传产物 (commit 附件)
+          image: cnbcool/attachments:latest
+          settings:
+            attachments:
+              - ./artifacts/imagefs.txz
+              - ./artifacts/imagefs.txz.sha256sum
+              - ./artifacts/native-libs.tar.xz
+
+  # ---- pull_request: 仅验证构建 ----
+  pull_request:
+    - <<: *build-env
+      volumes:
+        - main:/tmp/imagefs-build/cache:copy-on-write-read-only
+      stages:
+        - name: 构建 imagefs (验证)
+          script: ./build-all.sh
+          timeout: 2h
+        - name: 验证关键产物
+          script: |
+            test -f /tmp/imagefs-output/imagefs.txz
+            test -x /tmp/imagefs-build/imagefs/usr/bin/box64
+            echo "imagefs 构建验证通过"
+
+# =============================================================================
+# tag 推送: 构建 + 发布 Release
+# =============================================================================
+$:
+  tag_push:
+    - <<: *build-env
+      stages:
+        - name: 构建 imagefs (39 个包)
+          script: ./build-all.sh
+          timeout: 2h
+
+        - name: 验证关键产物
+          script: |
+            test -f /tmp/imagefs-output/imagefs.txz
+            test -x /tmp/imagefs-build/imagefs/usr/bin/box64
+            ls -lh /tmp/imagefs-output/
+
+        - name: 构建 native-libs (winlator 原生库)
+          allowFailure: true
+          timeout: 1h
+          script: |
+            if [ ! -d /tmp/winlator-bionic/.git ]; then
+              git clone --depth 1 -b winlator_bionic --recursive \
+                https://github.com/Pipetto-crypto/winlator.git /tmp/winlator-bionic
+            fi
+            export WINLATOR_SRC=/tmp/winlator-bionic/app/src/main/cpp
+            ./build-native-libs.sh adrenotools winlator-native proot virglrenderer
+
+        - name: 收集产物
+          script: |
+            mkdir -p artifacts
+            cp /tmp/imagefs-output/imagefs.txz artifacts/
+            cp /tmp/imagefs-output/imagefs.txz.sha256sum artifacts/
+            if ls output/native-libs/*.so >/dev/null 2>&1; then
+              tar cJf artifacts/native-libs.tar.xz -C output native-libs
+            fi
+            echo "=== 产物清单 ==="
+            ls -lh artifacts/
+
+        - name: 创建 Release
+          type: git:release
+          options:
+            title: ${CNB_BRANCH}
+            description: winlator bionic imagefs 构建产物
+
+        - name: 上传产物到 Release 附件
+          image: cnbcool/attachments:latest
+          settings:
+            attachments:
+              - ./artifacts/imagefs.txz
+              - ./artifacts/imagefs.txz.sha256sum
+              - ./artifacts/native-libs.tar.xz
