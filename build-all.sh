@@ -37,6 +37,12 @@ ALL_PACKAGES=(
     harfbuzz
     glib
 
+    # Tier 3.5: Bionic 兼容垫片 (X11/图形库依赖)
+    # android-sysvshm 提供 libsysvshm.so (shmget/shmat/shmdt/shmctl),
+    # Bionic 无 System V 共享内存, libX11 的 MIT-SHM 路径链接期需要这些符号。
+    # 必须在 libx11 之前构建。
+    android-sysvshm
+
     # Tier 4: 图形/显示
     xorgproto
     libxcb
@@ -74,7 +80,6 @@ ALL_PACKAGES=(
     # Tier 8: Bionic 兼容库 (box64 依赖)
     android-spawn
     android-sysv-semaphore
-    android-sysvshm
 
     # Tier 9: 模拟器
     box64
@@ -147,11 +152,19 @@ for package in "${SELECTED_PACKAGES[@]}"; do
         FAILED=$((FAILED + 1))
         FAILED_PACKAGES+=("$package")
         error "[$CURRENT/$TOTAL] ❌ $package 失败 (见 $ERR_FILE)"
-        # 显示错误详情 (stderr 前 60 行 + stdout 末尾 30 行, 便于 CI 诊断)
-        echo "    ----- stderr (前 60 行) -----"
-        head -60 "$ERR_FILE" 2>/dev/null | sed 's/^/    /'
-        echo "    ----- stdout (末尾 30 行) -----"
-        tail -30 "$LOG_FILE" 2>/dev/null | sed 's/^/    /'
+        # ---- 诊断输出 ----
+        # 关键: 真正的 make/install/link 错误在 stderr/stdout **末尾**, 不是开头
+        # (开头通常是大量 configure warning, head 会把真错误挤掉)
+        # 1) 先 grep 出所有关键错误行 (最快定位根因)
+        echo "    ----- 关键错误行 (grep) -----"
+        grep -nEi "error:|undefined reference|cannot find|No package |No such file|fatal|\*\*\* |Permission denied|not found" \
+            "$ERR_FILE" "$LOG_FILE" 2>/dev/null | tail -40 | sed 's/^/    /' || echo "    (无匹配关键错误行)"
+        # 2) stderr 末尾 50 行 (真正的失败点)
+        echo "    ----- stderr (末尾 50 行) -----"
+        tail -50 "$ERR_FILE" 2>/dev/null | sed 's/^/    /'
+        # 3) stdout 末尾 20 行 (失败时正在执行的步骤)
+        echo "    ----- stdout (末尾 20 行) -----"
+        tail -20 "$LOG_FILE" 2>/dev/null | sed 's/^/    /'
         echo "    ----- 错误详情结束 -----"
     fi
 done

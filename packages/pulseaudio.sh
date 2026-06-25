@@ -28,6 +28,16 @@ if ! grep -q "BIONIC_PATCH" src/pulsecore/mutex-posix.c 2>/dev/null; then
         src/pulsecore/mutex-posix.c
 fi
 
+# 2. backtrace()/backtrace_symbols() 在 Bionic 不可用
+#    NDK 有 <execinfo.h> 头文件, 但函数被 __INTRODUCED_IN(33) 守卫,
+#    API 26 下 configure 误判 HAVE_EXECINFO_H=1 → log.c 编译报 undeclared function。
+#    双保险: ① configure cache 变量 ac_cv_header_execinfo_h=no (见下方 configure)
+#            ② log.c 内把 #ifdef HAVE_EXECINFO_H 直接改成 #if 0 (参考 MiceWine)
+#    全局替换 (而非地址范围), 兼容 GNU/BSD sed, 幂等
+if grep -q "#ifdef HAVE_EXECINFO_H" src/pulsecore/log.c 2>/dev/null; then
+    sed -i 's@#ifdef HAVE_EXECINFO_H@#if 0 /* BIONIC_NO_EXECINFO */@g' src/pulsecore/log.c
+fi
+
 # ---- 交叉编译 configure ----
 # ax_cv_check_cflags__pedantic__Werror__std_gnu11=yes 绕过 -std=gnu11 检查
 # (NDK clang 支持 -std=gnu11, 但 -pedantic -Werror 导致 NDK 头文件警告变错误)
@@ -43,6 +53,7 @@ export OPENSSL_CFLAGS="-I$PREFIX/include"
 export OPENSSL_LIBS="-L$PREFIX/lib -lssl -lcrypto"
 
 ax_cv_check_cflags__pedantic__Werror__std_gnu11=yes \
+ac_cv_header_execinfo_h=no \
 ./configure --host=$ARCH-linux-android \
     --prefix=$PREFIX --libdir=$PREFIX/lib \
     --enable-shared --disable-static --with-pic \

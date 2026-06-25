@@ -11,7 +11,7 @@ cd "$SRC_DIR"
 [ -d "$PKG_NAME" ] || { curl -sL "$SRC_URL" -o libxext.tar.xz && tar xf libxext.tar.xz; }
 cd "$PKG_NAME"
 
-./configure --host=$ARCH-linux-android --prefix=$PREFIX --libdir=$PREFIX/lib \
+./configure --host=$ARCH-linux-android host_alias=$ARCH-linux-android --prefix=$PREFIX --libdir=$PREFIX/lib \
     --enable-shared --disable-static \
     --enable-malloc0returnsnull \
     xorg_cv_malloc0_returns_null=yes \
