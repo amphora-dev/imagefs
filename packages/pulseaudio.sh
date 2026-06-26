@@ -20,28 +20,15 @@ cd "$SRC_DIR"
 cd "$PKG_NAME"
 
 # ---- Bionic 补丁 ----
-# 1. pthread_mutexattr_setprotocol 不在 Bionic API 26
-if ! grep -q "BIONIC_PATCH" src/pulsecore/mutex-posix.c 2>/dev/null; then
-    sed -i 's/r = pthread_mutexattr_setprotocol(&attr, PTHREAD_PRIO_INHERIT);/r = 0; \/\/ BIONIC_PATCH: pthread_mutexattr_setprotocol not available/' \
-        src/pulsecore/mutex-posix.c
-    sed -i 's/pa_assert_se(pthread_mutexattr_setprotocol(&attr, PTHREAD_PRIO_NONE) == 0);/\/\/ BIONIC_PATCH: pthread_mutexattr_setprotocol not available/' \
-        src/pulsecore/mutex-posix.c
-fi
-
-# 2. backtrace()/backtrace_symbols() 在 Bionic 不可用
-#    NDK 有 <execinfo.h> 头文件, 但函数被 __INTRODUCED_IN(33) 守卫,
-#    API 26 下 configure 误判 HAVE_EXECINFO_H=1 → log.c 编译报 undeclared function。
-#    双保险: ① configure cache 变量 ac_cv_header_execinfo_h=no (见下方 configure)
-#            ② log.c 内把 #ifdef HAVE_EXECINFO_H 直接改成 #if 0 (参考 MiceWine)
-#    全局替换 (而非地址范围), 兼容 GNU/BSD sed, 幂等
+# PA 13.0 在 Bionic (NDK r29/API26) 下的不兼容点, 大部分用 configure cache 变量
+# 或 --disable/--without 选项解决 (优于 sed 改源码), 详见下方 configure。
+#
+# 仍需 sed 的一处: backtrace()/backtrace_symbols() —— NDK 有 <execinfo.h> 头但函数
+# 被 __INTRODUCED_IN(33) 守卫, configure 误判 HAVE_EXECINFO_H=1 → log.c 编译报错。
+# 双保险: ① ac_cv_header_execinfo_h=no  ② log.c 内 #ifdef HAVE_EXECINFO_H → #if 0
 if grep -q "#ifdef HAVE_EXECINFO_H" src/pulsecore/log.c 2>/dev/null; then
     sed -i 's@#ifdef HAVE_EXECINFO_H@#if 0 /* BIONIC_NO_EXECINFO */@g' src/pulsecore/log.c
 fi
-
-# 3. Linux capabilities (<sys/capability.h>: cap_t/cap_init/cap_set_proc) 在 Bionic 不可用。
-#    PA 13.0 的 daemon/caps.c 在 HAVE_SYS_CAPABILITY_H && __linux__ 分支用 cap_t,
-#    Bionic 定义 __linux__ 但无 libcap → 编译报 undeclared identifier 'cap_t'。
-#    设 ac_cv_header_sys_capability_h=no (见下方 configure), 走 caps.c 的 #else 空实现分支。
 
 # ---- 交叉编译 configure ----
 # ax_cv_check_cflags__pedantic__Werror__std_gnu11=yes 绕过 -std=gnu11 检查
@@ -57,12 +44,23 @@ export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig:${PKG_CONF
 export OPENSSL_CFLAGS="-I$PREFIX/include"
 export OPENSSL_LIBS="-L$PREFIX/lib -lssl -lcrypto"
 
+# Bionic (NDK r29/API26) 兼容: 用 configure cache 变量 + 选项绕过不兼容点
+#   ac_cv_header_execinfo_h=no    backtrace() 是 __INTRODUCED_IN(33)
+#   ac_cv_header_glob_h=no        glob()/globfree() 是 __INTRODUCED_IN(28), 头存在性门控会硬错
+#   ax_cv_PTHREAD_PRIO_INHERIT=no pthread_mutexattr_setprotocol 是 __INTRODUCED_IN(28)
+#                                 (彻底关掉 mutex-posix.c 两处调用, 替代旧 sed)
+#   --without-caps                Linux capabilities 不存在; 否则 configure 检测到缺
+#                                 sys/capability.h + host_has_caps=1 会直接 AC_MSG_ERROR abort
+#   --disable-memfd               memfd_create 是 __INTRODUCED_IN(30); 不禁用则 memfd-wrappers.h
+#                                 的 static inline 与 Bionic <sys/mman.h> 声明冲突 (重定义)
 ax_cv_check_cflags__pedantic__Werror__std_gnu11=yes \
 ac_cv_header_execinfo_h=no \
-ac_cv_header_sys_capability_h=no \
+ac_cv_header_glob_h=no \
+ax_cv_PTHREAD_PRIO_INHERIT=no \
 ./configure --host=$ARCH-linux-android \
     --prefix=$PREFIX --libdir=$PREFIX/lib \
     --enable-shared --disable-static --with-pic \
+    --without-caps --disable-memfd \
     --enable-alsa --enable-glib --enable-openssl \
     --enable-sndfile \
     --disable-bluez5 --disable-avahi --disable-dbus \
