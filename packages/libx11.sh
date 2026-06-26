@@ -19,7 +19,13 @@ cd "$SRC_DIR"
 cd "$PKG_NAME"
 
 # ---- Bionic 补丁 (幂等 sed) ----
-# CrGlCur.c: dlopen 的 libXcursor 去版本号
+# 1. pthread: Bionic 把 pthread 内建在 libc, 无独立 libpthread.so。
+#    libX11 的 configure 在 linux* 分支生成 XTHREADLIB=-lpthread,
+#    导致 ld.lld 报 "unable to find library -lpthread"。
+#    改成 -pthread (clang 驱动 flag, Bionic 下不会引入 libpthread)。
+#    (参考 MiceWine-Packages/packages/libX11/fix-pthread.patch)
+sed -i 's/XTHREADLIB=-lpthread/XTHREADLIB=-pthread/g' configure
+# 2. CrGlCur.c: dlopen 的 libXcursor 去版本号
 if [ -f src/CrGlCur.c ]; then
     sed -i 's/"libXcursor\.so\.1"/"libXcursor.so"/' src/CrGlCur.c
 fi

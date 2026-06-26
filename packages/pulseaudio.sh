@@ -38,6 +38,11 @@ if grep -q "#ifdef HAVE_EXECINFO_H" src/pulsecore/log.c 2>/dev/null; then
     sed -i 's@#ifdef HAVE_EXECINFO_H@#if 0 /* BIONIC_NO_EXECINFO */@g' src/pulsecore/log.c
 fi
 
+# 3. Linux capabilities (<sys/capability.h>: cap_t/cap_init/cap_set_proc) 在 Bionic 不可用。
+#    PA 13.0 的 daemon/caps.c 在 HAVE_SYS_CAPABILITY_H && __linux__ 分支用 cap_t,
+#    Bionic 定义 __linux__ 但无 libcap → 编译报 undeclared identifier 'cap_t'。
+#    设 ac_cv_header_sys_capability_h=no (见下方 configure), 走 caps.c 的 #else 空实现分支。
+
 # ---- 交叉编译 configure ----
 # ax_cv_check_cflags__pedantic__Werror__std_gnu11=yes 绕过 -std=gnu11 检查
 # (NDK clang 支持 -std=gnu11, 但 -pedantic -Werror 导致 NDK 头文件警告变错误)
@@ -54,6 +59,7 @@ export OPENSSL_LIBS="-L$PREFIX/lib -lssl -lcrypto"
 
 ax_cv_check_cflags__pedantic__Werror__std_gnu11=yes \
 ac_cv_header_execinfo_h=no \
+ac_cv_header_sys_capability_h=no \
 ./configure --host=$ARCH-linux-android \
     --prefix=$PREFIX --libdir=$PREFIX/lib \
     --enable-shared --disable-static --with-pic \
