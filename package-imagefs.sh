@@ -29,7 +29,12 @@ split -b "$IMAGEFS_PART_SIZE" -d -a 2 "$IMAGEFS_NAME" "${IMAGEFS_NAME}."
 log "产物:"
 ls -la "$OUTPUT_DIR"/
 
-# ---- ELF 签名验证 ----
+# ---- ELF 签名验证 (纯信息性, 失败绝不影响构建) ----
+# 此时 imagefs.txz 已成功生成。验证段含 find|head (SIGPIPE)、算术、grep、
+# 末尾 [ -n "$INTERP" ] 等可能返回非零的语句, 在 set -euo pipefail 下会让
+# 整个打包步骤误判失败。用子 shell 关闭 errexit/pipefail 并 || true 兜底。
+(
+set +e +o pipefail
 section "ELF 签名验证 (Bionic libc)"
 
 VERIFY_COUNT=0
@@ -37,7 +42,6 @@ PASS_COUNT=0
 for so in $(find "$ROOTFS/usr/lib" -name "*.so*" -type f 2>/dev/null | head -30); do
     VERIFY_COUNT=$((VERIFY_COUNT + 1))
     NEEDED=$(readelf -d "$so" 2>/dev/null | grep NEEDED | head -3)
-    INTERP=$(readelf -l "$so" 2>/dev/null | grep interpreter | head -1)
     if echo "$NEEDED" | grep -q "libc.so" && ! echo "$NEEDED" | grep -q "libc.so.6"; then
         PASS_COUNT=$((PASS_COUNT + 1))
         echo "  ✅ $(basename $so): $NEEDED"
@@ -49,7 +53,6 @@ done
 echo ""
 log "验证: $PASS_COUNT/$VERIFY_COUNT 个 .so 正确链接 Bionic libc"
 
-# ---- 与官方对比 ----
 echo ""
 echo "官方 imagefs 特征:"
 echo "  - NEEDED libc.so (无 .6 后缀) = Bionic"
@@ -62,3 +65,7 @@ for bin in $(find "$ROOTFS/usr/bin" -type f -executable 2>/dev/null | head -5); 
         echo "  $(basename $bin): .interp = $INTERP"
     fi
 done
+) || true
+
+log "打包完成: $OUTPUT_DIR/$IMAGEFS_NAME"
+exit 0
