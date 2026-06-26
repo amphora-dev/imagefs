@@ -127,10 +127,13 @@ for package in "${SELECTED_PACKAGES[@]}"; do
         continue
     fi
 
-    # 检查是否已构建
+    # ---- 增量缓存: marker 记录包脚本 hash, 脚本变了则失效重编 ----
+    # marker 内容 = 包脚本的 sha256。命中条件: marker 存在且 hash 与当前脚本一致。
+    # (BUILT_DIR 持久化在 cache volume, 见 .cnb.yml)
     MARKER="$BUILT_DIR/${package}.done"
-    if [ -f "$MARKER" ]; then
-        log "[$CURRENT/$TOTAL] $package: 已构建, 跳过"
+    PKG_HASH=$(sha256sum "$PKG_SCRIPT" 2>/dev/null | awk '{print $1}')
+    if [ -f "$MARKER" ] && [ "$(cat "$MARKER" 2>/dev/null)" = "$PKG_HASH" ]; then
+        log "[$CURRENT/$TOTAL] $package: 已构建 (缓存命中), 跳过"
         SUCCESS=$((SUCCESS + 1))
         continue
     fi
@@ -143,10 +146,8 @@ for package in "${SELECTED_PACKAGES[@]}"; do
     ERR_FILE="$LOGS_DIR/${package}.err"
 
     if bash "$PKG_SCRIPT" > "$LOG_FILE" 2> "$ERR_FILE"; then
-        touch "$MARKER"
+        echo "$PKG_HASH" > "$MARKER"
         SUCCESS=$((SUCCESS + 1))
-        # 显示产物
-        NEW_LIBS=$(find "$PREFIX/lib" -name "*.so*" -newer "$MARKER" 2>/dev/null | wc -l)
         log "[$CURRENT/$TOTAL] ✅ $package 完成"
     else
         FAILED=$((FAILED + 1))

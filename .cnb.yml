@@ -28,9 +28,18 @@
     JOBS: "4"
     # winlator_bionic 源码 (audio_plugin / android_sysvshm 在仓库根目录)
     WINLATOR_DIR: /tmp/winlator-bionic
-  # NDK 与源码包缓存 (main 分支可读写更新，PR 只读复用)
+  # 跨构建增量缓存 (main 分支可读写更新, copy-on-write 在流水线成功后合并):
+  #   cache       — NDK r29 (~1.5GB) + 源码 tarball
+  #   src         — 已解压的源码树 (避免重复解压)
+  #   built-pkgs  — 每包 .done marker (内含包脚本 sha256, 脚本变则失效重编)
+  #   imagefs     — 已安装产物树 (改 1 个包只重编该包, 其余命中缓存)
+  # 配合 build-all.sh 的 hash marker + create-rootfs.sh 增量模式, 单包迭代
+  # 从 ~14min 降到 ~2min。需干净重建时设 REBUILD_ROOTFS=1。
   volumes:
     - main:/tmp/imagefs-build/cache:copy-on-write
+    - main:/tmp/imagefs-build/src:copy-on-write
+    - main:/tmp/imagefs-build/built-pkgs:copy-on-write
+    - main:/tmp/imagefs-build/imagefs:copy-on-write
 
 # =============================================================================
 # main 分支
@@ -93,8 +102,12 @@ main:
   # ---- pull_request: 仅验证构建 ----
   pull_request:
     - <<: *build-env
+      # PR 只读复用 main 的缓存, 不写回 (避免未合并代码污染缓存)
       volumes:
         - main:/tmp/imagefs-build/cache:copy-on-write-read-only
+        - main:/tmp/imagefs-build/src:copy-on-write-read-only
+        - main:/tmp/imagefs-build/built-pkgs:copy-on-write-read-only
+        - main:/tmp/imagefs-build/imagefs:copy-on-write-read-only
       stages:
         - name: 克隆 winlator_bionic 源码
           script: |
