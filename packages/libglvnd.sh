@@ -41,12 +41,19 @@ ninja -j$JOBS
 ninja install
 
 # ---- 去版本号: 官方所有 GL 库均为无后缀 .so ----
-# meson 生成 libFoo.so.N.M.K + 软链, 这里把真实文件改名为 libFoo.so
+# meson version:'N.M.K' 生成 libFoo.so.N.M.K(实体) + libFoo.so.N + libFoo.so(软链)。
+# 把实体改名为无版本号的 libFoo.so。注意: 先把实体挪到临时名再删软链, 否则
+# readlink 拿到实体后 rm .so* 会把实体一起删掉 → mv cannot stat。
 for base in GLdispatch GL GLX GLESv1_CM OpenGL EGL GLESv2; do
-    real=$(readlink -f "$PREFIX/lib/lib${base}.so" 2>/dev/null || true)
+    link="$PREFIX/lib/lib${base}.so"
+    [ -e "$link" ] || continue
+    real=$(readlink -f "$link" 2>/dev/null || true)
     [ -n "$real" ] && [ -f "$real" ] || continue
-    rm -f "$PREFIX/lib/lib${base}".so*
-    mv "$real" "$PREFIX/lib/lib${base}.so" 2>/dev/null || cp -f "$real" "$PREFIX/lib/lib${base}.so"
+    if [ "$real" != "$link" ]; then
+        mv -f "$real" "$link.real"        # 实体挪走 (软链此刻悬空)
+        rm -f "$link" "$link".[0-9]*      # 删软链和 .so.N 等残留
+        mv -f "$link.real" "$link"        # 实体放回无版本名
+    fi
 done
 
 # ---- 用系统软链覆盖 libEGL.so / libGLESv2.so (匹配官方: 运行时用手机库) ----
