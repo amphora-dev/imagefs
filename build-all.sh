@@ -63,16 +63,16 @@ ALL_PACKAGES=(
     vulkan-loader
     libglvnd
 
-    # Tier 5: 音频
+    # Tier 5: 网络/加密 (pulseaudio 的 RAOP 模块依赖 openssl 头文件, 须在音频之前)
+    openssl
+    curl
+
+    # Tier 6: 音频
     alsa-lib
     libsndfile
     libltdl
     pulseaudio
     alsa-android-aserver
-
-    # Tier 6: 网络/加密
-    openssl
-    curl
 
     # Tier 7: 多媒体
     sdl2
