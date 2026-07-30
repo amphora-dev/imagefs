@@ -9,7 +9,7 @@
 #
 # Cache:
 #   - Docker CI image (gha layer cache; context = ci/ only)
-#   - NDK + src + built-pkgs + imagefs tree (actions/cache)
+#   - src + built-pkgs + imagefs tree (actions/cache) — NDK 用 runner 自带的
 #   - ccache object cache
 # =============================================================================
 
@@ -41,6 +41,36 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Resolve runner NDK
+        id: ndk
+        run: |
+          set -euo pipefail
+          pick=""
+          for cand in \
+            "${ANDROID_NDK_LATEST_HOME:-}" \
+            "${ANDROID_NDK_HOME:-}" \
+            "${ANDROID_NDK_ROOT:-}" \
+            "${ANDROID_NDK:-}"; do
+            if [ -n "$cand" ] && [ -x "$cand/toolchains/llvm/prebuilt/linux-x86_64/bin/clang" ]; then
+              pick="$cand"
+              break
+            fi
+          done
+          if [ -z "$pick" ] && [ -d "${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}/ndk" ]; then
+            pick="$(ls -d "${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}"/ndk/29.* 2>/dev/null | sort -V | tail -1 || true)"
+            if [ -z "$pick" ]; then
+              pick="$(ls -d "${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}"/ndk/* 2>/dev/null | sort -V | tail -1 || true)"
+            fi
+          fi
+          if [ -z "$pick" ] || [ ! -x "$pick/toolchains/llvm/prebuilt/linux-x86_64/bin/clang" ]; then
+            echo "FAIL: no usable NDK on runner (expected ANDROID_NDK_LATEST_HOME)" >&2
+            ls -la "${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}/ndk" 2>/dev/null || true
+            exit 1
+          fi
+          echo "Using runner NDK: $pick"
+          echo "NDK_HOST=$pick" >> "$GITHUB_ENV"
+          echo "path=$pick" >> "$GITHUB_OUTPUT"
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -54,13 +84,11 @@ jobs:
           cache-from: type=gha,scope=imagefs-ci
           cache-to: type=gha,mode=max,scope=imagefs-ci
 
-      - name: Restore package / NDK caches
+      - name: Restore package caches
         uses: actions/cache@v4
         with:
           path: |
-            /tmp/imagefs-build/cache/android-ndk-r29
             /tmp/imagefs-build/cache/*.tar*
-            /tmp/imagefs-build/cache/*.zip
             /tmp/imagefs-build/src
             /tmp/imagefs-build/built-pkgs
             /tmp/imagefs-build/imagefs
@@ -85,11 +113,14 @@ jobs:
             -v "$PWD:/workspace" \
             -v "$BUILD_DIR:$BUILD_DIR" \
             -v "$OUTPUT_DIR:$OUTPUT_DIR" \
+            -v "$NDK_HOST:$NDK_HOST:ro" \
             -e BUILD_DIR \
             -e OUTPUT_DIR \
             -e JOBS \
             -e CCACHE_DIR \
             -e CCACHE_MAXSIZE \
+            -e "ANDROID_NDK_HOME=$NDK_HOST" \
+            -e "ANDROID_NDK_ROOT=$NDK_HOST" \
             -w /workspace \
             "$CI_IMAGE" \
             ./build-all.sh
