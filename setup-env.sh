@@ -25,14 +25,56 @@ log "NDK 路径: $NDK_DIR"
 
 # ---- 2. 交叉编译工具链 ----
 export PATH="$TC/bin:$PATH"
-export CC="$TC/bin/${ARCH}-linux-android${ANDROID_API}-clang"
-export CXX="$TC/bin/${ARCH}-linux-android${ANDROID_API}-clang++"
+REAL_CC="$TC/bin/${ARCH}-linux-android${ANDROID_API}-clang"
+REAL_CXX="$TC/bin/${ARCH}-linux-android${ANDROID_API}-clang++"
 export AR="$TC/bin/llvm-ar"
 export STRIP="$TC/bin/llvm-strip"
 export RANLIB="$TC/bin/llvm-ranlib"
 export NM="$TC/bin/llvm-nm"
 export LD="$TC/bin/ld.lld"
 export AS="$TC/bin/llvm-as"
+
+# ---- 2b. ccache (optional) ----
+# Wrap NDK clang so autotools / cmake / meson all hit the same object cache.
+# Persist under CACHE_DIR so GitHub Actions can restore it across runs.
+export CCACHE_DIR="${CCACHE_DIR:-$CACHE_DIR/ccache}"
+if command -v ccache >/dev/null 2>&1; then
+    mkdir -p "$CCACHE_DIR" "$CACHE_DIR/ccache-wrappers"
+    export CCACHE_MAXSIZE="${CCACHE_MAXSIZE:-5G}"
+    export CCACHE_COMPILERCHECK="${CCACHE_COMPILERCHECK:-content}"
+    export CCACHE_COMPRESS="${CCACHE_COMPRESS:-1}"
+    export CCACHE_SLOPPINESS="${CCACHE_SLOPPINESS:-pch_defines,time_macros,include_file_mtime,include_file_ctime}"
+    ccache --set-config "cache_dir=$CCACHE_DIR" 2>/dev/null || true
+    ccache --set-config "max_size=$CCACHE_MAXSIZE" 2>/dev/null || true
+    # NDK clang lives under versioned paths; hash compiler bytes, not mtime/path.
+    ccache --set-config "compiler_check=$CCACHE_COMPILERCHECK" 2>/dev/null || true
+    ccache --set-config "sloppiness=$CCACHE_SLOPPINESS" 2>/dev/null || true
+    ccache --set-config "compression=true" 2>/dev/null || true
+
+    cat > "$CACHE_DIR/ccache-wrappers/${ARCH}-linux-android${ANDROID_API}-clang" <<EOF
+#!/usr/bin/env bash
+exec ccache "$REAL_CC" "\$@"
+EOF
+    cat > "$CACHE_DIR/ccache-wrappers/${ARCH}-linux-android${ANDROID_API}-clang++" <<EOF
+#!/usr/bin/env bash
+exec ccache "$REAL_CXX" "\$@"
+EOF
+    chmod +x \
+        "$CACHE_DIR/ccache-wrappers/${ARCH}-linux-android${ANDROID_API}-clang" \
+        "$CACHE_DIR/ccache-wrappers/${ARCH}-linux-android${ANDROID_API}-clang++"
+
+    export CC="$CACHE_DIR/ccache-wrappers/${ARCH}-linux-android${ANDROID_API}-clang"
+    export CXX="$CACHE_DIR/ccache-wrappers/${ARCH}-linux-android${ANDROID_API}-clang++"
+    # Cover cmake packages that pass $CC and those that use the NDK toolchain file.
+    export CMAKE_C_COMPILER_LAUNCHER=ccache
+    export CMAKE_CXX_COMPILER_LAUNCHER=ccache
+    log "ccache 已启用 (CCACHE_DIR=$CCACHE_DIR, max=$CCACHE_MAXSIZE)"
+    ccache -z 2>/dev/null || true
+else
+    export CC="$REAL_CC"
+    export CXX="$REAL_CXX"
+    warn "ccache 未安装 — 交叉编译将无对象缓存"
+fi
 
 # ---- 3. 编译 flags ----
 export CFLAGS="-fPIC -O2 -I$PREFIX/include"

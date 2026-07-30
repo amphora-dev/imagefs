@@ -48,6 +48,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         texinfo \
         # patchelf: libsndfile/pulseaudio 的 SONAME/NEEDED 修正
         patchelf \
+        # ccache: NDK clang 交叉编译加速 (CI 持久化到 /tmp/imagefs-build/cache/ccache)
+        ccache \
         # libglib2.0-dev: 提供 glib-compile-schemas (pulseaudio configure 需要)
         libglib2.0-dev \
     # meson 保持较新版本 (glib 2.82 / harfbuzz 10.x 要求 >= 0.63)

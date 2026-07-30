@@ -249,4 +249,9 @@ else
     warn "失败包过多, 跳过打包。请检查日志后重试。"
 fi
 
+if command -v ccache >/dev/null 2>&1; then
+    section "ccache 统计"
+    ccache -s || true
+fi
+
 section "完成"
