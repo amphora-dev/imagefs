@@ -128,7 +128,14 @@ jobs:
       - name: Verify key artifacts
         run: |
           test -f "$OUTPUT_DIR/imagefs.txz"
-          test -x "$BUILD_DIR/imagefs/usr/bin/box64"
+          if tar -tJf "$OUTPUT_DIR/imagefs.txz" | grep -E '^(\./)?usr/bin/box64$'; then
+            echo "FAIL: box64 must not be in imagefs.txz (use Box64.wcp)" >&2
+            exit 1
+          fi
+          if tar -tJf "$OUTPUT_DIR/imagefs.txz" | grep -E '^(\./)?usr/include/'; then
+            echo "FAIL: usr/include must not be in imagefs.txz" >&2
+            exit 1
+          fi
           ls -lh "$OUTPUT_DIR/"
 
       - name: Verify Wine dependency sonames
@@ -139,6 +146,7 @@ jobs:
             -v "$OUTPUT_DIR:$OUTPUT_DIR" \
             -e BUILD_DIR \
             -e OUTPUT_DIR \
+            -e IMAGEFS_RUNTIME_STAGE=$BUILD_DIR/imagefs-runtime-stage \
             -w /workspace \
             "$CI_IMAGE" \
             bash ci/verify-wine-deps.sh

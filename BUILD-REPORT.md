@@ -212,7 +212,7 @@ coreutils。我们只装 Wine 实际链接或 dlopen 的库。
 | 8 | android-spawn | stub | 手动 | posix_spawn/glob (Bionic API 26 缺失) |
 | 8 | android-sysv-semaphore | stub | 手动 | semget/semop/semctl (Bionic 缺失) |
 | 8 | **android-sysvshm** | — | 手动 | System V 共享内存 (ashmem 实现) |
-| 9 | box64 | v0.4.3 | cmake | x86_64 模拟器 |
+| 9 | box64 / 模拟器 | — | — | **不进包**：Amphora 用独立 `Box64.wcp` 装到 `${bindir}/box64` |
 
 ## 对比验证: 原始 vs 构建
 

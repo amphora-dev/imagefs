@@ -131,12 +131,12 @@ ALL_PACKAGES=(
     gst-plugins-base
     ffmpeg
 
-    # Tier 8: Bionic 兼容库 (box64 依赖)
+    # Tier 8: Bionic 兼容库 —— Box64.wcp 运行时仍 NEEDED 这些垫片
+    # （box64 二进制本身不进 imagefs，见 packages 注释 / package-imagefs prune）
     android-spawn
     android-sysv-semaphore
 
-    # Tier 9: 模拟器
-    box64
+    # box64 已从 imagefs 移除：Amphora 用独立 Box64.wcp 装到 ${bindir}/box64
 )
 
 # ---- 命令行参数: 仅构建指定包 ----
