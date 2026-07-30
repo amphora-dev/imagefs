@@ -8,7 +8,7 @@ PKG_NAME="libpng-$VER"
 SRC_URL="https://download.sourceforge.net/libpng/libpng-$VER.tar.xz"
 
 cd "$SRC_DIR"
-[ -d "$PKG_NAME" ] || { curl -sL "$SRC_URL" -o libpng.tar.xz && tar xf libpng.tar.xz; }
+fetch_source "$PKG_NAME" libpng.tar.xz "$SRC_URL"
 cd "$PKG_NAME" && mkdir -p build_dir && cd build_dir
 
 # 使用 cmake 确保 ZLIB_ROOT 指向我们编译的 zlib, 避免 NDK sysroot 冲突

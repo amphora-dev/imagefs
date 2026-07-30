@@ -8,7 +8,8 @@ PKG_NAME="libXcomposite-$VER"
 SRC_URL="https://xorg.freedesktop.org/archive/individual/lib/libXcomposite-$VER.tar.xz"
 
 cd "$SRC_DIR"
-[ -d "$PKG_NAME" ] || { curl -sL "$SRC_URL" -o libxcomposite.tar.xz && tar xf libxcomposite.tar.xz; }
+fetch_source "$PKG_NAME" libxcomposite.tar.xz "$SRC_URL" \
+    "$(echo "$SRC_URL" | sed s#xorg.freedesktop.org#ftp.x.org#)"
 cd "$PKG_NAME"
 
 ./configure --host=$ARCH-linux-android host_alias=$ARCH-linux-android --prefix=$PREFIX --libdir=$PREFIX/lib \

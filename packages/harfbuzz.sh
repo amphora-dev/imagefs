@@ -8,7 +8,7 @@ PKG_NAME="harfbuzz-$VER"
 SRC_URL="https://github.com/harfbuzz/harfbuzz/releases/download/$VER/harfbuzz-$VER.tar.xz"
 
 cd "$SRC_DIR"
-[ -d "$PKG_NAME" ] || { curl -sL "$SRC_URL" -o harfbuzz.tar.xz && tar xf harfbuzz.tar.xz; }
+fetch_source "$PKG_NAME" harfbuzz.tar.xz "$SRC_URL"
 cd "$PKG_NAME" && mkdir -p build_dir && cd build_dir
 
 meson setup --cross-file="$CROSS_FILE" \

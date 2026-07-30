@@ -8,7 +8,8 @@ PKG_NAME="libxshmfence-$VER"
 SRC_URL="https://xorg.freedesktop.org/archive/individual/lib/libxshmfence-$VER.tar.xz"
 
 cd "$SRC_DIR"
-[ -d "$PKG_NAME" ] || { curl -sL "$SRC_URL" -o libxshmfence.tar.xz && tar xf libxshmfence.tar.xz; }
+fetch_source "$PKG_NAME" libxshmfence.tar.xz "$SRC_URL" \
+    "$(echo "$SRC_URL" | sed s#xorg.freedesktop.org#ftp.x.org#)"
 cd "$PKG_NAME"
 
 # Bionic 无 <linux/futex.h> (用 <sys/futex.h>), configure 的 AC_CHECK_HEADER 会失败

@@ -8,7 +8,7 @@ PKG_NAME="alsa-lib-$VER"
 SRC_URL="https://www.alsa-project.org/files/pub/lib/alsa-lib-$VER.tar.bz2"
 
 cd "$SRC_DIR"
-[ -d "$PKG_NAME" ] || { curl -sL "$SRC_URL" -o alsa-lib.tar.bz2 && tar xf alsa-lib.tar.bz2; }
+fetch_source "$PKG_NAME" alsa-lib.tar.bz2 "$SRC_URL"
 cd "$PKG_NAME"
 
 # 参考 MiceWine: --with-alsa-ucm-confdir=no, 禁用 python

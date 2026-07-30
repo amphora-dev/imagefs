@@ -8,7 +8,7 @@ PKG_NAME="fontconfig-$VER"
 SRC_URL="https://www.freedesktop.org/software/fontconfig/release/fontconfig-$VER.tar.xz"
 
 cd "$SRC_DIR"
-[ -d "$PKG_NAME" ] || { curl -sL "$SRC_URL" -o fontconfig.tar.xz && tar xf fontconfig.tar.xz; }
+fetch_source "$PKG_NAME" fontconfig.tar.xz "$SRC_URL"
 cd "$PKG_NAME" && mkdir -p build_dir && cd build_dir
 
 meson setup --cross-file="$CROSS_FILE" \

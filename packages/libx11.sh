@@ -15,7 +15,8 @@ PKG_NAME="libX11-$VER"
 SRC_URL="https://xorg.freedesktop.org/archive/individual/lib/libX11-$VER.tar.xz"
 
 cd "$SRC_DIR"
-[ -d "$PKG_NAME" ] || { curl -sL "$SRC_URL" -o libx11.tar.xz && tar xf libx11.tar.xz; }
+fetch_source "$PKG_NAME" libx11.tar.xz "$SRC_URL" \
+    "$(echo "$SRC_URL" | sed s#xorg.freedesktop.org#ftp.x.org#)"
 cd "$PKG_NAME"
 
 # ---- Bionic 补丁 (幂等 sed) ----

@@ -1,0 +1,147 @@
+#!/usr/bin/env bash
+# 断言 imagefs 提供了它的消费者实际需要的库, 且 soname 精确匹配。
+#
+# 消费者不只有 Wine。imagefs 还要喂图形栈 —— 那些库由 runtimeAssets 提供
+# (wrapper.tzst / extra_libs.tzst), 但它们的 NEEDED 是从 imagefs/usr/lib 解析的:
+#   libvulkan_wrapper.so    (wrapper.tzst)     adrenotools 包装的 Vulkan
+#   libvulkan_freedreno.so  (extra_libs.tzst)  Turnip
+#   libGL.so.1              (extra_libs.tzst)  Mesa/Zink
+#
+# 期望值的来源 (可复核):
+#   readelf -dW <proton>/lib/wine/x86_64-unix/*.so | grep NEEDED           # Wine 硬依赖
+#   strings -a <proton>/lib/wine/x86_64-unix/*.so | grep -oE '^lib.*\.so'  # Wine dlopen
+#   objdump -p <proton>/lib/wine/x86_64-windows/*.dll | grep 'DLL Name'    # 谁消费
+#   readelf -dW <解开的 wrapper.tzst / extra_libs.tzst>/usr/lib/*.so       # 图形栈
+#
+# 分两级, 因为「是 NEEDED」不等于「不可缺」: unixlib 按需加载, 所以某个 unixlib
+# 的 NEEDED 缺失只会让那一个 Wine 模块用不了, 而不是拖垮启动。
+set -euo pipefail
+source "$(dirname "$0")/../config.sh"
+
+LIB="$ROOTFS/usr/lib"
+fail=0
+
+# ---- 必需: 缺了影响基本使用 ----
+# 格式: <文件名>:<消费者/影响>
+required=(
+  "libX11.so:winex11.so — 没有它就没有显示"
+  "libXext.so:winex11.so + libGL.so.1"
+  "libasound.so:winealsa.so — ALSA 是 MVP 的音频路径"
+  "libpulse.so:winepulse.so"
+  "libglib-2.0.so:多个 unix 模块"
+  "libgobject-2.0.so:多个 unix 模块"
+  "libgio-2.0.so:多个 unix 模块"
+  # 图形栈的 NEEDED。这几项缺了不是降级, 是 Vulkan/OpenGL 驱动直接加载失败,
+  # 表现为黑屏而非报错, 所以必须断言。
+  "libzstd.so.1:libvulkan_freedreno.so + libGL.so.1 (Mesa shader cache)"
+  "libandroid-shmem.so:libGL.so.1 — Termux ASharedMemory 实现"
+  "libandroid-sysvshm.so:libvulkan_wrapper.so + Turnip + GPLC 的 LD_PRELOAD"
+  "libdrm.so:libvulkan_wrapper.so + Turnip + libGL.so.1"
+  "libX11-xcb.so:libvulkan_wrapper.so + Turnip"
+  "libxcb.so:libvulkan_wrapper.so + Turnip"
+  "libxcb-dri3.so:libvulkan_wrapper.so + Turnip"
+  "libxcb-present.so:libvulkan_wrapper.so + Turnip"
+  "libxcb-sync.so:libvulkan_wrapper.so + Turnip"
+  "libxcb-randr.so:libvulkan_wrapper.so + Turnip"
+  "libxcb-shm.so:libvulkan_wrapper.so + Turnip"
+  "libxshmfence.so:Turnip — 看着像可省, 实际是 NEEDED"
+  "libexpat.so.1:Turnip + fontconfig"
+  "libz.so.1:Turnip + libGL.so.1"
+  # gnutls 是 dlopen 而非 NEEDED, 但影响面比任何 NEEDED 都大: Wine 的
+  # bcrypt/secur32 靠它做 TLS, 缺了游戏登录/更新检查/任何 HTTPS 全废。
+  "libgnutls.so:bcrypt/secur32 的 TLS — 缺了没有 HTTPS"
+  "libgmp.so:gnutls 依赖链"
+  # winegstreamer 是 Wine 媒体的默认且完整路径: 通过 COM 注册了
+  # Generic Decodebin Byte Stream Handler (demux) + wg_h264/wmv/mp3/wma/mpeg
+  # decoder + wg_h264_encoder + DirectShow filters, 还给 wmvcore 提供
+  # winegstreamer_create_wm_sync_reader。
+  "libgstreamer-1.0.so:winegstreamer.so — 媒体默认路径"
+  "libgstbase-1.0.so:winegstreamer.so"
+  "libgstapp-1.0.so:winegstreamer.so"
+  "libgstaudio-1.0.so:winegstreamer.so"
+  "libgstvideo-1.0.so:winegstreamer.so"
+  "libgsttag-1.0.so:winegstreamer.so"
+  "libgstgl-1.0.so:winegstreamer.so"
+)
+
+# ---- 可选: 缺了功能降级, 有明确回退路径 ----
+optional=(
+  # winedmo 只导出 winedmo_demuxer_* 共 8 个函数 —— 只拆容器, 不解码。它是 MF
+  # 的**替代** demux 后端, 要注册表 HKCU\Software\Wine\MediaFoundation 下
+  # DisableGstByteStreamHandler=1 才启用, 默认走 GStreamer 那个 byte stream
+  # handler。旁证: 上游 imagefs 装 FFmpeg 7.1 而 winedmo 要 8.0, soname 对不上,
+  # 也就是说上游镜像里 winedmo 一直加载不了, 而镜像照常可用。
+  "libavutil.so.60:winedmo.so — 可选 demux 后端 (需注册表开关)"
+  "libavcodec.so.62:winedmo.so"
+  "libavformat.so.62:winedmo.so"
+  "libfreetype.so:字体"
+  "libfontconfig.so:字体配置"
+  "libvulkan.so.1:Vulkan"
+  "libSDL2-2.0.so:手柄/输入"
+  "libXi.so:X 输入扩展"
+  "libXcursor.so:X 光标"
+)
+
+# ---- 已确认无消费者: 若重新出现在 rootfs 里, 说明有人又把它加回来了 ----
+# 依据见 build-all.sh Tier 4 的注释。纯提示, 不影响退出码。
+# 注意 libXfixes / libXrender 不在此列: 运行期确实无人 NEEDED, 但 libxcursor 与
+# libxi 的 configure 通过 pkg-config 依赖它们, 所以必须构建。
+unused=(
+  "libXrandr.so" "libXcomposite.so" "libXinerama.so" "libXxf86vm.so"
+  "libharfbuzz.so" "libxml2.so" "libcurl.so"
+)
+
+section "验证必需依赖"
+for entry in "${required[@]}"; do
+  name="${entry%%:*}"
+  who="${entry#*:}"
+  if [ -e "$LIB/$name" ]; then
+    echo "  OK      $name  ($who)"
+  else
+    echo "  MISSING $name  ($who)" >&2
+    fail=1
+  fi
+done
+
+section "验证可选依赖"
+for entry in "${optional[@]}"; do
+  name="${entry%%:*}"
+  who="${entry#*:}"
+  if [ -e "$LIB/$name" ]; then
+    echo "  OK      $name  ($who)"
+  else
+    echo "  WARN    $name  ($who) — 功能降级" >&2
+  fi
+done
+
+section "已判定无消费者的库 (若出现说明被重新引入)"
+extra=0
+for name in "${unused[@]}"; do
+  if [ -e "$LIB/$name" ]; then
+    echo "  UNEXPECTED $name — 见 build-all.sh Tier 4 注释, 确认是否真有消费者"
+    extra=$((extra + 1))
+  fi
+done
+[ "$extra" -eq 0 ] && echo "  (无)"
+
+section "FFmpeg soname 实测"
+# 预期会看到 SONAME 不带版本 (libavcodec.so 而非 libavcodec.so.62): FFmpeg 的
+# configure 对 --target-os=android 固定用 SHFLAGS='-Wl,-soname,$(SLIBNAME)',
+# 拿不到带版本的 soname。DT_NEEDED 的解析走**文件名**, 由 ensure_soname_link 建的
+# libavcodec.so.62 等软链满足, 所以能加载; SONAME 只参与 linker 内部去重。
+# 与官方 imagefs 的差异 (那边是标准 Linux 构建, 实体 SONAME 带版本) 记在
+# BUILD-REPORT.md, 属已知且可接受。
+for so in "$LIB"/libav*.so.*; do
+  [ -e "$so" ] || continue
+  real=$(readelf -dW "$so" 2>/dev/null | awk -F'[][]' '/SONAME/{print $2}')
+  [ -n "$real" ] && echo "  $(basename "$so")  SONAME=$real"
+done
+
+if [ "$fail" -ne 0 ]; then
+  echo >&2
+  echo "有硬依赖缺失: 对应的 Wine unix 模块会加载失败。" >&2
+  exit 1
+fi
+
+echo
+log "Wine 依赖验证通过"

@@ -8,7 +8,7 @@ PKG_NAME="libxml2-$VER"
 SRC_URL="https://download.gnome.org/sources/libxml2/${VER%.*}/libxml2-$VER.tar.xz"
 
 cd "$SRC_DIR"
-[ -d "$PKG_NAME" ] || { curl -sL "$SRC_URL" -o libxml2.tar.xz && tar xf libxml2.tar.xz; }
+fetch_source "$PKG_NAME" libxml2.tar.xz "$SRC_URL"
 cd "$PKG_NAME" && mkdir -p build_dir && cd build_dir
 
 cmake -DCMAKE_C_COMPILER=$CC -DCMAKE_AR=$AR -DCMAKE_STRIP=$STRIP -DCMAKE_RANLIB=$RANLIB \

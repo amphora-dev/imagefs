@@ -8,7 +8,8 @@ PKG_NAME="xorgproto-$VER"
 SRC_URL="https://xorg.freedesktop.org/archive/individual/proto/xorgproto-$VER.tar.xz"
 
 cd "$SRC_DIR"
-[ -d "$PKG_NAME" ] || { curl -sL "$SRC_URL" -o xorgproto.tar.xz && tar xf xorgproto.tar.xz; }
+fetch_source "$PKG_NAME" xorgproto.tar.xz "$SRC_URL" \
+    "$(echo "$SRC_URL" | sed s#xorg.freedesktop.org#ftp.x.org#)"
 cd "$PKG_NAME" && mkdir -p build_dir && cd build_dir
 
 ../configure --host=${ARCH}-linux-android --prefix=$PREFIX --libdir=$PREFIX/lib \

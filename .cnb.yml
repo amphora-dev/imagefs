@@ -4,9 +4,13 @@
 # 仓库: https://cnb.cool/atowerlight/winlator-imagefs
 #
 # 触发:
-#   main.push         完整构建 imagefs + native-libs，产物上传为 commit 附件
+#   main.push         完整构建 imagefs，覆盖发布固定标签 `amphora`
+#                     的 Release，同时上传一份 commit 附件
 #   main.pull_request 仅构建 imagefs 做验证 (不消耗产物配额)
-#   $.tag_push        完整构建 + 创建 Release + 上传产物到 Release 附件
+#   $.tag_push        完整构建 + 按 tag 名创建 Release (留给需要留档的版本)
+#
+# 固定标签 `amphora` 与 atowerlight/aio-graphics-test 同约定: 每次 main push
+# 覆盖同一个 Release，amphora 侧只需固定一个下载地址。
 #
 # 缓存:
 #   - NDK r29 (~1.5GB) 与源码包缓存于 /tmp/imagefs-build/cache (跨构建复用)
@@ -20,12 +24,13 @@
       by:
         - ci/Dockerfile
   runner:
-    cpus: 4
+    cpus: 16
   env:
     # config.sh 读取的环境变量
     BUILD_DIR: /tmp/imagefs-build
     OUTPUT_DIR: /tmp/imagefs-output
-    JOBS: "4"
+    # 与 runner.cpus 保持一致; box64.sh 内部自己降到 -j1 (并行构建有竞态)。
+    JOBS: "16"
     # winlator_bionic 源码 (audio_plugin / android_sysvshm 在仓库根目录)
     WINLATOR_DIR: /tmp/winlator-bionic
   # 跨构建增量缓存 (copy-on-write 在流水线成功后合并)。
@@ -61,7 +66,7 @@ main:
             test -f /tmp/winlator-bionic/android_sysvshm/android_sysvshm.c
             echo "winlator_bionic 源码就绪"
 
-        - name: 构建 imagefs (41 个包)
+        - name: 构建 imagefs (43 个包)
           script: ./build-all.sh
           timeout: 2h
 
@@ -72,23 +77,14 @@ main:
             echo "imagefs 构建验证通过"
             ls -lh /tmp/imagefs-output/
 
-        - name: 构建 native-libs (winlator 原生库)
-          allowFailure: true
-          timeout: 1h
-          script: |
-            export WINLATOR_SRC=/tmp/winlator-bionic/app/src/main/cpp
-            # adrenoutils_extra 需从 APK 资源提取源码，CI 中跳过该单项
-            ./build-native-libs.sh adrenotools winlator-native proot virglrenderer
+        - name: 验证 Wine 依赖 soname
+          script: bash ci/verify-wine-deps.sh
 
         - name: 收集产物
           script: |
             mkdir -p artifacts
             cp /tmp/imagefs-output/imagefs.txz artifacts/
             cp /tmp/imagefs-output/imagefs.txz.sha256sum artifacts/
-            # native-libs 打包 (构建失败则跳过)
-            if ls output/native-libs/*.so >/dev/null 2>&1; then
-              tar cJf artifacts/native-libs.tar.xz -C output native-libs
-            fi
             echo "=== 产物清单 ==="
             ls -lh artifacts/
 
@@ -98,7 +94,32 @@ main:
             attachments:
               - ./artifacts/imagefs.txz
               - ./artifacts/imagefs.txz.sha256sum
-              - ./artifacts/native-libs.tar.xz
+
+        # 固定标签 Release: amphora 侧只认一个下载地址, 每次 main push 覆盖。
+        - name: create/update amphora release
+          type: git:release
+          options:
+            tag: amphora
+            title: amphora
+            description: |
+              自建 Bionic imagefs (固定标签 — 每次构建覆盖)。
+
+              相比上游 191MB 的 imagefs.tzst, 这里只装 Wine 实际需要的库:
+              上游那份还捎带了 terminfo/doc/man/locale、Tcl、x264/x265/aomenc
+              等 Wine 用不到的 userland。
+
+              Wine 依赖由 ci/verify-wine-deps.sh 在构建时断言, 包括 winedmo.so
+              要求的 FFmpeg 8.0 soname (libavcodec.so.62 / libavutil.so.60) —
+              上游 imagefs 装的是 7.1, soname 不匹配。
+
+        - name: 上传产物到 amphora Release
+          image: cnbcool/attachments:latest
+          settings:
+            tag: amphora
+            overwrite: true
+            attachments:
+              - ./artifacts/imagefs.txz
+              - ./artifacts/imagefs.txz.sha256sum
 
   # ---- pull_request: 仅验证构建 ----
   pull_request:
@@ -126,6 +147,8 @@ main:
             test -f /tmp/imagefs-output/imagefs.txz
             test -x /tmp/imagefs-build/imagefs/usr/bin/box64
             echo "imagefs 构建验证通过"
+        - name: 验证 Wine 依赖 soname
+          script: bash ci/verify-wine-deps.sh
 
 # =============================================================================
 # tag 推送: 构建 + 发布 Release
@@ -143,7 +166,7 @@ $:
             test -f /tmp/winlator-bionic/audio_plugin/module_pcm_android_aserver.c
             test -f /tmp/winlator-bionic/android_sysvshm/android_sysvshm.c
 
-        - name: 构建 imagefs (41 个包)
+        - name: 构建 imagefs (43 个包)
           script: ./build-all.sh
           timeout: 2h
 
@@ -153,21 +176,14 @@ $:
             test -x /tmp/imagefs-build/imagefs/usr/bin/box64
             ls -lh /tmp/imagefs-output/
 
-        - name: 构建 native-libs (winlator 原生库)
-          allowFailure: true
-          timeout: 1h
-          script: |
-            export WINLATOR_SRC=/tmp/winlator-bionic/app/src/main/cpp
-            ./build-native-libs.sh adrenotools winlator-native proot virglrenderer
+        - name: 验证 Wine 依赖 soname
+          script: bash ci/verify-wine-deps.sh
 
         - name: 收集产物
           script: |
             mkdir -p artifacts
             cp /tmp/imagefs-output/imagefs.txz artifacts/
             cp /tmp/imagefs-output/imagefs.txz.sha256sum artifacts/
-            if ls output/native-libs/*.so >/dev/null 2>&1; then
-              tar cJf artifacts/native-libs.tar.xz -C output native-libs
-            fi
             echo "=== 产物清单 ==="
             ls -lh artifacts/
 
@@ -183,4 +199,3 @@ $:
             attachments:
               - ./artifacts/imagefs.txz
               - ./artifacts/imagefs.txz.sha256sum
-              - ./artifacts/native-libs.tar.xz

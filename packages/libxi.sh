@@ -8,7 +8,8 @@ PKG_NAME="libXi-$VER"
 SRC_URL="https://xorg.freedesktop.org/archive/individual/lib/libXi-$VER.tar.xz"
 
 cd "$SRC_DIR"
-[ -d "$PKG_NAME" ] || { curl -sL "$SRC_URL" -o libxi.tar.xz && tar xf libxi.tar.xz; }
+fetch_source "$PKG_NAME" libxi.tar.xz "$SRC_URL" \
+    "$(echo "$SRC_URL" | sed s#xorg.freedesktop.org#ftp.x.org#)"
 cd "$PKG_NAME"
 
 ./configure --host=$ARCH-linux-android host_alias=$ARCH-linux-android --prefix=$PREFIX --libdir=$PREFIX/lib \

@@ -8,7 +8,7 @@ PKG_NAME="Vulkan-Headers-$VER"
 SRC_URL="https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v$VER.tar.gz"
 
 cd "$SRC_DIR"
-[ -d "$PKG_NAME" ] || { curl -sL "$SRC_URL" -o vulkan-headers.tar.gz && tar xf vulkan-headers.tar.gz; }
+fetch_source "$PKG_NAME" vulkan-headers.tar.gz "$SRC_URL"
 cd "$PKG_NAME" && mkdir -p build_dir && cd build_dir
 
 cmake -DCMAKE_INSTALL_PREFIX=$PREFIX \

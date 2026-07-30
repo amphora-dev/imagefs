@@ -8,7 +8,7 @@ PKG_NAME="openssl-$VER"
 SRC_URL="https://github.com/openssl/openssl/releases/download/openssl-$VER/openssl-$VER.tar.gz"
 
 cd "$SRC_DIR"
-[ -d "$PKG_NAME" ] || { curl -sL "$SRC_URL" -o openssl.tar.gz && tar xf openssl.tar.gz; }
+fetch_source "$PKG_NAME" openssl.tar.gz "$SRC_URL"
 cd "$PKG_NAME"
 
 # OpenSSL android-arm64 target 需要 ANDROID_NDK_ROOT

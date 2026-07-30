@@ -8,7 +8,7 @@ PKG_NAME="curl-$VER"
 SRC_URL="https://github.com/curl/curl/releases/download/curl-${VER//./_}/curl-$VER.tar.xz"
 
 cd "$SRC_DIR"
-[ -d "$PKG_NAME" ] || { curl -sL "$SRC_URL" -o curl.tar.xz && tar xf curl.tar.xz; }
+fetch_source "$PKG_NAME" curl.tar.xz "$SRC_URL"
 cd "$PKG_NAME" && mkdir -p build_dir && cd build_dir
 
 # 参考 MiceWine: OpenSSL 已安装到 $PREFIX, 使用 cmake

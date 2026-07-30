@@ -21,6 +21,9 @@ source "$SCRIPT_DIR/config.sh"
 ALL_PACKAGES=(
     # Tier 1: 无依赖的基础库
     zlib
+    # zstd: 图形栈硬依赖 (libvulkan_freedreno.so 与 libGL.so.1 的 NEEDED 都要
+    # libzstd.so.1, Mesa 用它做 shader cache)。首轮 42 包漏了。
+    zstd
     libffi
     libexpat
     libpng
@@ -30,20 +33,46 @@ ALL_PACKAGES=(
     pcre2
     freetype
     libiconv
-    libxml2
 
     # Tier 3: 依赖 Tier 2
     fontconfig
-    harfbuzz
     glib
 
     # Tier 3.5: Bionic 兼容垫片 (X11/图形库依赖)
-    # android-sysvshm 提供 libsysvshm.so (shmget/shmat/shmdt/shmctl),
-    # Bionic 无 System V 共享内存, libX11 的 MIT-SHM 路径链接期需要这些符号。
-    # 必须在 libx11 之前构建。
+    # 两个 shmem 实现都要, 名字与实现都不同, 官方 imagefs 里同样并存:
+    #   android-sysvshm  -> libsysvshm.so + libandroid-sysvshm.so, 走
+    #                       ANDROID_SYSVSHM_SERVER socket。libX11 的 MIT-SHM
+    #                       路径链接期需要这些符号, 必须在 libx11 之前。
+    #   libandroid-shmem -> libandroid-shmem.so, Termux 的 ASharedMemory 实现,
+    #                       libGL.so.1 (Mesa/Zink) 的 NEEDED 指名要它。
     android-sysvshm
+    libandroid-shmem
 
     # Tier 4: 图形/显示
+    #
+    # 删掉的 4 个 X 扩展 (libxcomposite/libxinerama/libxxf86vm/libxrandr) 依据:
+    # Wine unix 侧 31 个 .so 里引用次数实测为 0, proton-wine configure 本身就写了
+    # --without-xcomposite/xfixes/xinerama/xrandr/xrender/xshape/xxf86vm, 且
+    # libvulkan_wrapper.so / libvulkan_freedreno.so / libGL.so.1 的 NEEDED 里都
+    # 没有它们。(注意 libxcb-randr 等由 libxcb 包提供, 与 libxrandr 无关。)
+    #
+    # libxrandr 能删掉的前提是 vulkan-loader.sh 关了
+    # BUILD_WSI_XLIB_XRANDR_SUPPORT —— 上游默认 ON 且对 xrandr.pc 做 REQUIRED
+    # 检查, 不关就整包 configure 失败。
+    #
+    # libxfixes 与 libxrender **不能删**: 运行期确实无人 NEEDED, 但 libxcursor 的
+    # configure 要 (xrender >= 0.8.2 xfixes x11 fixesproto)、libxi 要 (xfixes >= 5),
+    # 都是构建期 pkg-config 依赖。而 libxcursor/libxi 是 Wine dlopen 的, 得留。
+    # 同理 libxshmfence 与 libexpat 是 libvulkan_freedreno.so 的 NEEDED。
+    #
+    # libglvnd 保留, 但理由跟原注释写的不一样: 官方 imagefs 里其实只有
+    # libGL.so + libGL.so.1 (Mesa 的, 来自 extra_libs.tzst 的 libGL.so.1.5.0),
+    # **没有** libglvnd 的 libGLdispatch/libGLX/libOpenGL/libGLESv1_CM, 所以那
+    # 几个实体库运行期没有消费者。留它是为**构建期**: 它 -Dheaders=true 提供桌面
+    # GL/gl.h, 而 sdl2.sh 开了 -DSDL_OPENGL=ON。真要去掉得先把 SDL2 的桌面 GL
+    # 关掉 (Wine 的 opengl32 是自己 dlopen libGL.so.1, 不经过 SDL)。
+    # 运行期 libEGL/libGLESv2 不需要 imagefs 里的软链 —— LD_LIBRARY_PATH 本身就
+    # 带 /system/lib64。
     xorgproto
     libxcb
     xtrans
@@ -51,21 +80,26 @@ ALL_PACKAGES=(
     libxext
     libxfixes
     libxrender
-    libxrandr
-    libxcomposite
     libxcursor
     libxi
-    libxinerama
-    libxxf86vm
     libxshmfence
     libdrm
     vulkan-headers
     vulkan-loader
     libglvnd
 
-    # Tier 5: 网络/加密 (pulseaudio 的 RAOP 模块依赖 openssl 头文件, 须在音频之前)
+    # Tier 5: 加密
+    # openssl 保留: GuestProgramLauncherComponent 的 LD_PRELOAD 候选链里有
+    # imagefs 的 libcrypto.so.3 (前两个候选是 /system/lib64 与 /system_ext)。
+    # curl 已删: Wine 走自己的 wininet/winhttp, 图形栈也不引用 libcurl。
     openssl
-    curl
+
+    # Tier 5.5: TLS 链 — Wine 的 bcrypt/secur32 运行期 dlopen("libgnutls.so"),
+    # 缺了就没有 TLS (游戏登录 / 更新检查 / 任何 HTTPS 都失败)。
+    # 依赖序: gmp < nettle (libhogweed 需要 gmp) < gnutls。
+    gmp
+    nettle
+    gnutls
 
     # Tier 6: 音频
     alsa-lib
@@ -76,6 +110,23 @@ ALL_PACKAGES=(
 
     # Tier 7: 多媒体
     sdl2
+
+    # Tier 7.5: Wine 媒体栈。
+    #
+    # GStreamer 是默认且完整的那条路: winegstreamer 通过 COM 注册了 Generic
+    # Decodebin Byte Stream Handler (demux) + wg_h264/wmv/mp3/wma/mpeg decoder
+    # + wg_h264_encoder + DirectShow filters, 并给 wmvcore 提供 sync reader。
+    # winegstreamer.so 的 7 个 NEEDED 由 core + plugins-base 提供 (后者依赖前者)。
+    #
+    # FFmpeg 只服务 winedmo.so, 而 winedmo 只导出 winedmo_demuxer_* (只拆容器,
+    # 不解码), 是 MF 的**替代** demux 后端, 需注册表
+    # HKCU\Software\Wine\MediaFoundation 下 DisableGstByteStreamHandler=1 才启用。
+    # 所以它是可选增强, 不是媒体播放的前提 —— 上游 imagefs 装的 FFmpeg 7.1 跟
+    # winedmo 要求的 8.0 soname 对不上, winedmo 在上游镜像里一直加载不了, 镜像
+    # 照常可用。要装就必须 8.0, 见 packages/ffmpeg.sh。
+    gstreamer
+    gst-plugins-base
+    ffmpeg
 
     # Tier 8: Bionic 兼容库 (box64 依赖)
     android-spawn

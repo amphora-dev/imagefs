@@ -21,7 +21,8 @@ make install
 cd "$SRC_DIR"
 
 # 2. 构建 libxcb (autotools)
-[ -d "$PKG_NAME" ] || { curl -sL "$SRC_URL" -o libxcb.tar.xz && tar xf libxcb.tar.xz; }
+fetch_source "$PKG_NAME" libxcb.tar.xz "$SRC_URL" \
+    "$(echo "$SRC_URL" | sed s#xorg.freedesktop.org#ftp.x.org#)"
 cd "$PKG_NAME"
 
 # 需要 libXau (xorgproto 提供 headers, 但 libXau 需要单独编译)

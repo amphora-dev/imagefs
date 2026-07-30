@@ -9,7 +9,7 @@ PKG_NAME="libsndfile-$VER"
 SRC_URL="https://github.com/libsndfile/libsndfile/releases/download/$VER/libsndfile-$VER.tar.xz"
 
 cd "$SRC_DIR"
-[ -d "$PKG_NAME" ] || { curl -sL "$SRC_URL" -o libsndfile.tar.xz && tar xf libsndfile.tar.xz; }
+fetch_source "$PKG_NAME" libsndfile.tar.xz "$SRC_URL"
 cd "$PKG_NAME" && mkdir -p build_dir && cd build_dir
 
 # 禁用所有可选编解码器, 仅保留基本格式 (WAV, AIFF, etc.)

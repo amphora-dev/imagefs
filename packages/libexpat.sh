@@ -8,7 +8,7 @@ PKG_NAME="expat-$VER"
 SRC_URL="https://github.com/libexpat/libexpat/releases/download/R_${VER//./_}/expat-$VER.tar.bz2"
 
 cd "$SRC_DIR"
-[ -d "$PKG_NAME" ] || { curl -sL "$SRC_URL" -o expat.tar.bz2 && tar xf expat.tar.bz2; }
+fetch_source "$PKG_NAME" expat.tar.bz2 "$SRC_URL"
 cd "$PKG_NAME" && mkdir -p build_dir && cd build_dir
 
 cmake -DCMAKE_C_COMPILER=$CC -DCMAKE_AR=$AR -DCMAKE_STRIP=$STRIP -DCMAKE_RANLIB=$RANLIB \

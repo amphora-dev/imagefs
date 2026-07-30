@@ -16,7 +16,7 @@ PKG_NAME="pulseaudio-$VER"
 SRC_URL="https://freedesktop.org/software/pulseaudio/releases/pulseaudio-$VER.tar.xz"
 
 cd "$SRC_DIR"
-[ -d "$PKG_NAME" ] || { curl -sL "$SRC_URL" -o pulseaudio.tar.xz && tar xf pulseaudio.tar.xz; }
+fetch_source "$PKG_NAME" pulseaudio.tar.xz "$SRC_URL"
 cd "$PKG_NAME"
 
 # ---- Bionic 补丁 ----

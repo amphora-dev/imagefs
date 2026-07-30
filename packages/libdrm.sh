@@ -8,7 +8,7 @@ PKG_NAME="libdrm-$VER"
 SRC_URL="https://dri.freedesktop.org/libdrm/libdrm-$VER.tar.xz"
 
 cd "$SRC_DIR"
-[ -d "$PKG_NAME" ] || { curl -sL "$SRC_URL" -o libdrm.tar.xz && tar xf libdrm.tar.xz; }
+fetch_source "$PKG_NAME" libdrm.tar.xz "$SRC_URL"
 cd "$PKG_NAME" && mkdir -p build_dir && cd build_dir
 
 # 参考 MiceWine: 禁用 intel/radeon/amdgpu/exynos/freedreno/vc4/nouveau/vmwgfx

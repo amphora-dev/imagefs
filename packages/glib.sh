@@ -8,7 +8,7 @@ PKG_NAME="glib-$VER"
 SRC_URL="https://download.gnome.org/sources/glib/${VER%.*}/glib-$VER.tar.xz"
 
 cd "$SRC_DIR"
-[ -d "$PKG_NAME" ] || { curl -sL "$SRC_URL" -o glib.tar.xz && tar xf glib.tar.xz; }
+fetch_source "$PKG_NAME" glib.tar.xz "$SRC_URL"
 cd "$PKG_NAME"
 
 # 修补: 交叉编译时 frexpl()/frexp() 运行时检查失败 (无法在 x86_64 运行 ARM64 二进制)

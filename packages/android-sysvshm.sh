@@ -25,14 +25,23 @@ FIXED_SRC="$WORK_DIR/sysvshm_fixed.c"
     cat "$SRC_FILE"
 } > "$FIXED_SRC"
 
+# 实体命名 libandroid-sysvshm.so, 与官方 imagefs 一致 (那边是 22KB 实体文件, 且
+# **没有** libsysvshm.so)。这个文件名是硬要求:
+#   - libvulkan_wrapper.so 与 libvulkan_freedreno.so 的 DT_NEEDED 写的是它
+#   - amphora GuestProgramLauncherComponent 用它做 LD_PRELOAD, 并在
+#     XServerWineSessionPreparer 的 wrapperDeps 里按此名拷贝
+# 之前只产 libsysvshm.so, 于是自建 imagefs 上 Vulkan 驱动会因缺 NEEDED 而加载失败。
 $CC -fPIC -O2 -shared \
     -I"$PREFIX/include" \
     -I"$(dirname "$SRC_FILE")" \
-    -o "$PREFIX/lib/libsysvshm.so" \
+    -o "$PREFIX/lib/libandroid-sysvshm.so" \
     "$FIXED_SRC" \
-    -Wl,-soname,libsysvshm.so \
+    -Wl,-soname,libandroid-sysvshm.so \
     -Wl,-rpath,/usr/lib
 
-$STRIP "$PREFIX/lib/libsysvshm.so" 2>/dev/null || true
+$STRIP "$PREFIX/lib/libandroid-sysvshm.so" 2>/dev/null || true
 
-log "  android-sysvshm: libsysvshm.so (ashmem-based SysV IPC)"
+# libsysvshm.so 软链: libx11.sh 用 -lsysvshm 链接这些符号 (Bionic 无 shmget 等)。
+ln -sf libandroid-sysvshm.so "$PREFIX/lib/libsysvshm.so"
+
+log "  android-sysvshm: libandroid-sysvshm.so (+ libsysvshm.so 软链, ashmem-based SysV IPC)"

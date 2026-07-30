@@ -8,7 +8,8 @@ PKG_NAME="libXxf86vm-$VER"
 SRC_URL="https://xorg.freedesktop.org/archive/individual/lib/libXxf86vm-$VER.tar.xz"
 
 cd "$SRC_DIR"
-[ -d "$PKG_NAME" ] || { curl -sL "$SRC_URL" -o libxxf86vm.tar.xz && tar xf libxxf86vm.tar.xz; }
+fetch_source "$PKG_NAME" libxxf86vm.tar.xz "$SRC_URL" \
+    "$(echo "$SRC_URL" | sed s#xorg.freedesktop.org#ftp.x.org#)"
 cd "$PKG_NAME"
 
 ./configure --host=$ARCH-linux-android host_alias=$ARCH-linux-android --prefix=$PREFIX --libdir=$PREFIX/lib \

@@ -8,7 +8,7 @@ PKG_NAME="pcre2-$VER"
 SRC_URL="https://github.com/PCRE2Project/pcre2/releases/download/pcre2-$VER/pcre2-$VER.tar.bz2"
 
 cd "$SRC_DIR"
-[ -d "$PKG_NAME" ] || { curl -sL "$SRC_URL" -o pcre2.tar.bz2 && tar xf pcre2.tar.bz2; }
+fetch_source "$PKG_NAME" pcre2.tar.bz2 "$SRC_URL"
 cd "$PKG_NAME" && mkdir -p build_dir && cd build_dir
 
 cmake -DCMAKE_C_COMPILER=$CC -DCMAKE_AR=$AR -DCMAKE_STRIP=$STRIP -DCMAKE_RANLIB=$RANLIB \

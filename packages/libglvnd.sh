@@ -19,7 +19,7 @@ PKG_NAME="libglvnd-v$VER"
 SRC_URL="https://gitlab.freedesktop.org/glvnd/libglvnd/-/archive/v$VER/libglvnd-v$VER.tar.gz"
 
 cd "$SRC_DIR"
-[ -d "$PKG_NAME" ] || { curl -sL "$SRC_URL" -o libglvnd.tar.gz && tar xf libglvnd.tar.gz; }
+fetch_source "$PKG_NAME" libglvnd.tar.gz "$SRC_URL"
 cd "$PKG_NAME" && mkdir -p build_dir && cd build_dir
 
 # 移除 create-rootfs.sh 预置的占位软链 (dangling, 会让 meson install 失败)

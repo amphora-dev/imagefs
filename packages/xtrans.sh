@@ -9,7 +9,8 @@ PKG_NAME="xtrans-$VER"
 SRC_URL="https://xorg.freedesktop.org/archive/individual/lib/xtrans-$VER.tar.xz"
 
 cd "$SRC_DIR"
-[ -d "$PKG_NAME" ] || { curl -sL "$SRC_URL" -o xtrans.tar.xz && tar xf xtrans.tar.xz; }
+fetch_source "$PKG_NAME" xtrans.tar.xz "$SRC_URL" \
+    "$(echo "$SRC_URL" | sed s#xorg.freedesktop.org#ftp.x.org#)"
 cd "$PKG_NAME"
 
 # xtrans 是纯头文件/辅助脚本包, 无需交叉编译特殊处理
