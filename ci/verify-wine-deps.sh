@@ -125,6 +125,20 @@ for name in "${unused[@]}"; do
 done
 [ "$extra" -eq 0 ] && echo "  (无)"
 
+section "libzstd SONAME (Turnip NEEDED libzstd.so.1)"
+zstd="$LIB/libzstd.so"
+if [ -e "$zstd" ] || [ -e "$LIB/libzstd.so.1" ]; then
+  target="$zstd"
+  [ -e "$target" ] || target="$LIB/libzstd.so.1"
+  soname=$(readelf -dW "$target" 2>/dev/null | awk -F'[][]' '/SONAME/{print $2}')
+  if [ "$soname" = "libzstd.so.1" ]; then
+    echo "  OK      SONAME=$soname"
+  else
+    echo "  BAD     SONAME='$soname' (expected libzstd.so.1)" >&2
+    fail=1
+  fi
+fi
+
 section "libandroid-sysvshm 符号 (wrapper 解析 libandroid_shm*)"
 # 自建曾只导出 shmget 等, wrapper 需要 libandroid_shmget → ICD 加载失败 → -9。
 sysvshm="$LIB/libandroid-sysvshm.so"

@@ -36,9 +36,18 @@ make install
 
 $STRIP "$PREFIX/lib/libzstd.so" 2>/dev/null || true
 
-# Turnip 与 libGL.so.1 的 NEEDED 写的是 libzstd.so.1, 而 cmake 在
-# CMAKE_SYSTEM_NAME=Android 下不生成版本软链 —— 官方 imagefs 里是
-# libzstd.so -> libzstd.so.1 -> libzstd.so.1.5.8。
+# Turnip / libGL NEEDED 写的是 libzstd.so.1。Android cmake 常把 SONAME 写成
+# 裸名 libzstd.so，只靠软链不够稳妥 —— 强制 SONAME 与 NEEDED 一致。
+if command -v patchelf >/dev/null 2>&1; then
+    patchelf --set-soname libzstd.so.1 "$PREFIX/lib/libzstd.so"
+elif [ -x "$TC/bin/llvm-patchelf" ]; then
+    "$TC/bin/llvm-patchelf" --set-soname libzstd.so.1 "$PREFIX/lib/libzstd.so"
+fi
 ensure_soname_link "libzstd.so.1" "libzstd.so"
+soname=$(readelf -dW "$PREFIX/lib/libzstd.so" 2>/dev/null | awk -F'[][]' '/SONAME/{print $2}')
+if [ "$soname" != "libzstd.so.1" ]; then
+    error "  libzstd SONAME='$soname' (expected libzstd.so.1)"
+    exit 1
+fi
 
-log "  zstd $VER: $(ls $PREFIX/lib/libzstd.so* 2>/dev/null | xargs -n1 basename | tr '\n' ' ')"
+log "  zstd $VER: SONAME=$soname $(ls $PREFIX/lib/libzstd.so* 2>/dev/null | xargs -n1 basename | tr '\n' ' ')"
