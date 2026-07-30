@@ -89,7 +89,7 @@ ensure_soname_link() {
 #   1. curl 没有 --fail, HTTP 404/5xx 时 curl 仍返回 0, 把错误页写进 tarball,
 #      于是失败点被推迟到后面的 `cd "$PKG_NAME"`, 报成
 #      "cd: xxx: No such file or directory" —— 完全看不出是下载问题。
-#   2. 只有单一源。CNB runner 对 xorg.freedesktop.org / gmplib.org / ffmpeg.org
+#   2. 只有单一源。部分 CI 出口对 xorg.freedesktop.org / gmplib.org / ffmpeg.org
 #      不通 (本地全部 200), 一旦源码缓存未命中就整批失败, 且 xorgproto 一挂会
 #      连锁带倒 14 个 X 包 + vulkan-loader + libglvnd。
 #
