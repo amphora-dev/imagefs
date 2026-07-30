@@ -7,6 +7,10 @@
 #                             libsysvshm.so 由 android-sysvshm 包提供 (构建顺序已提前)
 #   3. XTHREADLIB -pthread  — Bionic 把 pthread 内建在 libc, 不存在独立 libpthread
 #   4. libXcursor SONAME    — 去版本号 (winlator imagefs 不带 .so.N 版本号)
+#
+# NOTE: stock xtrans hardcodes X11_UNIX_PATH="/tmp/.X11-unix/X" and ignores TMPDIR.
+# Amphora does not chroot into imagefs, so the guest must set
+# DISPLAY=unix:$IMAGEFS/usr/tmp/.X11-unix/X0 (see GuestProgramLauncherComponent).
 set -euo pipefail
 source "$(dirname "$0")/../config.sh"
 

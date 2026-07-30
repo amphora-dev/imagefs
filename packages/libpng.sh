@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
-# libpng — follow MiceWine-Packages (autotools), not cmake+PNG_ARM_NEON=on.
+# libpng — autotools so we keep the PNG16_0 ELF symbol version that freetype
+# (and Box64 verneed) require.
 #
-# cmake -DPNG_ARM_NEON=on with our global LDFLAGS (--allow-shlib-undefined)
-# produced libpng16.so that *references* png_riffle_palette_neon but never
-# defines it. Box64 then fails dlopen(libfreetype) → Wine "cannot find FreeType"
-# → explorer/winex11 never comes up (black screen).
+# History:
+#   cmake -DPNG_ARM_NEON=on + LDFLAGS=--allow-shlib-undefined shipped
+#   libpng16.so with *undefined* png_*_neon symbols → Box64 failed
+#   dlopen(libfreetype) → Wine "graphics driver is missing".
+#   cmake -DPNG_ARM_NEON=off fixed neon but Android cmake disables the ld
+#   version script, so PNG16_0 vanished and Box64 verneed still failed.
+#   Autotools --enable-arm-neon=no emits PNG16_0, but Android libtool stamps
+#   SONAME=libpng16.so while freetype NEEDED=libpng16.so.16.
 #
-# MiceWine uses plain ./configure for 1.6.43; we keep 1.6.44 but same path,
-# and explicitly disable ARM NEON so the shared lib is self-contained.
+# Fix: autotools + neon off + patchelf SONAME=libpng16.so.16 + classic
+# versioned symlink layout; assert PNG16_0 is present.
 set -euo pipefail
 source "$(dirname "$0")/../config.sh"
 
@@ -22,8 +27,7 @@ cd "$PKG_NAME"
 # Out-of-tree build keeps the source tree clean for incremental rebuilds.
 rm -rf build_dir && mkdir build_dir && cd build_dir
 
-# Drop --allow-shlib-undefined for this package so a missing neon object
-# cannot silently ship (that was the black-screen footgun).
+# Do NOT pass --allow-shlib-undefined for this package.
 PNG_LDFLAGS="$(echo "${LDFLAGS:-}" | sed -E 's/-Wl,--allow-shlib-undefined//g; s/-Wl,--undefined-version//g')"
 
 ../configure \
@@ -40,21 +44,49 @@ PNG_LDFLAGS="$(echo "${LDFLAGS:-}" | sed -E 's/-Wl,--allow-shlib-undefined//g; s
 
 make -j"$JOBS"
 make install
-"$STRIP" "$PREFIX/lib/libpng16.so" 2>/dev/null || true
 
-# configure may install only libpng16.so (SONAME=libpng16.so). Freetype and
-# other consumers NEEDED libpng16.so.16 — keep a real file + classic symlink.
-if [ -f "$PREFIX/lib/libpng16.so" ] && [ ! -e "$PREFIX/lib/libpng16.so.16.44.0" ]; then
-    cp -a "$PREFIX/lib/libpng16.so" "$PREFIX/lib/libpng16.so.16.44.0"
-fi
-ensure_soname_link "libpng16.so.16" "libpng16.so.16.44.0" "libpng16.so"
-ln -sfn libpng16.so "$PREFIX/lib/libpng.so" 2>/dev/null || true
-
-# Sanity: no unresolved neon helpers in the shipped shared lib.
-if nm -D "$PREFIX/lib/libpng16.so" 2>/dev/null | grep -E ' U png_.*_neon$'; then
-    error "libpng still has undefined NEON symbols — refusing to ship"
-    nm -D "$PREFIX/lib/libpng16.so" | grep -E ' U png_.*_neon$'
+# Android libtool often stamps SONAME=libpng16.so. Force the classic layout
+# freetype expects (NEEDED libpng16.so.16) and keep PNG16_0 from the verscript.
+real=""
+for cand in \
+    "$PREFIX/lib/libpng16.so.$VER" \
+    "$PREFIX/lib/libpng16.so.16.$VER" \
+    "$PREFIX/lib/libpng16.so.16.44.0" \
+    "$PREFIX/lib/libpng16.so"; do
+    if [[ -f "$cand" && ! -L "$cand" ]]; then
+        real="$cand"
+        break
+    fi
+done
+if [[ -z "$real" ]]; then
+    error "libpng shared library not found after install"
     exit 1
 fi
 
-log "  libpng $VER: $(ls "$PREFIX/lib"/libpng*.so* 2>/dev/null | xargs -n1 basename | tr '\n' ' ')"
+install -m 755 "$real" "$PREFIX/lib/libpng16.so.16.44.0"
+if ! command -v patchelf >/dev/null 2>&1; then
+    error "patchelf required to set libpng SONAME=libpng16.so.16"
+    exit 1
+fi
+patchelf --set-soname libpng16.so.16 "$PREFIX/lib/libpng16.so.16.44.0"
+ln -sfn libpng16.so.16.44.0 "$PREFIX/lib/libpng16.so.16"
+ln -sfn libpng16.so.16 "$PREFIX/lib/libpng16.so"
+ln -sfn libpng16.so "$PREFIX/lib/libpng.so"
+"$STRIP" "$PREFIX/lib/libpng16.so.16.44.0" 2>/dev/null || true
+
+if nm -D "$PREFIX/lib/libpng16.so.16.44.0" 2>/dev/null | grep -E ' U png_.*_neon$'; then
+    error "libpng still has undefined NEON symbols — refusing to ship"
+    nm -D "$PREFIX/lib/libpng16.so.16.44.0" | grep -E ' U png_.*_neon$'
+    exit 1
+fi
+soname="$(readelf -d "$PREFIX/lib/libpng16.so.16.44.0" | awk '/SONAME/ {print $5}' | tr -d '[]')"
+if [[ "$soname" != "libpng16.so.16" ]]; then
+    error "libpng SONAME is '$soname' (want libpng16.so.16)"
+    exit 1
+fi
+if ! readelf -V "$PREFIX/lib/libpng16.so.16.44.0" 2>/dev/null | grep -q 'PNG16_0'; then
+    error "libpng missing PNG16_0 symbol version (freetype/Box64 verneed will fail)"
+    exit 1
+fi
+
+log "  libpng $VER: $(ls "$PREFIX/lib"/libpng*.so* 2>/dev/null | xargs -n1 basename | tr '\n' ' ') (SONAME=$soname, PNG16_0=yes)"

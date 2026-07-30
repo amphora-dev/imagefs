@@ -47,6 +47,9 @@ ALL_PACKAGES=(
     #                       libGL.so.1 (Mesa/Zink) 的 NEEDED 指名要它。
     android-sysvshm
     libandroid-shmem
+    # NDK C++ runtime: libvulkan_wrapper.so NEEDED。Guest LD_LIBRARY_PATH 不含
+    # APK nativeLibraryDir, 必须进 imagefs (官方镜像同样带)。
+    libcxx-shared
 
     # Tier 4: 图形/显示
     #
@@ -247,6 +250,11 @@ if [ $FAILED -eq 0 ] || [ $SUCCESS -gt 5 ]; then
     bash "$SCRIPT_DIR/package-imagefs.sh"
 else
     warn "失败包过多, 跳过打包。请检查日志后重试。"
+fi
+
+if command -v ccache >/dev/null 2>&1; then
+    section "ccache 统计"
+    ccache -s || true
 fi
 
 section "完成"

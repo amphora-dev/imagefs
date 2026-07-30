@@ -36,6 +36,7 @@ required=(
   "libzstd.so.1:libvulkan_freedreno.so + libGL.so.1 (Mesa shader cache)"
   "libandroid-shmem.so:libGL.so.1 — Termux ASharedMemory 实现"
   "libandroid-sysvshm.so:libvulkan_wrapper.so + Turnip + GPLC 的 LD_PRELOAD"
+  "libc++_shared.so:libvulkan_wrapper.so — Guest LD_LIBRARY_PATH 不含 nativeLibraryDir"
   "libdrm.so:libvulkan_wrapper.so + Turnip + libGL.so.1"
   "libX11-xcb.so:libvulkan_wrapper.so + Turnip"
   "libxcb.so:libvulkan_wrapper.so + Turnip"
@@ -123,6 +124,36 @@ for name in "${unused[@]}"; do
   fi
 done
 [ "$extra" -eq 0 ] && echo "  (无)"
+
+section "libzstd SONAME (Turnip NEEDED libzstd.so.1)"
+zstd="$LIB/libzstd.so"
+if [ -e "$zstd" ] || [ -e "$LIB/libzstd.so.1" ]; then
+  target="$zstd"
+  [ -e "$target" ] || target="$LIB/libzstd.so.1"
+  soname=$(readelf -dW "$target" 2>/dev/null | awk -F'[][]' '/SONAME/{print $2}')
+  if [ "$soname" = "libzstd.so.1" ]; then
+    echo "  OK      SONAME=$soname"
+  else
+    echo "  BAD     SONAME='$soname' (expected libzstd.so.1)" >&2
+    fail=1
+  fi
+fi
+
+section "libandroid-sysvshm 符号 (wrapper 解析 libandroid_shm*)"
+# 自建曾只导出 shmget 等, wrapper 需要 libandroid_shmget → ICD 加载失败 → -9。
+sysvshm="$LIB/libandroid-sysvshm.so"
+if [ -e "$sysvshm" ]; then
+  for sym in libandroid_shmget libandroid_shmat libandroid_shmdt libandroid_shmctl; do
+    if readelf -Ws "$sysvshm" 2>/dev/null | awk '{print $8}' | grep -qx "$sym"; then
+      echo "  OK      $sym"
+    else
+      echo "  MISSING $sym  (wrapper ICD will fail to dlopen)" >&2
+      fail=1
+    fi
+  done
+else
+  echo "  SKIP    libandroid-sysvshm.so missing (already reported above)" >&2
+fi
 
 section "FFmpeg soname 实测"
 # 预期会看到 SONAME 不带版本 (libavcodec.so 而非 libavcodec.so.62): FFmpeg 的
