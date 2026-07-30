@@ -1,6 +1,6 @@
 # =============================================================================
 # Build winlator bionic imagefs and publish Release artifacts.
-# Migrated from .cnb.yml (CNB) to GitHub Actions.
+# Migrated to GitHub Actions; this is the sole CI/CD path.
 #
 # Triggers:
 #   push to main      — full build; overwrite fixed tag Release `amphora`

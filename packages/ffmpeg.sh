@@ -23,9 +23,8 @@ PKG_NAME="ffmpeg-$VER"
 SRC_URL="https://ffmpeg.org/releases/ffmpeg-$VER.tar.xz"
 
 cd "$SRC_DIR"
-# ffmpeg.org 在 CNB runner 上不通 (本地 200), 且没有保持目录名的镜像, 所以备用源
-# 用 GitHub 的标签归档 —— 它解出的顶层是 FFmpeg-n8.0/, 由 fetch_source 自动
-# 纠正为 $PKG_NAME。
+# ffmpeg.org 在部分 CI 出口不通；备用 GitHub 标签归档（顶层 FFmpeg-n8.0/，
+# 由 fetch_source 纠正为 $PKG_NAME）。
 fetch_source "$PKG_NAME" ffmpeg.tar.xz \
     "$SRC_URL" \
     "https://github.com/FFmpeg/FFmpeg/archive/refs/tags/n$VER.tar.gz"

@@ -2,8 +2,7 @@
 
 winlator bionic fork 的 imagefs 根文件系统完整构建系统。使用 Android NDK r29 (clang 21.0.0) 交叉编译，目标架构 `aarch64-linux-android26`，所有二进制链接 Bionic libc。
 
-仓库：[`amphora-dev/imagefs`](https://github.com/amphora-dev/imagefs)  
-（由 [`cnb.cool/atowerlight/winlator-imagefs`](https://cnb.cool/atowerlight/winlator-imagefs) 迁入）
+仓库：[`amphora-dev/imagefs`](https://github.com/amphora-dev/imagefs)
 
 ## 快速开始
 

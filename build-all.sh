@@ -183,7 +183,7 @@ for package in "${SELECTED_PACKAGES[@]}"; do
 
     # ---- 增量缓存: marker 记录包脚本 hash, 脚本变了则失效重编 ----
     # marker 内容 = 包脚本的 sha256。命中条件: marker 存在且 hash 与当前脚本一致。
-    # (BUILT_DIR 持久化在 cache volume, 见 .cnb.yml)
+    # (BUILT_DIR 持久化在 CI cache volume)
     MARKER="$BUILT_DIR/${package}.done"
     PKG_HASH=$(sha256sum "$PKG_SCRIPT" 2>/dev/null | awk '{print $1}')
     if [ -f "$MARKER" ] && [ "$(cat "$MARKER" 2>/dev/null)" = "$PKG_HASH" ]; then
