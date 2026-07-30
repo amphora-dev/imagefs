@@ -11,8 +11,8 @@ cd "$SRC_DIR"
 fetch_source "$PKG_NAME" openssl.tar.gz "$SRC_URL"
 cd "$PKG_NAME"
 
-# OpenSSL android-arm64 target 需要 ANDROID_NDK_ROOT
-export ANDROID_NDK_ROOT="$CACHE_DIR/android-ndk-$NDK_VERSION"
+export ANDROID_NDK_ROOT="${ANDROID_NDK_ROOT:-$NDK_DIR}"
+export ANDROID_NDK_HOME="${ANDROID_NDK_HOME:-$NDK_DIR}"
 
 # 参考 MiceWine: android-aarch64 target, no-asm 避免汇编兼容问题
 # OpenSSL 的 android-arm64 target 会自动检测 NDK 环境变量 ($CC, $CXX, $CFLAGS)

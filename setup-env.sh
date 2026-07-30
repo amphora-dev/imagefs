@@ -1,27 +1,64 @@
 #!/usr/bin/env bash
 # =============================================================================
-# setup-env.sh — NDK 下载 + 交叉编译环境变量设置
+# setup-env.sh — NDK 解析 + 交叉编译环境变量
+# =============================================================================
+# 优先使用环境里已有的 NDK（GitHub Actions runner 自带；或本机 ANDROID_NDK_*）。
+# 仅在都找不到时才下载到 $CACHE_DIR（本地开发兜底）。
 # =============================================================================
 set -euo pipefail
 source "$(dirname "$0")/config.sh"
 
-# ---- 1. NDK 下载 ----
-NDK_DIR="$CACHE_DIR/android-ndk-$NDK_VERSION"
-export TC="$NDK_DIR/toolchains/llvm/prebuilt/linux-x86_64"
+resolve_ndk_dir() {
+    local cand tc
+    for cand in \
+        "${ANDROID_NDK_HOME:-}" \
+        "${ANDROID_NDK_ROOT:-}" \
+        "${ANDROID_NDK_LATEST_HOME:-}" \
+        "${ANDROID_NDK:-}" \
+        "${NDK_DIR:-}" \
+        "$CACHE_DIR/android-ndk-$NDK_VERSION"; do
+        [ -n "$cand" ] || continue
+        tc="$cand/toolchains/llvm/prebuilt/linux-x86_64"
+        if [ -x "$tc/bin/clang" ]; then
+            printf '%s\n' "$cand"
+            return 0
+        fi
+    done
+    return 1
+}
 
-if [ ! -x "$TC/bin/clang" ]; then
-    section "下载 Android NDK $NDK_VERSION"
+# ---- 1. NDK ----
+if NDK_DIR="$(resolve_ndk_dir)"; then
+    log "NDK 路径: $NDK_DIR (已有，跳过下载)"
+else
+    section "下载 Android NDK $NDK_VERSION（未检测到 ANDROID_NDK_*）"
+    NDK_DIR="$CACHE_DIR/android-ndk-$NDK_VERSION"
     mkdir -p "$CACHE_DIR"
     curl -L -o "$CACHE_DIR/$NDK_FILENAME" "$NDK_URL"
     log "解压 NDK..."
     unzip -q "$CACHE_DIR/$NDK_FILENAME" -d "$CACHE_DIR"
-    # NDK zip 解压后目录名可能是 android-ndk-r29
     mv "$CACHE_DIR/android-ndk-$NDK_VERSION" "$NDK_DIR" 2>/dev/null || true
+    # sdk-style layout: ndk/29.0.x
+    if [ ! -x "$NDK_DIR/toolchains/llvm/prebuilt/linux-x86_64/bin/clang" ]; then
+        found="$(find "$CACHE_DIR" -path '*/toolchains/llvm/prebuilt/linux-x86_64/bin/clang' 2>/dev/null | head -1 || true)"
+        if [ -n "$found" ]; then
+            NDK_DIR="$(cd "$(dirname "$found")/../../../../.." && pwd)"
+        fi
+    fi
     rm -f "$CACHE_DIR/$NDK_FILENAME"
     chmod -R +x "$NDK_DIR"
+    log "NDK 路径: $NDK_DIR"
 fi
 
-log "NDK 路径: $NDK_DIR"
+export NDK_DIR
+export ANDROID_NDK_ROOT="$NDK_DIR"
+export ANDROID_NDK_HOME="$NDK_DIR"
+export TC="$NDK_DIR/toolchains/llvm/prebuilt/linux-x86_64"
+
+if [ ! -x "$TC/bin/clang" ]; then
+    error "NDK clang 不可用: $TC/bin/clang"
+    exit 1
+fi
 
 # ---- 2. 交叉编译工具链 ----
 export PATH="$TC/bin:$PATH"
@@ -35,8 +72,6 @@ export LD="$TC/bin/ld.lld"
 export AS="$TC/bin/llvm-as"
 
 # ---- 2b. ccache (optional) ----
-# Wrap NDK clang so autotools / cmake / meson all hit the same object cache.
-# Persist under CACHE_DIR so GitHub Actions can restore it across runs.
 export CCACHE_DIR="${CCACHE_DIR:-$CACHE_DIR/ccache}"
 if command -v ccache >/dev/null 2>&1; then
     mkdir -p "$CCACHE_DIR" "$CACHE_DIR/ccache-wrappers"
@@ -46,7 +81,6 @@ if command -v ccache >/dev/null 2>&1; then
     export CCACHE_SLOPPINESS="${CCACHE_SLOPPINESS:-pch_defines,time_macros,include_file_mtime,include_file_ctime}"
     ccache --set-config "cache_dir=$CCACHE_DIR" 2>/dev/null || true
     ccache --set-config "max_size=$CCACHE_MAXSIZE" 2>/dev/null || true
-    # NDK clang lives under versioned paths; hash compiler bytes, not mtime/path.
     ccache --set-config "compiler_check=$CCACHE_COMPILERCHECK" 2>/dev/null || true
     ccache --set-config "sloppiness=$CCACHE_SLOPPINESS" 2>/dev/null || true
     ccache --set-config "compression=true" 2>/dev/null || true
@@ -65,7 +99,6 @@ EOF
 
     export CC="$CACHE_DIR/ccache-wrappers/${ARCH}-linux-android${ANDROID_API}-clang"
     export CXX="$CACHE_DIR/ccache-wrappers/${ARCH}-linux-android${ANDROID_API}-clang++"
-    # Cover cmake packages that pass $CC and those that use the NDK toolchain file.
     export CMAKE_C_COMPILER_LAUNCHER=ccache
     export CMAKE_CXX_COMPILER_LAUNCHER=ccache
     log "ccache 已启用 (CCACHE_DIR=$CCACHE_DIR, max=$CCACHE_MAXSIZE)"
@@ -120,7 +153,5 @@ cpu        = 'aarch64'
 endian     = 'little'
 EOF
 
-log "Meson cross-file: $CROSS_FILE"
-export CROSS_FILE="$CROSS_FILE"
-
-echo "$CROSS_FILE"
+log "meson cross-file: $CROSS_FILE"
+export CROSS_FILE

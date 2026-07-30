@@ -19,7 +19,7 @@ cd "$PKG_NAME/build/cmake"
 rm -rf build_dir && mkdir -p build_dir && cd build_dir
 
 cmake .. \
-    -DCMAKE_TOOLCHAIN_FILE="$CACHE_DIR/android-ndk-$NDK_VERSION/build/cmake/android.toolchain.cmake" \
+    -DCMAKE_TOOLCHAIN_FILE="$NDK_DIR/build/cmake/android.toolchain.cmake" \
     -DANDROID_ABI=arm64-v8a \
     -DANDROID_PLATFORM=android-$ANDROID_API \
     -DCMAKE_INSTALL_PREFIX=$PREFIX \

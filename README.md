@@ -1,12 +1,15 @@
 # imagefs
 
-winlator bionic fork 的 imagefs 根文件系统完整构建系统。使用 Android NDK r29 (clang 21.0.0) 交叉编译，目标架构 `aarch64-linux-android26`，所有二进制链接 Bionic libc。
+winlator bionic fork 的 imagefs 根文件系统完整构建系统。目标架构 `aarch64-linux-android26`，所有二进制链接 Bionic libc。
 
 仓库：[`amphora-dev/imagefs`](https://github.com/amphora-dev/imagefs)
 
 ## 快速开始
 
 ```bash
+# 可选：指向本机 NDK（CI 用 GitHub runner 自带的，不必下载）
+export ANDROID_NDK_HOME=/path/to/ndk
+
 ./build-all.sh              # 编译全部包并打包 imagefs.txz
 JOBS=8 ./build-all.sh       # 指定并发
 ./build-all.sh zlib glib    # 仅构建指定包
@@ -16,7 +19,11 @@ CI 环境见 [`ci/Dockerfile`](ci/Dockerfile)；本地也可：
 
 ```bash
 docker build -f ci/Dockerfile -t imagefs-ci ci
-docker run --rm -it -v "$PWD:/workspace" imagefs-ci ./build-all.sh
+docker run --rm -it \
+  -v "$PWD:/workspace" \
+  -v "$ANDROID_NDK_HOME:$ANDROID_NDK_HOME:ro" \
+  -e ANDROID_NDK_HOME \
+  imagefs-ci ./build-all.sh
 ```
 
 `android-sysvshm` / `alsa-android-aserver` 源码在 [`vendor/winlator-bionic/`](vendor/winlator-bionic/)（无需再 clone winlator）。

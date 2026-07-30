@@ -6,6 +6,8 @@
 # =============================================================================
 
 # ---- Android NDK ----
+# CI：用 GitHub runner 自带的 NDK（ANDROID_NDK_LATEST_HOME / ANDROID_NDK_HOME）。
+# 本地：可 export ANDROID_NDK_HOME；都没有时 setup-env.sh 才下载下面这份。
 NDK_VERSION="r29"
 NDK_URL="https://dl.google.com/android/repository/android-ndk-r29-linux.zip"
 NDK_FILENAME="android-ndk-r29-linux.zip"
