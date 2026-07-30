@@ -131,12 +131,9 @@ ALL_PACKAGES=(
     gst-plugins-base
     ffmpeg
 
-    # Tier 8: Bionic 兼容库 —— Box64.wcp 运行时仍 NEEDED 这些垫片
-    # （box64 二进制本身不进 imagefs，见 packages 注释 / package-imagefs prune）
+    # Tier 8: Bionic 垫片（Box64.wcp 的 NEEDED；box64 本体不在本仓库构建）
     android-spawn
     android-sysv-semaphore
-
-    # box64 已从 imagefs 移除：Amphora 用独立 Box64.wcp 装到 ${bindir}/box64
 )
 
 # ---- 命令行参数: 仅构建指定包 ----
@@ -160,6 +157,9 @@ source "$SCRIPT_DIR/setup-env.sh"
 
 # ---- 2. 创建 rootfs 布局 ----
 bash "$SCRIPT_DIR/create-rootfs.sh"
+
+# 增量缓存可能留下已移出包列表的产物（如旧 box64）
+rm -f "$PREFIX/bin/box64" "$BUILT_DIR/box64.done"
 
 # ---- 3. 逐包构建 ----
 section "开始编译 ${#SELECTED_PACKAGES[@]} 个包"

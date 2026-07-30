@@ -47,7 +47,7 @@ https://github.com/amphora-dev/imagefs/releases/download/amphora/imagefs.txz.sha
 - `imagefs.txz` — 完整根文件系统 (xz 压缩)
 - ELF 全部使用 `/system/bin/linker64` (Bionic)
 - 包涵盖图形 / 音频 / TLS / 媒体支撑库；Wine 依赖 soname 由 `ci/verify-wine-deps.sh` 断言
-- **Box64 不进 imagefs**：Amphora 用独立 `Box64.wcp`；打包阶段会裁掉 headers / 静态库 / man / glvnd / 绝大多数 bin
+- Box64 不进本仓库（Amphora `Box64.wcp`）；打包会去掉 headers / 静态库 / man / glvnd / 绝大多数 bin
 
 
 ## 包列表
@@ -59,22 +59,12 @@ https://github.com/amphora-dev/imagefs/releases/download/amphora/imagefs.txz.sha
 | 5 | alsa-lib, libsndfile, libltdl(stub), pulseaudio 13.0, alsa-android-aserver | 音频 |
 | 6 | openssl, curl | 网络/加密 |
 | 7 | sdl2 | 多媒体 |
-| 8 | android-spawn, android-sysv-semaphore, android-sysvshm | Bionic 兼容（Box64.wcp 仍 NEEDED spawn/semaphore） |
-| — | ~~box64~~ | **不构建、不打包**；Amphora 用独立 `Box64.wcp` |
+| 8 | android-spawn, android-sysv-semaphore, android-sysvshm | Bionic 兼容 |
 
 
-## 打包裁剪（`package-imagefs.sh`）
+## 打包裁剪
 
-imagefs 是**运行时** rootfs，不是 sysroot。打包前在 staging 副本上删除：
-
-| 去掉 | 保留 |
-|------|------|
-| `usr/include`、pkgconfig、cmake、`*.a`/`*.la` | Wine / wrapper / Turnip 的 NEEDED `.so` |
-| man / doc / locale / vulkan registry 等 | `share/{X11,alsa,fontconfig,glib-2.0,gstreamer*,pulseaudio,vulkan/icd.d}` |
-| glvnd（`libGLdispatch` / `libGLX` / …） | Mesa `libGL.so.1` 来自 runtime `extra_libs.tzst` |
-| 几乎全部 `usr/bin`（含 box64） | 仅 `fc-cache`、`glib-compile-schemas`、`gio-querymodules` |
-
-完整 `$ROOTFS` 仍保留 headers，供 CI 增量重编。
+`package-imagefs.sh` 在 staging 上删掉 headers / pkgconfig / 静态库 / man / glvnd / 多余 bin；保留运行时 `.so`、必要 `share/`，以及 `fc-cache`、`glib-compile-schemas`、`gio-querymodules`。
 
 
 ## 关键设计

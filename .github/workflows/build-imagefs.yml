@@ -129,11 +129,11 @@ jobs:
         run: |
           test -f "$OUTPUT_DIR/imagefs.txz"
           if tar -tJf "$OUTPUT_DIR/imagefs.txz" | grep -E '^(\./)?usr/bin/box64$'; then
-            echo "FAIL: box64 must not be in imagefs.txz (use Box64.wcp)" >&2
+            echo "FAIL: box64 in imagefs.txz" >&2
             exit 1
           fi
           if tar -tJf "$OUTPUT_DIR/imagefs.txz" | grep -E '^(\./)?usr/include/'; then
-            echo "FAIL: usr/include must not be in imagefs.txz" >&2
+            echo "FAIL: usr/include in imagefs.txz" >&2
             exit 1
           fi
           ls -lh "$OUTPUT_DIR/"

@@ -77,7 +77,6 @@ main:
         - name: 验证关键产物
           script: |
             test -f /tmp/imagefs-output/imagefs.txz
-            # box64 / headers 不得进运行时包（Amphora 用 Box64.wcp）
             if tar -tJf /tmp/imagefs-output/imagefs.txz | grep -E '^(\./)?usr/bin/box64$'; then
               echo "FAIL: box64 in imagefs.txz" >&2; exit 1
             fi
