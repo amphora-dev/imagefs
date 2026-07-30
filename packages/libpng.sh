@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
-# libpng — follow MiceWine-Packages intent, with Android-safe SONAME.
+# libpng — autotools so we keep the PNG16_0 ELF symbol version that freetype
+# (and Box64 verneed) require.
 #
 # History:
 #   cmake -DPNG_ARM_NEON=on + LDFLAGS=--allow-shlib-undefined shipped
 #   libpng16.so with *undefined* png_*_neon symbols → Box64 failed
-#   dlopen(libfreetype) → Wine "graphics driver is missing" (black screen).
-#   Autotools --enable-arm-neon=no fixed neon, but Android libtool emitted
-#   SONAME=libpng16.so while freetype NEEDED=libpng16.so.16 → Box64 verneed
-#   still failed.
+#   dlopen(libfreetype) → Wine "graphics driver is missing".
+#   cmake -DPNG_ARM_NEON=off fixed neon but Android cmake disables the ld
+#   version script, so PNG16_0 vanished and Box64 verneed still failed.
+#   Autotools --enable-arm-neon=no emits PNG16_0, but Android libtool stamps
+#   SONAME=libpng16.so while freetype NEEDED=libpng16.so.16.
 #
-# Fix: cmake + PNG_ARM_NEON=off (no neon refs), force SONAME libpng16.so.16,
-# install classic libpng16.so.16.44.0 + symlink layout.
+# Fix: autotools + neon off + patchelf SONAME=libpng16.so.16 + classic
+# versioned symlink layout; assert PNG16_0 is present.
 set -euo pipefail
 source "$(dirname "$0")/../config.sh"
 
@@ -22,47 +24,46 @@ cd "$SRC_DIR"
 fetch_source "$PKG_NAME" libpng.tar.xz "$SRC_URL"
 cd "$PKG_NAME"
 
+# Out-of-tree build keeps the source tree clean for incremental rebuilds.
 rm -rf build_dir && mkdir build_dir && cd build_dir
 
 # Do NOT pass --allow-shlib-undefined for this package.
 PNG_LDFLAGS="$(echo "${LDFLAGS:-}" | sed -E 's/-Wl,--allow-shlib-undefined//g; s/-Wl,--undefined-version//g')"
-PNG_LDFLAGS="$PNG_LDFLAGS -Wl,-soname,libpng16.so.16"
 
-cmake \
-    -DCMAKE_SYSTEM_NAME=Android \
-    -DCMAKE_ANDROID_ARCH_ABI=arm64-v8a \
-    -DCMAKE_ANDROID_NDK="${NDK_DIR:-$CACHE_DIR/android-ndk-$NDK_VERSION}" \
-    -DCMAKE_ANDROID_API="$ANDROID_API" \
-    -DCMAKE_C_COMPILER="$CC" \
-    -DCMAKE_AR="$AR" \
-    -DCMAKE_STRIP="$STRIP" \
-    -DCMAKE_RANLIB="$RANLIB" \
-    -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-    -DCMAKE_INSTALL_LIBDIR="$PREFIX/lib" \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
-    -DCMAKE_C_FLAGS="$CFLAGS" \
-    -DCMAKE_SHARED_LINKER_FLAGS="-L$PREFIX/lib $PNG_LDFLAGS" \
-    -DCMAKE_FIND_ROOT_PATH="$PREFIX" \
-    -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=BOTH \
-    -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=BOTH \
-    -DZLIB_ROOT="$PREFIX" \
-    -DZLIB_INCLUDE_DIR="$PREFIX/include" \
-    -DZLIB_LIBRARY="$PREFIX/lib/libz.so" \
-    -DPNG_SHARED=ON \
-    -DPNG_STATIC=OFF \
-    -DPNG_TESTS=OFF \
-    -DPNG_TOOLS=OFF \
-    -DPNG_ARM_NEON=off \
-    ..
+../configure \
+    --host="${ARCH}-linux-android" \
+    host_alias="${ARCH}-linux-android" \
+    --prefix="$PREFIX" \
+    --libdir="$PREFIX/lib" \
+    --enable-shared \
+    --disable-static \
+    --enable-arm-neon=no \
+    CPPFLAGS="-I$PREFIX/include" \
+    CFLAGS="$CFLAGS" \
+    LDFLAGS="-L$PREFIX/lib $PNG_LDFLAGS"
 
 make -j"$JOBS"
-
-# Headers / pkg-config from cmake install first, then force the versioned
-# shared-lib layout freetype expects (NEEDED libpng16.so.16). Android cmake
-# often stamps SONAME=libpng16.so; patchelf corrects it.
 make install
-install -m 755 libpng16.so "$PREFIX/lib/libpng16.so.16.44.0"
+
+# Android libtool often stamps SONAME=libpng16.so. Force the classic layout
+# freetype expects (NEEDED libpng16.so.16) and keep PNG16_0 from the verscript.
+real=""
+for cand in \
+    "$PREFIX/lib/libpng16.so.$VER" \
+    "$PREFIX/lib/libpng16.so.16.$VER" \
+    "$PREFIX/lib/libpng16.so.16.44.0" \
+    "$PREFIX/lib/libpng16.so"; do
+    if [[ -f "$cand" && ! -L "$cand" ]]; then
+        real="$cand"
+        break
+    fi
+done
+if [[ -z "$real" ]]; then
+    error "libpng shared library not found after install"
+    exit 1
+fi
+
+install -m 755 "$real" "$PREFIX/lib/libpng16.so.16.44.0"
 if ! command -v patchelf >/dev/null 2>&1; then
     error "patchelf required to set libpng SONAME=libpng16.so.16"
     exit 1
@@ -80,8 +81,12 @@ if nm -D "$PREFIX/lib/libpng16.so.16.44.0" 2>/dev/null | grep -E ' U png_.*_neon
 fi
 soname="$(readelf -d "$PREFIX/lib/libpng16.so.16.44.0" | awk '/SONAME/ {print $5}' | tr -d '[]')"
 if [[ "$soname" != "libpng16.so.16" ]]; then
-    error "libpng SONAME is '$soname' (want libpng16.so.16) — install patchelf in CI image"
+    error "libpng SONAME is '$soname' (want libpng16.so.16)"
+    exit 1
+fi
+if ! readelf -V "$PREFIX/lib/libpng16.so.16.44.0" 2>/dev/null | grep -q 'PNG16_0'; then
+    error "libpng missing PNG16_0 symbol version (freetype/Box64 verneed will fail)"
     exit 1
 fi
 
-log "  libpng $VER: $(ls "$PREFIX/lib"/libpng*.so* 2>/dev/null | xargs -n1 basename | tr '\n' ' ') (SONAME=$soname)"
+log "  libpng $VER: $(ls "$PREFIX/lib"/libpng*.so* 2>/dev/null | xargs -n1 basename | tr '\n' ' ') (SONAME=$soname, PNG16_0=yes)"
