@@ -1,0 +1,153 @@
+# =============================================================================
+# Build winlator bionic imagefs and publish Release artifacts.
+# Migrated from .cnb.yml (CNB) to GitHub Actions.
+#
+# Triggers:
+#   push to main      — full build; overwrite fixed tag Release `amphora`
+#   pull_request      — build + verify only (no release)
+#   push tags         — full build; create Release named after the tag
+#
+# Cache: NDK (~1.5GB) + src/built markers + imagefs tree via actions/cache
+# =============================================================================
+
+name: build-imagefs
+
+on:
+  push:
+    branches: [main]
+    tags: ["*"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+env:
+  BUILD_DIR: /tmp/imagefs-build
+  OUTPUT_DIR: /tmp/imagefs-output
+  WINLATOR_DIR: /tmp/winlator-bionic
+  JOBS: "4"
+  CI_IMAGE: imagefs-ci:local
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build CI image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ci/Dockerfile
+          load: true
+          tags: ${{ env.CI_IMAGE }}
+          cache-from: type=gha,scope=imagefs-ci
+          cache-to: type=gha,mode=max,scope=imagefs-ci
+
+      - name: Restore build caches
+        uses: actions/cache@v4
+        with:
+          path: |
+            /tmp/imagefs-build/cache
+            /tmp/imagefs-build/src
+            /tmp/imagefs-build/built-pkgs
+            /tmp/imagefs-build/imagefs
+          key: imagefs-${{ runner.os }}-${{ hashFiles('packages/**', 'ci/**', 'build-all.sh', 'config.sh', 'create-rootfs.sh', 'package-imagefs.sh', 'setup-env.sh') }}
+          restore-keys: |
+            imagefs-${{ runner.os }}-
+
+      - name: Clone winlator_bionic sources
+        run: |
+          if [ ! -d "$WINLATOR_DIR/.git" ]; then
+            git clone --depth 1 -b winlator_bionic --recursive \
+              https://github.com/Pipetto-crypto/winlator.git "$WINLATOR_DIR"
+          fi
+          test -f "$WINLATOR_DIR/audio_plugin/module_pcm_android_aserver.c"
+          test -f "$WINLATOR_DIR/android_sysvshm/android_sysvshm.c"
+          echo "winlator_bionic sources ready"
+
+      - name: Build imagefs
+        run: |
+          mkdir -p "$BUILD_DIR" "$OUTPUT_DIR" artifacts
+          docker run --rm \
+            -v "$PWD:/workspace" \
+            -v "$BUILD_DIR:$BUILD_DIR" \
+            -v "$OUTPUT_DIR:$OUTPUT_DIR" \
+            -v "$WINLATOR_DIR:$WINLATOR_DIR" \
+            -e BUILD_DIR \
+            -e OUTPUT_DIR \
+            -e WINLATOR_DIR \
+            -e JOBS \
+            -w /workspace \
+            "$CI_IMAGE" \
+            ./build-all.sh
+
+      - name: Verify key artifacts
+        run: |
+          test -f "$OUTPUT_DIR/imagefs.txz"
+          test -x "$BUILD_DIR/imagefs/usr/bin/box64"
+          ls -lh "$OUTPUT_DIR/"
+
+      - name: Verify Wine dependency sonames
+        run: |
+          docker run --rm \
+            -v "$PWD:/workspace" \
+            -v "$BUILD_DIR:$BUILD_DIR" \
+            -v "$OUTPUT_DIR:$OUTPUT_DIR" \
+            -e BUILD_DIR \
+            -e OUTPUT_DIR \
+            -w /workspace \
+            "$CI_IMAGE" \
+            bash ci/verify-wine-deps.sh
+
+      - name: Collect artifacts
+        run: |
+          mkdir -p artifacts
+          cp "$OUTPUT_DIR/imagefs.txz" artifacts/
+          cp "$OUTPUT_DIR/imagefs.txz.sha256sum" artifacts/
+          ls -lh artifacts/
+          cat artifacts/imagefs.txz.sha256sum
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: imagefs
+          path: |
+            artifacts/imagefs.txz
+            artifacts/imagefs.txz.sha256sum
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish amphora Release (main)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: amphora
+          name: amphora
+          body: |
+            Self-built Bionic imagefs (fixed tag — overwritten on every main build).
+
+            Compared with the upstream ~191MB `imagefs.tzst`, this ships only the
+            libraries Wine actually needs. Wine soname requirements are asserted by
+            `ci/verify-wine-deps.sh` (including FFmpeg 8.0 sonames for `winedmo.so`).
+          files: |
+            artifacts/imagefs.txz
+            artifacts/imagefs.txz.sha256sum
+          fail_on_unmatched_files: true
+          make_latest: true
+
+      - name: Publish tagged Release
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          body: winlator bionic imagefs build artifacts
+          files: |
+            artifacts/imagefs.txz
+            artifacts/imagefs.txz.sha256sum
+          fail_on_unmatched_files: true

@@ -1,6 +1,9 @@
-# winlator bionic imagefs
+# imagefs
 
 winlator bionic fork 的 imagefs 根文件系统完整构建系统。使用 Android NDK r29 (clang 21.0.0) 交叉编译，目标架构 `aarch64-linux-android26`，所有二进制链接 Bionic libc。
+
+仓库：[`amphora-dev/imagefs`](https://github.com/amphora-dev/imagefs)  
+（由 [`cnb.cool/atowerlight/winlator-imagefs`](https://cnb.cool/atowerlight/winlator-imagefs) 迁入）
 
 ## 快速开始
 
@@ -15,11 +18,35 @@ export WINLATOR_DIR=/path/to/winlator
 ./package-imagefs.sh
 ```
 
+CI 环境见 [`ci/Dockerfile`](ci/Dockerfile)；本地也可：
+
+```bash
+docker build -f ci/Dockerfile -t imagefs-ci .
+docker run --rm -it -v "$PWD:/workspace" -e WINLATOR_DIR=/path/to/winlator imagefs-ci ./build-all.sh
+```
+
+## CI / Release
+
+GitHub Actions（[`.github/workflows/build-imagefs.yml`](.github/workflows/build-imagefs.yml)）：
+
+| 触发 | 行为 |
+|------|------|
+| `main` push | 完整构建，覆盖固定标签 Release **`amphora`** |
+| Pull Request | 仅构建验证 |
+| tag push | 按 tag 名创建 Release |
+
+固定下载地址（amphora 侧认这个）：
+
+```text
+https://github.com/amphora-dev/imagefs/releases/download/amphora/imagefs.txz
+https://github.com/amphora-dev/imagefs/releases/download/amphora/imagefs.txz.sha256sum
+```
+
 ## 构建产物
 
-- `imagefs.txz` — 完整根文件系统 (18MB, xz 压缩)
-- 211 个 ELF 文件，全部使用 `/system/bin/linker64` (Bionic)
-- 39 个包，涵盖图形/音频/网络/模拟器
+- `imagefs.txz` — 完整根文件系统 (xz 压缩)
+- ELF 全部使用 `/system/bin/linker64` (Bionic)
+- 包涵盖图形 / 音频 / 网络 / 模拟器；Wine 依赖 soname 由 `ci/verify-wine-deps.sh` 断言
 
 ## 包列表
 

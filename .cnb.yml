@@ -1,7 +1,11 @@
 # =============================================================================
 # .cnb.yml — winlator bionic imagefs 构建流水线 (CNB 云原生构建)
 # =============================================================================
-# 仓库: https://cnb.cool/atowerlight/winlator-imagefs
+# LEGACY: 主 CI 已迁到 GitHub Actions
+#   https://github.com/amphora-dev/imagefs
+#   .github/workflows/build-imagefs.yml
+#
+# 仓库 (历史): https://cnb.cool/atowerlight/winlator-imagefs
 #
 # 触发:
 #   main.push         完整构建 imagefs，覆盖发布固定标签 `amphora`
