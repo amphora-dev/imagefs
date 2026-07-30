@@ -23,6 +23,18 @@ FIXED_SRC="$WORK_DIR/sysvshm_fixed.c"
 {
     echo '#include <string.h>'
     cat "$SRC_FILE"
+    # libvulkan_wrapper.so / libvulkan_freedreno.so 的 DT_NEEDED 是
+    # libandroid-sysvshm.so, 但解析的是 libandroid_shm*（官方 imagefs 同 ABI）。
+    # 上游源码只导出 shm*；缺别名时 loader 报:
+    #   cannot locate symbol "libandroid_shmget" ... Ignoring this JSON
+    # → vkCreateInstance = VK_ERROR_INCOMPATIBLE_DRIVER (-9) → DXVK 起不来。
+    cat <<'ALIASES'
+
+int libandroid_shmget(key_t key, size_t size, int flags) __attribute__((alias("shmget")));
+void *libandroid_shmat(int shmid, const void *shmaddr, int shmflg) __attribute__((alias("shmat")));
+int libandroid_shmdt(const void *shmaddr) __attribute__((alias("shmdt")));
+int libandroid_shmctl(int shmid, int cmd, struct shmid_ds *buf) __attribute__((alias("shmctl")));
+ALIASES
 } > "$FIXED_SRC"
 
 # 实体命名 libandroid-sysvshm.so, 与官方 imagefs 一致 (那边是 22KB 实体文件, 且
@@ -41,7 +53,24 @@ $CC -fPIC -O2 -shared \
 
 $STRIP "$PREFIX/lib/libandroid-sysvshm.so" 2>/dev/null || true
 
+# 断言 wrapper 需要的符号已导出 — 缺了 DX11/DX12 会静默挂成 -9。
+missing=0
+for sym in libandroid_shmget libandroid_shmat libandroid_shmdt libandroid_shmctl \
+           shmget shmat shmdt shmctl; do
+    if ! "$NM" -D --defined-only "$PREFIX/lib/libandroid-sysvshm.so" 2>/dev/null | grep -q " ${sym}$"; then
+        # fallback: readelf (strip 后 nm 可能仍可用; 双保险)
+        if ! readelf -Ws "$PREFIX/lib/libandroid-sysvshm.so" 2>/dev/null | awk '{print $8}' | grep -qx "$sym"; then
+            error "  missing export: $sym"
+            missing=1
+        fi
+    fi
+done
+if [ "$missing" -ne 0 ]; then
+    error "libandroid-sysvshm.so is missing libandroid_shm* aliases required by wrapper/Turnip"
+    exit 1
+fi
+
 # libsysvshm.so 软链: libx11.sh 用 -lsysvshm 链接这些符号 (Bionic 无 shmget 等)。
 ln -sf libandroid-sysvshm.so "$PREFIX/lib/libsysvshm.so"
 
-log "  android-sysvshm: libandroid-sysvshm.so (+ libsysvshm.so 软链, ashmem-based SysV IPC)"
+log "  android-sysvshm: libandroid-sysvshm.so (+ libandroid_shm* aliases, libsysvshm.so link)"

@@ -47,6 +47,9 @@ ALL_PACKAGES=(
     #                       libGL.so.1 (Mesa/Zink) 的 NEEDED 指名要它。
     android-sysvshm
     libandroid-shmem
+    # NDK C++ runtime: libvulkan_wrapper.so NEEDED。Guest LD_LIBRARY_PATH 不含
+    # APK nativeLibraryDir, 必须进 imagefs (官方镜像同样带)。
+    libcxx-shared
 
     # Tier 4: 图形/显示
     #
