@@ -83,6 +83,34 @@ optional=(
   "libXcursor.so:X 光标"
 )
 
+# ---- 打包裁剪断言: 只查 staging（完整 $ROOTFS 故意保留 headers 给增量编译）----
+# package-imagefs.sh 裁剪后 export IMAGEFS_RUNTIME_STAGE=<staging>；
+# 未设置时跳过（本地对 $ROOTFS 验 .so 依赖仍可跑）。
+section "运行时裁剪断言"
+if [ -n "${IMAGEFS_RUNTIME_STAGE:-}" ]; then
+  PRUNE_ROOT="$IMAGEFS_RUNTIME_STAGE"
+  if [ -d "$PRUNE_ROOT/usr/include" ]; then
+    echo "  UNEXPECTED usr/include — 头文件不应进运行时包 ($PRUNE_ROOT)" >&2
+    fail=1
+  else
+    echo "  OK      no usr/include"
+  fi
+  if [ -e "$PRUNE_ROOT/usr/bin/box64" ]; then
+    echo "  UNEXPECTED usr/bin/box64 — 应来自 Box64.wcp，不要打进 imagefs" >&2
+    fail=1
+  else
+    echo "  OK      no usr/bin/box64 (WCP-owned)"
+  fi
+  if ls "$PRUNE_ROOT/usr/lib"/libGLdispatch.so* >/dev/null 2>&1; then
+    echo "  UNEXPECTED libGLdispatch — glvnd 不应进运行时包" >&2
+    fail=1
+  else
+    echo "  OK      no glvnd libGLdispatch"
+  fi
+else
+  echo "  SKIP    IMAGEFS_RUNTIME_STAGE unset (full ROOTFS keeps headers for rebuild)"
+fi
+
 # ---- 已确认无消费者: 若重新出现在 rootfs 里, 说明有人又把它加回来了 ----
 # 依据见 build-all.sh Tier 4 的注释。纯提示, 不影响退出码。
 # 注意 libXfixes / libXrender 不在此列: 运行期确实无人 NEEDED, 但 libxcursor 与

@@ -33,7 +33,7 @@
     # config.sh 读取的环境变量
     BUILD_DIR: /tmp/imagefs-build
     OUTPUT_DIR: /tmp/imagefs-output
-    # 与 runner.cpus 保持一致; box64.sh 内部自己降到 -j1 (并行构建有竞态)。
+    # 与 runner.cpus 保持一致。
     JOBS: "16"
     # winlator_bionic 源码 (audio_plugin / android_sysvshm 在仓库根目录)
     WINLATOR_DIR: /tmp/winlator-bionic
@@ -77,12 +77,20 @@ main:
         - name: 验证关键产物
           script: |
             test -f /tmp/imagefs-output/imagefs.txz
-            test -x /tmp/imagefs-build/imagefs/usr/bin/box64
+            # box64 / headers 不得进运行时包（Amphora 用 Box64.wcp）
+            if tar -tJf /tmp/imagefs-output/imagefs.txz | grep -E '^(\./)?usr/bin/box64$'; then
+              echo "FAIL: box64 in imagefs.txz" >&2; exit 1
+            fi
+            if tar -tJf /tmp/imagefs-output/imagefs.txz | grep -E '^(\./)?usr/include/'; then
+              echo "FAIL: usr/include in imagefs.txz" >&2; exit 1
+            fi
             echo "imagefs 构建验证通过"
             ls -lh /tmp/imagefs-output/
 
         - name: 验证 Wine 依赖 soname
-          script: bash ci/verify-wine-deps.sh
+          script: |
+            export IMAGEFS_RUNTIME_STAGE=/tmp/imagefs-build/imagefs-runtime-stage
+            bash ci/verify-wine-deps.sh
 
         - name: 收集产物
           script: |
@@ -149,10 +157,17 @@ main:
         - name: 验证关键产物
           script: |
             test -f /tmp/imagefs-output/imagefs.txz
-            test -x /tmp/imagefs-build/imagefs/usr/bin/box64
+            if tar -tJf /tmp/imagefs-output/imagefs.txz | grep -E '^(\./)?usr/bin/box64$'; then
+              echo "FAIL: box64 in imagefs.txz" >&2; exit 1
+            fi
+            if tar -tJf /tmp/imagefs-output/imagefs.txz | grep -E '^(\./)?usr/include/'; then
+              echo "FAIL: usr/include in imagefs.txz" >&2; exit 1
+            fi
             echo "imagefs 构建验证通过"
         - name: 验证 Wine 依赖 soname
-          script: bash ci/verify-wine-deps.sh
+          script: |
+            export IMAGEFS_RUNTIME_STAGE=/tmp/imagefs-build/imagefs-runtime-stage
+            bash ci/verify-wine-deps.sh
 
 # =============================================================================
 # tag 推送: 构建 + 发布 Release
@@ -177,11 +192,18 @@ $:
         - name: 验证关键产物
           script: |
             test -f /tmp/imagefs-output/imagefs.txz
-            test -x /tmp/imagefs-build/imagefs/usr/bin/box64
+            if tar -tJf /tmp/imagefs-output/imagefs.txz | grep -E '^(\./)?usr/bin/box64$'; then
+              echo "FAIL: box64 in imagefs.txz" >&2; exit 1
+            fi
+            if tar -tJf /tmp/imagefs-output/imagefs.txz | grep -E '^(\./)?usr/include/'; then
+              echo "FAIL: usr/include in imagefs.txz" >&2; exit 1
+            fi
             ls -lh /tmp/imagefs-output/
 
         - name: 验证 Wine 依赖 soname
-          script: bash ci/verify-wine-deps.sh
+          script: |
+            export IMAGEFS_RUNTIME_STAGE=/tmp/imagefs-build/imagefs-runtime-stage
+            bash ci/verify-wine-deps.sh
 
         - name: 收集产物
           script: |

@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# box64 — cmake (ELF 二进制, x86_64→ARM64 翻译器)
-# 参考: MiceWine packages/box64 + 官方 imagefs box64 ELF
-# 这是 imagefs 中最关键的 ELF 可执行文件, 动态链接到 Bionic libc
-# 关键: TERMUX=ON 跳过 Bionic 不支持的 pthread 函数
-# 关键: 需要提供 libandroid-spawn.so (posix_spawn) 和 libandroid-sysv-semaphore.so
+# box64 — 已从 imagefs 构建列表移除（build-all.sh 不再调用本脚本）。
+# Amphora 用独立 Box64.wcp 安装到 ${bindir}/box64；imagefs 只保留
+# android-spawn / android-sysv-semaphore 等垫片供 WCP 里的 box64 NEEDED。
+# 本文件保留作参考；若手动 bash packages/box64.sh，产物也会在 package-imagefs
+# 裁剪阶段被删掉（不得进 imagefs.txz）。
+#
+# 历史备注: TERMUX=ON；需 libandroid-spawn.so + libandroid-sysv-semaphore.so
 set -euo pipefail
 source "$(dirname "$0")/../config.sh"
 
