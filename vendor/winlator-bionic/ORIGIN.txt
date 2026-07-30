@@ -1,0 +1,3 @@
+Vendored from Pipetto-crypto/winlator @ winlator_bionic
+(android_sysvshm + audio_plugin only — Amphora imagefs build inputs).
+Do not clone the full winlator tree in CI.

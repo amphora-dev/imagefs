@@ -1,6 +1,6 @@
 # =============================================================================
 # Build winlator bionic imagefs and publish Release artifacts.
-# Migrated to GitHub Actions; this is the sole CI/CD path.
+# CI/CD: GitHub Actions only.
 #
 # Triggers:
 #   push to main      — full build; overwrite fixed tag Release `amphora`
@@ -8,9 +8,9 @@
 #   push tags         — full build; create Release named after the tag
 #
 # Cache:
-#   - Docker CI image (gha)
+#   - Docker CI image (gha layer cache; context = ci/ only)
 #   - NDK + src + built-pkgs + imagefs tree (actions/cache)
-#   - ccache object cache (separate key — survives package-script edits)
+#   - ccache object cache
 # =============================================================================
 
 name: build-imagefs
@@ -28,7 +28,6 @@ permissions:
 env:
   BUILD_DIR: /tmp/imagefs-build
   OUTPUT_DIR: /tmp/imagefs-output
-  WINLATOR_DIR: /tmp/winlator-bionic
   JOBS: "4"
   CI_IMAGE: imagefs-ci:local
   CCACHE_DIR: /tmp/imagefs-build/cache/ccache
@@ -48,7 +47,7 @@ jobs:
       - name: Build CI image
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: ci
           file: ci/Dockerfile
           load: true
           tags: ${{ env.CI_IMAGE }}
@@ -65,12 +64,10 @@ jobs:
             /tmp/imagefs-build/src
             /tmp/imagefs-build/built-pkgs
             /tmp/imagefs-build/imagefs
-          key: imagefs-pkgs-${{ runner.os }}-${{ hashFiles('packages/**', 'build-all.sh', 'config.sh', 'create-rootfs.sh', 'package-imagefs.sh', 'setup-env.sh') }}
+          key: imagefs-pkgs-${{ runner.os }}-${{ hashFiles('packages/**', 'vendor/**', 'build-all.sh', 'config.sh', 'create-rootfs.sh', 'package-imagefs.sh', 'setup-env.sh') }}
           restore-keys: |
             imagefs-pkgs-${{ runner.os }}-
 
-      # ccache: restore by prefix, then always save under a unique key so object
-      # cache grows across runs (actions/cache skip-save-on-exact-hit otherwise).
       - name: Restore ccache
         id: ccache-restore
         uses: actions/cache/restore@v4
@@ -81,16 +78,6 @@ jobs:
             imagefs-ccache-${{ runner.os }}-${{ hashFiles('ci/Dockerfile') }}-
             imagefs-ccache-${{ runner.os }}-
 
-      - name: Clone winlator_bionic sources
-        run: |
-          if [ ! -d "$WINLATOR_DIR/.git" ]; then
-            git clone --depth 1 -b winlator_bionic --recursive \
-              https://github.com/Pipetto-crypto/winlator.git "$WINLATOR_DIR"
-          fi
-          test -f "$WINLATOR_DIR/audio_plugin/module_pcm_android_aserver.c"
-          test -f "$WINLATOR_DIR/android_sysvshm/android_sysvshm.c"
-          echo "winlator_bionic sources ready"
-
       - name: Build imagefs
         run: |
           mkdir -p "$BUILD_DIR" "$OUTPUT_DIR" "$CCACHE_DIR" artifacts
@@ -98,10 +85,8 @@ jobs:
             -v "$PWD:/workspace" \
             -v "$BUILD_DIR:$BUILD_DIR" \
             -v "$OUTPUT_DIR:$OUTPUT_DIR" \
-            -v "$WINLATOR_DIR:$WINLATOR_DIR" \
             -e BUILD_DIR \
             -e OUTPUT_DIR \
-            -e WINLATOR_DIR \
             -e JOBS \
             -e CCACHE_DIR \
             -e CCACHE_MAXSIZE \
@@ -178,9 +163,8 @@ jobs:
           body: |
             Self-built Bionic imagefs (fixed tag — overwritten on every main build).
 
-            Compared with the upstream ~191MB `imagefs.tzst`, this ships only the
-            libraries Wine actually needs. Wine soname requirements are asserted by
-            `ci/verify-wine-deps.sh` (including FFmpeg 8.0 sonames for `winedmo.so`).
+            ALSA-only audio path; Box64 via WCP. Wine sonames asserted by
+            `ci/verify-wine-deps.sh`.
           files: |
             artifacts/imagefs.txz
             artifacts/imagefs.txz.sha256sum

@@ -27,7 +27,6 @@ required=(
   "libX11.so:winex11.so — 没有它就没有显示"
   "libXext.so:winex11.so + libGL.so.1"
   "libasound.so:winealsa.so — ALSA 是 MVP 的音频路径"
-  "libpulse.so:winepulse.so"
   "libglib-2.0.so:多个 unix 模块"
   "libgobject-2.0.so:多个 unix 模块"
   "libgio-2.0.so:多个 unix 模块"
@@ -67,14 +66,6 @@ required=(
 
 # ---- 可选: 缺了功能降级, 有明确回退路径 ----
 optional=(
-  # winedmo 只导出 winedmo_demuxer_* 共 8 个函数 —— 只拆容器, 不解码。它是 MF
-  # 的**替代** demux 后端, 要注册表 HKCU\Software\Wine\MediaFoundation 下
-  # DisableGstByteStreamHandler=1 才启用, 默认走 GStreamer 那个 byte stream
-  # handler。旁证: 上游 imagefs 装 FFmpeg 7.1 而 winedmo 要 8.0, soname 对不上,
-  # 也就是说上游镜像里 winedmo 一直加载不了, 而镜像照常可用。
-  "libavutil.so.60:winedmo.so — 可选 demux 后端 (需注册表开关)"
-  "libavcodec.so.62:winedmo.so"
-  "libavformat.so.62:winedmo.so"
   "libfreetype.so:字体"
   "libfontconfig.so:字体配置"
   "libvulkan.so.1:Vulkan"
@@ -110,12 +101,10 @@ else
 fi
 
 # ---- 已确认无消费者: 若重新出现在 rootfs 里, 说明有人又把它加回来了 ----
-# 依据见 build-all.sh Tier 4 的注释。纯提示, 不影响退出码。
-# 注意 libXfixes / libXrender 不在此列: 运行期确实无人 NEEDED, 但 libxcursor 与
-# libxi 的 configure 通过 pkg-config 依赖它们, 所以必须构建。
 unused=(
   "libXrandr.so" "libXcomposite.so" "libXinerama.so" "libXxf86vm.so"
   "libharfbuzz.so" "libxml2.so" "libcurl.so"
+  "libpulse.so" "libGLdispatch.so" "libavcodec.so"
 )
 
 section "验证必需依赖"
@@ -180,19 +169,6 @@ if [ -e "$sysvshm" ]; then
 else
   echo "  SKIP    libandroid-sysvshm.so missing (already reported above)" >&2
 fi
-
-section "FFmpeg soname 实测"
-# 预期会看到 SONAME 不带版本 (libavcodec.so 而非 libavcodec.so.62): FFmpeg 的
-# configure 对 --target-os=android 固定用 SHFLAGS='-Wl,-soname,$(SLIBNAME)',
-# 拿不到带版本的 soname。DT_NEEDED 的解析走**文件名**, 由 ensure_soname_link 建的
-# libavcodec.so.62 等软链满足, 所以能加载; SONAME 只参与 linker 内部去重。
-# 与官方 imagefs 的差异 (那边是标准 Linux 构建, 实体 SONAME 带版本) 记在
-# BUILD-REPORT.md, 属已知且可接受。
-for so in "$LIB"/libav*.so.*; do
-  [ -e "$so" ] || continue
-  real=$(readelf -dW "$so" 2>/dev/null | awk -F'[][]' '/SONAME/{print $2}')
-  [ -n "$real" ] && echo "  $(basename "$so")  SONAME=$real"
-done
 
 if [ "$fail" -ne 0 ]; then
   echo >&2
