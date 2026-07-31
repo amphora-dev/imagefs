@@ -180,7 +180,9 @@ cat > profile.json <<EOF
 }
 EOF
 
-tar -cJf "$OUTPUT_DIR/$WCP_NAME" box64 profile.json
+tar --owner=0 --group=0 --numeric-owner \
+  --mtime="@${SOURCE_DATE_EPOCH:-0}" --clamp-mtime --sort=name \
+  -I 'xz -T1' -cf "$OUTPUT_DIR/$WCP_NAME" box64 profile.json
 (
     cd "$OUTPUT_DIR"
     sha256sum "$WCP_NAME" | tee "${WCP_NAME}.sha256sum"

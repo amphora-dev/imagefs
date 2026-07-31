@@ -42,7 +42,7 @@ bash ci/pkg-selftest.sh     # 不编包，只测 DEPENDS / topo / stamp
 
 | 触发 | 行为 |
 |------|------|
-| `main` 上改 **rootfs 相关路径**（`packages/` `lib/` `vendor/winlator-bionic/` 构建脚本等） | 完整构建；仅当 `imagefs.txz` SHA **相对已发布 amphora 有变化** 时才刷新 Release **`amphora`** 并 bump `content_manifest.components.rootfs` |
+| `main` 上改 **rootfs 相关路径**（`packages/` `lib/` `vendor/winlator-bionic/` 构建脚本等） | 完整构建；仅当 `imagefs.txz` SHA **相对已发布 amphora 有变化** 时才刷新 Release **`amphora`** 并 bump `content_manifest.components.rootfs`（打包用固定 mtime/排序，内容不变则 SHA 不变；二进制若因冷编译漂移仍会变） |
 | 只改 README / docs / Box64 流水线 | **不跑**本 workflow（path allowlist） |
 | `workflow_dispatch` | 手动构建；SHA 未变则默认不发布（可勾 `force_publish`） |
 | Pull Request（同上路径） | 仅构建验证 |

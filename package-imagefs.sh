@@ -108,8 +108,16 @@ export IMAGEFS_RUNTIME_STAGE="$TARGET_DIR"
 
 cd "$BUILD_DIR"
 
-log "创建 tar+xz 归档..."
-tar --owner=0 --group=0 -cJf "$OUTPUT_DIR/$IMAGEFS_NAME" -C "$TARGET_DIR" .
+# Reproducible archive: without fixed mtime/sort, every rebuild gets a new
+# SHA-256 even when file *contents* are identical (CI wall-clock → tar headers).
+# That would make the SHA publish-gate useless. xz -T1 avoids rare MT races.
+SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-0}"
+export SOURCE_DATE_EPOCH
+
+log "创建可复现 tar+xz 归档 (mtime=@${SOURCE_DATE_EPOCH}, sort=name, xz -T1)..."
+tar --owner=0 --group=0 --numeric-owner \
+    --mtime="@${SOURCE_DATE_EPOCH}" --clamp-mtime --sort=name \
+    -I 'xz -T1' -cf "$OUTPUT_DIR/$IMAGEFS_NAME" -C "$TARGET_DIR" .
 
 log "计算 SHA-256..."
 cd "$OUTPUT_DIR"
