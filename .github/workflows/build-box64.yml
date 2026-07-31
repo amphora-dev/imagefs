@@ -1,9 +1,4 @@
-# =============================================================================
 # Build Bionic Box64 as a standalone WCP — independent of imagefs.txz.
-#
-# Box64 updates frequently; keep it on its own cadence so devices only re-download
-# ~3 MB instead of the whole rootfs when the emulator changes.
-# =============================================================================
 
 name: build-box64
 
@@ -20,12 +15,14 @@ on:
         type: boolean
         default: false
   schedule:
-    # Daily; skips when upstream tip already has a Release asset.
     - cron: "20 4 * * *"
   push:
     branches: [main]
     paths:
       - "ci/build-box64-wcp.sh"
+      - "ci/install-build-deps.sh"
+      - "ci/resolve-runner-ndk.sh"
+      - "ci/bump-content-manifest.sh"
       - "vendor/box64-patches/**"
       - ".github/workflows/build-box64.yml"
 
@@ -42,45 +39,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - name: Checkout imagefs
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Install tools
-        run: |
-          set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            build-essential cmake ninja-build python3 \
-            curl wget git xz-utils tar ca-certificates \
-            binutils ccache
+        run: bash ci/install-build-deps.sh box64
 
       - name: Resolve runner NDK
-        run: |
-          set -euo pipefail
-          pick=""
-          for cand in \
-            "${ANDROID_NDK_LATEST_HOME:-}" \
-            "${ANDROID_NDK_HOME:-}" \
-            "${ANDROID_NDK_ROOT:-}" \
-            "${ANDROID_NDK:-}"; do
-            if [ -n "$cand" ] && [ -x "$cand/toolchains/llvm/prebuilt/linux-x86_64/bin/clang" ]; then
-              pick="$cand"
-              break
-            fi
-          done
-          if [ -z "$pick" ] && [ -d "${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}/ndk" ]; then
-            pick="$(ls -d "${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}"/ndk/29.* 2>/dev/null | sort -V | tail -1 || true)"
-            if [ -z "$pick" ]; then
-              pick="$(ls -d "${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}"/ndk/* 2>/dev/null | sort -V | tail -1 || true)"
-            fi
-          fi
-          if [ -z "$pick" ] || [ ! -x "$pick/toolchains/llvm/prebuilt/linux-x86_64/bin/clang" ]; then
-            echo "FAIL: no usable NDK on runner" >&2
-            exit 1
-          fi
-          echo "Using runner NDK: $pick"
-          echo "ANDROID_NDK_HOME=$pick" >> "$GITHUB_ENV"
-          echo "ANDROID_NDK_ROOT=$pick" >> "$GITHUB_ENV"
+        run: bash ci/resolve-runner-ndk.sh
 
       - name: Decide whether to build
         id: gate
@@ -106,18 +71,14 @@ jobs:
           echo "upstream_short=$SHORT" >> "$GITHUB_OUTPUT"
           echo "upstream_full=$FULL" >> "$GITHUB_OUTPUT"
           echo "box64_ref=$REF" >> "$GITHUB_OUTPUT"
-          echo "Upstream tip: $FULL ($SHORT)"
 
           if [ "$FORCE" = "true" ] || [ "${{ github.event_name }}" = "push" ]; then
             echo "should_build=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-
-          # Skip scheduled builds when this short hash is already on the fixed tag.
           if gh release view box64 --repo "${{ github.repository }}" >/dev/null 2>&1; then
             if gh release view box64 --repo "${{ github.repository }}" --json assets \
               --jq '.assets[].name' | grep -q -- "-${SHORT}\\.wcp\$"; then
-              echo "Already published for $SHORT; skip"
               echo "should_build=false" >> "$GITHUB_OUTPUT"
               exit 0
             fi
@@ -132,19 +93,19 @@ jobs:
           set -euo pipefail
           mkdir -p "$OUTPUT_DIR" "$BUILD_DIR"
           bash ci/build-box64-wcp.sh
-          cat "$OUTPUT_DIR/box64-wcp.env"
           # shellcheck disable=SC1091
           source "$OUTPUT_DIR/box64-wcp.env"
-          echo "WCP_NAME=$WCP_NAME" >> "$GITHUB_ENV"
-          echo "FULL_VERSION=$FULL_VERSION" >> "$GITHUB_ENV"
-          echo "SHA256=$SHA256" >> "$GITHUB_ENV"
-          echo "SIZE=$SIZE" >> "$GITHUB_ENV"
-          echo "COMMIT_SHORT=$COMMIT_SHORT" >> "$GITHUB_ENV"
-          echo "COMMIT_FULL=$COMMIT_FULL" >> "$GITHUB_ENV"
+          {
+            echo "WCP_NAME=$WCP_NAME"
+            echo "FULL_VERSION=$FULL_VERSION"
+            echo "SHA256=$SHA256"
+            echo "SIZE=$SIZE"
+            echo "COMMIT_SHORT=$COMMIT_SHORT"
+            echo "COMMIT_FULL=$COMMIT_FULL"
+          } >> "$GITHUB_ENV"
 
-      - name: Upload workflow artifact
+      - uses: actions/upload-artifact@v4
         if: steps.gate.outputs.should_build == 'true'
-        uses: actions/upload-artifact@v4
         with:
           name: box64-wcp
           path: |
@@ -161,13 +122,10 @@ jobs:
           tag_name: box64
           name: box64
           body: |
-            Self-built Bionic Box64 WCP (fixed tag — refreshed when upstream changes).
+            Self-built Bionic Box64 WCP (fixed tag).
 
             Current: `Box64-${{ env.FULL_VERSION }}`
             Upstream: https://github.com/ptitSeb/box64/commit/${{ env.COMMIT_FULL }}
-
-            Independent of `imagefs.txz` / Release `amphora`. Amphora devices pick this
-            up via `content_manifest.components.box64` only.
           files: |
             artifacts/${{ env.WCP_NAME }}
             artifacts/${{ env.WCP_NAME }}.sha256sum
@@ -181,15 +139,12 @@ jobs:
           KEEP: ${{ env.WCP_NAME }}
         run: |
           set -euo pipefail
-          # Keep only the just-published WCP (+ its sha256sum) so the fixed tag
-          # does not accumulate every daily build.
           mapfile -t ASSETS < <(gh release view box64 --repo "${{ github.repository }}" \
             --json assets --jq '.assets[].name')
           for name in "${ASSETS[@]}"; do
             case "$name" in
               "$KEEP"|"${KEEP}.sha256sum") continue ;;
               Box64-*.wcp|Box64-*.wcp.sha256sum)
-                echo "Deleting old asset: $name"
                 gh release delete-asset box64 "$name" --repo "${{ github.repository }}" --yes || true
                 ;;
             esac
@@ -199,62 +154,12 @@ jobs:
         if: steps.gate.outputs.should_build == 'true' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ secrets.AMPHORA_REPO_TOKEN }}
-          WCP_NAME: ${{ env.WCP_NAME }}
-          FULL_VERSION: ${{ env.FULL_VERSION }}
+          COMPONENT: box64
           SHA256: ${{ env.SHA256 }}
           SIZE: ${{ env.SIZE }}
-        run: |
-          set -euo pipefail
-          if [ -z "${GH_TOKEN:-}" ]; then
-            echo "WARN: AMPHORA_REPO_TOKEN not set; skip content_manifest box64 pin" >&2
-            exit 0
-          fi
-          REMOTE_URL="https://github.com/${{ github.repository }}/releases/download/box64/${WCP_NAME}"
-          WORK="$(mktemp -d)"
-          git clone --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/amphora-dev/content_manifest.git" "$WORK/content_manifest"
-          MANIFEST="$WORK/content_manifest/content_manifest.json"
-          test -f "$MANIFEST"
-          python3 - "$MANIFEST" "$WCP_NAME" "$SHA256" "$SIZE" "$FULL_VERSION" "$REMOTE_URL" <<'PY'
-          import json, sys
-          path, asset, sha, size, ver_name, remote = sys.argv[1:7]
-          size = int(size)
-          with open(path, encoding="utf-8") as f:
-              data = json.load(f)
-          box = data["components"]["box64"]
-          if (
-              box.get("sha256") == sha
-              and int(box.get("size") or 0) == size
-              and box.get("assetPath") == asset
-          ):
-              print("box64 pin already up to date; nothing to commit")
-              open("/tmp/content-manifest-pin-skip", "w").write("1")
-              raise SystemExit(0)
-          box["assetPath"] = asset
-          box["sha256"] = sha
-          box["size"] = size
-          box["kind"] = "WCP"
-          box["contentType"] = "Box64"
-          box["verName"] = ver_name
-          box["verCode"] = 0
-          box["version"] = f"Box64-{ver_name}-0"
-          box["remoteUrl"] = remote
-          with open(path, "w", encoding="utf-8") as f:
-              json.dump(data, f, indent=2)
-              f.write("\n")
-          print(f"bumped box64 pin -> {asset} sha={sha} size={size}")
-          PY
-          if [ -f /tmp/content-manifest-pin-skip ]; then
-            exit 0
-          fi
-          cd "$WORK/content_manifest"
-          git config user.name "imagefs-bot"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add content_manifest.json
-          git commit -m "$(cat <<EOF
-          chore: pin Box64 ${FULL_VERSION}
-
-          Published by amphora-dev/imagefs build-box64 CI (Release tag box64).
-          Rootfs pin untouched.
-          EOF
-          )"
-          git push origin HEAD:main
+          ASSET_PATH: ${{ env.WCP_NAME }}
+          VER_NAME: ${{ env.FULL_VERSION }}
+          REMOTE_URL: https://github.com/${{ github.repository }}/releases/download/box64/${{ env.WCP_NAME }}
+          KIND: WCP
+          CONTENT_TYPE: Box64
+        run: bash ci/bump-content-manifest.sh

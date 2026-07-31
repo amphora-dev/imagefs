@@ -36,7 +36,17 @@ bash ci/pkg-selftest.sh     # 不编包，只测 DEPENDS / topo / stamp
 
 ## CI / Release
 
-两条流水线，刻意解耦（Box64 更新更频繁，不必重下整份 rootfs）：
+两条流水线，刻意解耦（Box64 更新更频繁，不必重下整份 rootfs）。
+
+共享脚本（避免 workflow 复制粘贴）：
+
+| 脚本 | 作用 |
+|------|------|
+| [`ci/install-build-deps.sh`](ci/install-build-deps.sh) | apt/pip 依赖（`full` / `box64`） |
+| [`ci/resolve-runner-ndk.sh`](ci/resolve-runner-ndk.sh) | 解析 runner / 本机 NDK |
+| [`ci/bump-content-manifest.sh`](ci/bump-content-manifest.sh) | 只 bump `content_manifest` 里指定 component |
+
+
 
 ### imagefs rootfs — [`.github/workflows/build-imagefs.yml`](.github/workflows/build-imagefs.yml)
 

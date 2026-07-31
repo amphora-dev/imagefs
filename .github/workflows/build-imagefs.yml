@@ -1,11 +1,5 @@
-# =============================================================================
 # Build winlator bionic imagefs and publish Release artifacts.
-# Runs natively on ubuntu-latest (runner NDK + apt tools). No Docker.
-#
-# Path-gated: only rootfs-affecting paths trigger a rebuild. Docs / Box64 CI /
-# unrelated vendor patches must NOT refresh Release `amphora` or bump the
-# content_manifest rootfs pin (devices would otherwise re-download ~10MB).
-# =============================================================================
+# Path-gated: only rootfs-affecting paths trigger a rebuild.
 
 name: build-imagefs
 
@@ -13,13 +7,12 @@ on:
   workflow_dispatch:
     inputs:
       force_publish:
-        description: "Refresh Release amphora even if imagefs.txz SHA matches the published asset"
+        description: "Refresh Release amphora even if imagefs.txz SHA matches published asset"
         required: false
         type: boolean
         default: false
   push:
     branches: [main]
-    # Allowlist — omit README/docs/box64/references so those pushes stay quiet.
     paths:
       - "packages/**"
       - "lib/**"
@@ -31,10 +24,11 @@ on:
       - "package-imagefs.sh"
       - "ci/pkg-selftest.sh"
       - "ci/verify-wine-deps.sh"
+      - "ci/install-build-deps.sh"
+      - "ci/resolve-runner-ndk.sh"
+      - "ci/bump-content-manifest.sh"
       - ".github/workflows/build-imagefs.yml"
     tags:
-      # Versioned Releases (optional). Path filter still applies to the tag
-      # commit's file set — tag a rootfs-touching commit, or use workflow_dispatch.
       - "imagefs-*"
       - "v*"
   pull_request:
@@ -50,6 +44,9 @@ on:
       - "package-imagefs.sh"
       - "ci/pkg-selftest.sh"
       - "ci/verify-wine-deps.sh"
+      - "ci/install-build-deps.sh"
+      - "ci/resolve-runner-ndk.sh"
+      - "ci/bump-content-manifest.sh"
       - ".github/workflows/build-imagefs.yml"
 
 permissions:
@@ -67,51 +64,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Install build tools
-        run: |
-          set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            build-essential cmake ninja-build \
-            autoconf automake libtool libtool-bin autotools-dev pkg-config \
-            perl python3 python3-pip python3-setuptools python3-wheel \
-            curl wget git unzip xz-utils tar bzip2 gzip ca-certificates \
-            patch file rsync binutils gperf flex bison gettext texinfo \
-            patchelf ccache \
-            libglib2.0-dev-bin
-          sudo pip3 install --no-cache-dir "meson>=1.3"
+        run: bash ci/install-build-deps.sh full
 
       - name: Resolve runner NDK
-        run: |
-          set -euo pipefail
-          pick=""
-          for cand in \
-            "${ANDROID_NDK_LATEST_HOME:-}" \
-            "${ANDROID_NDK_HOME:-}" \
-            "${ANDROID_NDK_ROOT:-}" \
-            "${ANDROID_NDK:-}"; do
-            if [ -n "$cand" ] && [ -x "$cand/toolchains/llvm/prebuilt/linux-x86_64/bin/clang" ]; then
-              pick="$cand"
-              break
-            fi
-          done
-          if [ -z "$pick" ] && [ -d "${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}/ndk" ]; then
-            pick="$(ls -d "${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}"/ndk/29.* 2>/dev/null | sort -V | tail -1 || true)"
-            if [ -z "$pick" ]; then
-              pick="$(ls -d "${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}"/ndk/* 2>/dev/null | sort -V | tail -1 || true)"
-            fi
-          fi
-          if [ -z "$pick" ] || [ ! -x "$pick/toolchains/llvm/prebuilt/linux-x86_64/bin/clang" ]; then
-            echo "FAIL: no usable NDK on runner" >&2
-            ls -la "${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}/ndk" 2>/dev/null || true
-            exit 1
-          fi
-          echo "Using runner NDK: $pick"
-          echo "ANDROID_NDK_HOME=$pick" >> "$GITHUB_ENV"
-          echo "ANDROID_NDK_ROOT=$pick" >> "$GITHUB_ENV"
+        run: bash ci/resolve-runner-ndk.sh
 
       - name: Restore package caches
         uses: actions/cache@v4
@@ -190,25 +149,16 @@ jobs:
           SIZE="$(stat -c%s artifacts/imagefs.txz)"
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
           echo "size=$SIZE" >> "$GITHUB_OUTPUT"
-          echo "Built imagefs.txz sha=$SHA size=$SIZE"
 
-          # PRs never publish.
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             echo "should_publish=false" >> "$GITHUB_OUTPUT"
-            echo "PR build — skip Release / pin"
             exit 0
           fi
-
-          # Tagged Releases always upload under the tag name.
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
             echo "should_publish=true" >> "$GITHUB_OUTPUT"
-            echo "Tag build — publish"
             exit 0
           fi
 
-          # main / workflow_dispatch: skip if SHA already on Release amphora.
-          # Relies on package-imagefs.sh reproducible tar (fixed mtime/sort);
-          # without that, wall-clock mtimes alone would defeat this gate.
           PUB=""
           if gh release view amphora --repo "${{ github.repository }}" >/dev/null 2>&1; then
             gh release download amphora --repo "${{ github.repository }}" \
@@ -217,21 +167,14 @@ jobs:
               PUB="$(awk '{print $1}' /tmp/amphora-rel/imagefs.txz.sha256sum)"
             fi
           fi
-          if [ "$FORCE" = "true" ]; then
+          if [ "$FORCE" = "true" ] || [ -z "$PUB" ] || [ "$PUB" != "$SHA" ]; then
             echo "should_publish=true" >> "$GITHUB_OUTPUT"
-            echo "force_publish — refresh Release"
-            exit 0
-          fi
-          if [ -n "$PUB" ] && [ "$PUB" = "$SHA" ]; then
+          else
             echo "should_publish=false" >> "$GITHUB_OUTPUT"
-            echo "SHA matches published amphora ($SHA) — skip Release / pin"
-            exit 0
+            echo "SHA matches published amphora ($SHA) — skip"
           fi
-          echo "should_publish=true" >> "$GITHUB_OUTPUT"
-          echo "New SHA (was ${PUB:-none}) — will publish"
 
-      - name: Upload workflow artifacts
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: imagefs
           path: |
@@ -247,71 +190,23 @@ jobs:
           tag_name: amphora
           name: amphora
           body: |
-            Self-built Bionic imagefs (fixed tag — refreshed only when rootfs
-            content changes; see path filters + SHA gate in build-imagefs.yml).
+            Self-built Bionic imagefs (fixed tag — refreshed only when rootfs content changes).
 
-            ALSA-only audio path. Box64 is NOT in this archive — see Release tag
-            `box64` / workflow `build-box64` (separate pin in content_manifest).
-            Wine sonames asserted by `ci/verify-wine-deps.sh`.
+            Box64 is separate: Release tag `box64` / workflow `build-box64`.
           files: |
             artifacts/imagefs.txz
             artifacts/imagefs.txz.sha256sum
           fail_on_unmatched_files: true
           make_latest: true
 
-      # Push rootfs pin into amphora-dev/content_manifest so devices pick it up
-      # via the remote content_manifest.json (no APK rebuild / no amphora CI).
       - name: Update content_manifest rootfs pin
         if: steps.publish.outputs.should_publish == 'true' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ secrets.AMPHORA_REPO_TOKEN }}
-        run: |
-          set -euo pipefail
-          if [ -z "${GH_TOKEN:-}" ]; then
-            echo "WARN: AMPHORA_REPO_TOKEN not set; skip content_manifest pin update" >&2
-            exit 0
-          fi
-          SHA="$(awk '{print $1}' artifacts/imagefs.txz.sha256sum)"
-          SIZE="$(stat -c%s artifacts/imagefs.txz)"
-          WORK="$(mktemp -d)"
-          git clone --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/amphora-dev/content_manifest.git" "$WORK/content_manifest"
-          MANIFEST="$WORK/content_manifest/content_manifest.json"
-          test -f "$MANIFEST"
-          python3 - "$MANIFEST" "$SHA" "$SIZE" <<'PY'
-          import json, sys
-          path, sha, size = sys.argv[1], sys.argv[2], int(sys.argv[3])
-          with open(path, encoding="utf-8") as f:
-              data = json.load(f)
-          rootfs = data["components"]["rootfs"]
-          old_sha = rootfs.get("sha256")
-          old_ver = int(str(rootfs.get("version", "0")))
-          if old_sha == sha and int(rootfs.get("size") or 0) == size:
-              print("rootfs pin already up to date; nothing to commit")
-              open("/tmp/content-manifest-pin-skip", "w").write("1")
-              raise SystemExit(0)
-          rootfs["sha256"] = sha
-          rootfs["size"] = size
-          rootfs["version"] = str(old_ver + 1)
-          with open(path, "w", encoding="utf-8") as f:
-              json.dump(data, f, indent=2)
-              f.write("\n")
-          print(f"bumped rootfs pin v{old_ver} -> v{old_ver + 1} sha={sha} size={size}")
-          PY
-          if [ -f /tmp/content-manifest-pin-skip ]; then
-            exit 0
-          fi
-          cd "$WORK/content_manifest"
-          git config user.name "imagefs-bot"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add content_manifest.json
-          NEW_VER="$(python3 -c 'import json;print(json.load(open("content_manifest.json"))["components"]["rootfs"]["version"])')"
-          git commit -m "$(cat <<EOF
-          chore: pin imagefs rootfs v${NEW_VER}
-
-          Published by amphora-dev/imagefs CI after Release amphora refresh.
-          EOF
-          )"
-          git push origin HEAD:main
+          COMPONENT: rootfs
+          SHA256: ${{ steps.publish.outputs.sha }}
+          SIZE: ${{ steps.publish.outputs.size }}
+        run: bash ci/bump-content-manifest.sh
 
       - name: Publish tagged Release
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
