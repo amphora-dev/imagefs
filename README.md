@@ -36,20 +36,22 @@ bash ci/pkg-selftest.sh     # 不编包，只测 DEPENDS / topo / stamp
 
 ## CI / Release
 
-两个独立 workflow，共享 **composite actions** + `ci/*.sh`（GitHub 的本地复用方式，不是合成一个 yaml）：
+分层（推荐做法，**不要**把 `depends.conf` 里每个包拆成独立 GHA job）：
+
+| 层 | 机制 | 例子 |
+|----|------|------|
+| **L0 工具** | composite action + `ci/*.sh` | `setup-ndk-build`（`leaf`/`graph`）、`bump-manifest` |
+| **L1 leaf** | 独立 workflow；上游少、产物单一 | [`build-box64.yml`](.github/workflows/build-box64.yml) → Release `box64` |
+| **L2 graph** | 独立 workflow；仓内多包拓扑 | [`build-imagefs.yml`](.github/workflows/build-imagefs.yml) → Release `amphora` |
+
+- **leaf**：几乎无仓内依赖（Box64 自带源码 + NDK），触发面小（改 `ci/build-box64-wcp.sh` / patch / 手动）。
+- **graph**：`packages/` + `depends.conf` 增量；触发忽略文档与 leaf 源即可。包级增量在 **同一次 job** 里靠 content stamp，不必每包一个 Actions job（否则要在 job 间传整个 staging，又慢又脆）。
+- 以后若再加 DXVK/VKD3D 一类 leaf：复制 `build-box64.yml` 模式，或再抽 `workflow_call` 复用；**≥2 个同类 leaf 时**再上 reusable workflow 才划算。
 
 | Workflow | 触发 | 产物 |
 |----------|------|------|
-| [`build-imagefs.yml`](.github/workflows/build-imagefs.yml) | `main` push/PR（`paths-ignore` 文档与 box64 源）、`workflow_dispatch`、tag `v*`/`imagefs-*` | Release **`amphora`** → pin `rootfs` |
-| [`build-box64.yml`](.github/workflows/build-box64.yml) | 改 box64 源 / `workflow_dispatch`（**无**每日 schedule） | Release **`box64`** → pin `box64` |
-
-共享：
-
-| 路径 | 作用 |
-|------|------|
-| [`.github/actions/setup-ndk-build`](.github/actions/setup-ndk-build) | apt 依赖 + 解析 NDK |
-| [`.github/actions/bump-manifest`](.github/actions/bump-manifest) | bump `content_manifest` 某一 component |
-| `ci/gate-*.sh` / `ci/build-box64-wcp.sh` / … | 门闩与构建逻辑 |
+| `build-imagefs.yml` | push/PR（ignore 文档与 box64 源）、手动、tag | `amphora` → pin `rootfs` |
+| `build-box64.yml` | 改 box64 源、手动（无 schedule） | `box64` → pin `box64` |
 
 imagefs 发布仍看产物 SHA；内容不变则不刷新 Release / pin。
 

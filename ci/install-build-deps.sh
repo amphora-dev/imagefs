@@ -1,22 +1,27 @@
 #!/usr/bin/env bash
 # Install apt/pip packages needed by imagefs CI.
-# Usage: ci/install-build-deps.sh [full|box64]
-#   full  — full imagefs rootfs build (default)
-#   box64 — Box64 WCP only
+#
+# Modes (aliases accepted):
+#   leaf | box64  — single-product / few-tool builds (Box64 WCP, …)
+#   graph | full  — multi-package imagefs graph (meson/autotools/…)
 set -euo pipefail
 
-MODE="${1:-full}"
+MODE="${1:-graph}"
+case "$MODE" in
+  box64) MODE=leaf ;;
+  full) MODE=graph ;;
+esac
 
 sudo apt-get update
 
 case "$MODE" in
-  box64)
+  leaf)
     sudo apt-get install -y --no-install-recommends \
       build-essential cmake ninja-build python3 \
       curl wget git xz-utils tar ca-certificates \
       binutils ccache
     ;;
-  full)
+  graph)
     sudo apt-get install -y --no-install-recommends \
       build-essential cmake ninja-build \
       autoconf automake libtool libtool-bin autotools-dev pkg-config \
@@ -28,7 +33,7 @@ case "$MODE" in
     sudo pip3 install --no-cache-dir "meson>=1.3"
     ;;
   *)
-    echo "usage: $0 [full|box64]" >&2
+    echo "usage: $0 [leaf|graph]  (aliases: box64→leaf, full→graph)" >&2
     exit 2
     ;;
 esac

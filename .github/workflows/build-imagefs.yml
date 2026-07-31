@@ -48,7 +48,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-ndk-build
         with:
-          deps: full
+          deps: graph
 
       - uses: actions/cache@v4
         with:

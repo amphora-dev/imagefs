@@ -38,7 +38,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-ndk-build
         with:
-          deps: box64
+          deps: leaf
 
       - id: gate
         env:
