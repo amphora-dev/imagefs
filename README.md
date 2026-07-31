@@ -55,7 +55,7 @@ https://github.com/amphora-dev/imagefs/releases/download/amphora/imagefs.txz
 | 触发 | 行为 |
 |------|------|
 | 每日 schedule / `workflow_dispatch` | 编 Bionic `box64`，打 `Box64-<ver>-<sha>.wcp`，覆盖固定标签 Release **`box64`**；只 bump `content_manifest.components.box64` |
-| `main` 上改 `ci/build-box64-wcp.sh` / `patches/box64/**` | 同上 |
+| `main` 上改 `ci/build-box64-wcp.sh` / `vendor/box64-patches/**` | 同上 |
 | 上游 tip 已发布过 | schedule 自动跳过 |
 
 ```bash
