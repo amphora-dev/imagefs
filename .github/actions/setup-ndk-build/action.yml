@@ -1,10 +1,10 @@
 name: Setup NDK build
-description: Install apt deps and resolve runner Android NDK
+description: Install apt deps (leaf|graph) and resolve runner Android NDK
 inputs:
   deps:
-    description: "ci/install-build-deps.sh mode (full|box64)"
+    description: "ci/install-build-deps.sh mode — leaf (single product) or graph (imagefs)"
     required: false
-    default: full
+    default: graph
 runs:
   using: composite
   steps:
