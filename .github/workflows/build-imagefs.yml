@@ -205,8 +205,9 @@ jobs:
             exit 0
           fi
 
-          # main / workflow_dispatch: skip if SHA already on Release amphora
-          # (comment-only / non-functional churn must not nudge devices).
+          # main / workflow_dispatch: skip if SHA already on Release amphora.
+          # Relies on package-imagefs.sh reproducible tar (fixed mtime/sort);
+          # without that, wall-clock mtimes alone would defeat this gate.
           PUB=""
           if gh release view amphora --repo "${{ github.repository }}" >/dev/null 2>&1; then
             gh release download amphora --repo "${{ github.repository }}" \
