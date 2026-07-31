@@ -2,21 +2,25 @@
 # =============================================================================
 # build-all.sh — winlator bionic imagefs 完整构建主控
 #
+# Buildroot-lite:
+#   - STAGING_DIR (sysroot) vs TARGET_DIR (runtime image)
+#   - packages/depends.conf + topo order + content stamps
+#   - selecting a package pulls transitive DEPENDS
+#
 # 用法:
 #   ./build-all.sh              # 构建全部包
-#   ./build-all.sh zlib glib    # 仅构建指定包
+#   ./build-all.sh zlib glib    # 构建指定包及其依赖
 #   JOBS=8 ./build-all.sh       # 指定并发数
 # =============================================================================
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/config.sh"
+source "$SCRIPT_DIR/lib/pkg.sh"
 
-# ---- 包列表 (按依赖拓扑排序) ----
-# 不构建: box64 (WCP)、curl、多余 X 扩展、pulseaudio 栈、ffmpeg (可选 winedmo)、
-#         libglvnd (SDL 关桌面 GL；Mesa libGL 来自 extra_libs)
+# ---- 包列表 (默认全集；实际构建顺序由 depends.conf topo 决定) ----
+# 不构建: box64 (WCP)、curl、多余 X 扩展、pulseaudio 栈、ffmpeg、libglvnd…
 ALL_PACKAGES=(
-    # Tier 1
     zlib
     zstd
     libffi
@@ -24,21 +28,17 @@ ALL_PACKAGES=(
     libpng
     brotli
 
-    # Tier 2
     pcre2
     freetype
     libiconv
 
-    # Tier 3
     fontconfig
     glib
 
-    # Tier 3.5 Bionic / 图形垫片
     android-sysvshm
     libandroid-shmem
     libcxx-shared
 
-    # Tier 4 图形/显示（libxfixes/libxrender 为 libxcursor/libxi 构建依赖）
     xorgproto
     libxcb
     xtrans
@@ -53,48 +53,50 @@ ALL_PACKAGES=(
     vulkan-headers
     vulkan-loader
 
-    # Tier 5 加密 + Wine TLS (gnutls)
     openssl
     gmp
     nettle
     gnutls
 
-    # Tier 6 音频 — Amphora 仅 ALSA + android_aserver
     alsa-lib
     alsa-android-aserver
 
-    # Tier 7 输入/多媒体
     sdl2
 
-    # Tier 7.5 Wine 媒体默认路径 (winegstreamer)
     gstreamer
     gst-plugins-base
 
-    # Tier 8 Box64.wcp 垫片
     android-spawn
     android-sysv-semaphore
 )
 
-# ---- 命令行参数: 仅构建指定包 ----
+pkg_load_depends
+
+# ---- 命令行: 指定包时自动带上传递依赖，再 topo 排序 ----
 if [ $# -gt 0 ]; then
-    SELECTED_PACKAGES=("$@")
+    mapfile -t _expanded < <(pkg_expand_with_deps "$@")
+    mapfile -t SELECTED_PACKAGES < <(pkg_topo_sort "${_expanded[@]}")
 else
-    SELECTED_PACKAGES=("${ALL_PACKAGES[@]}")
+    mapfile -t SELECTED_PACKAGES < <(pkg_topo_sort "${ALL_PACKAGES[@]}")
 fi
 
 # ---- 初始化 ----
-section "winlator bionic imagefs 构建系统"
+section "winlator bionic imagefs 构建系统 (Buildroot-lite)"
 log "架构: $ARCH-linux-android$ANDROID_API"
 log "包数量: ${#SELECTED_PACKAGES[@]}"
 log "并发: $JOBS"
 log "构建目录: $BUILD_DIR"
+log "  HOST_DIR    = $HOST_DIR"
+log "  STAGING_DIR = $STAGING_DIR  (sysroot / 增量编译)"
+log "  TARGET_DIR  = $TARGET_DIR   (runtime → imagefs.txz)"
 
-mkdir -p "$CACHE_DIR" "$SRC_DIR" "$WORK_DIR" "$LOGS_DIR" "$BUILT_DIR"
+mkdir -p "$CACHE_DIR" "$SRC_DIR" "$WORK_DIR" "$LOGS_DIR" "$BUILT_DIR" \
+    "$HOST_DIR" "$STAGING_DIR" "$TARGET_DIR"
 
 # ---- 1. 设置 NDK + 交叉编译环境 ----
 source "$SCRIPT_DIR/setup-env.sh"
 
-# ---- 2. 创建 rootfs 布局 ----
+# ---- 2. 创建 staging rootfs 布局 ----
 bash "$SCRIPT_DIR/create-rootfs.sh"
 
 # 增量缓存可能留下已移出包列表的产物 / marker
@@ -102,13 +104,14 @@ rm -f "$PREFIX/bin/box64" "$BUILT_DIR"/box64.done
 rm -f "$BUILT_DIR"/{pulseaudio,libsndfile,libltdl,ffmpeg,libglvnd,curl,harfbuzz,libxml2}.done
 rm -f "$BUILT_DIR"/{libxcomposite,libxinerama,libxxf86vm,libxrandr}.done
 
-# ---- 3. 逐包构建 ----
+# ---- 3. 逐包构建 (topo 序；content stamp 含 DEPENDS) ----
 section "开始编译 ${#SELECTED_PACKAGES[@]} 个包"
 
 TOTAL=${#SELECTED_PACKAGES[@]}
 CURRENT=0
 SUCCESS=0
 FAILED=0
+SKIPPED=0
 FAILED_PACKAGES=()
 
 for package in "${SELECTED_PACKAGES[@]}"; do
@@ -122,28 +125,32 @@ for package in "${SELECTED_PACKAGES[@]}"; do
         continue
     fi
 
-    # 增量缓存: marker = 包脚本 sha256
-    MARKER="$BUILT_DIR/${package}.done"
-    PKG_HASH=$(sha256sum "$PKG_SCRIPT" 2>/dev/null | awk '{print $1}')
-    if [ -f "$MARKER" ] && [ "$(cat "$MARKER" 2>/dev/null)" = "$PKG_HASH" ]; then
-        log "[$CURRENT/$TOTAL] $package: 已构建 (缓存命中), 跳过"
+    if pkg_is_up_to_date "$package"; then
+        log "[$CURRENT/$TOTAL] $package: 已构建 (content stamp 命中), 跳过"
         SUCCESS=$((SUCCESS + 1))
+        SKIPPED=$((SKIPPED + 1))
         continue
     fi
 
     echo ""
-    log "[$CURRENT/$TOTAL] 编译 $package..."
+    deps="$(pkg_deps_of "$package")"
+    if [ -n "$deps" ]; then
+        log "[$CURRENT/$TOTAL] 编译 $package (depends: $deps)..."
+    else
+        log "[$CURRENT/$TOTAL] 编译 $package..."
+    fi
 
     LOG_FILE="$LOGS_DIR/${package}.log"
     ERR_FILE="$LOGS_DIR/${package}.err"
 
     if bash "$PKG_SCRIPT" > "$LOG_FILE" 2> "$ERR_FILE"; then
-        echo "$PKG_HASH" > "$MARKER"
+        pkg_write_stamp "$package"
         SUCCESS=$((SUCCESS + 1))
         log "[$CURRENT/$TOTAL] ✅ $package 完成"
     else
         FAILED=$((FAILED + 1))
         FAILED_PACKAGES+=("$package")
+        rm -f "$(pkg_stamp_path "$package")"
         error "[$CURRENT/$TOTAL] ❌ $package 失败 (见 $ERR_FILE)"
         echo "    ----- 关键错误行 (grep) -----"
         grep -nEi "error:|undefined reference|cannot find|No package |No such file|fatal|\*\*\* |Permission denied|not found" \
@@ -158,23 +165,22 @@ done
 
 # ---- 4. 汇总 ----
 section "构建汇总"
-log "成功: $SUCCESS / $TOTAL"
+log "成功: $SUCCESS / $TOTAL (缓存跳过: $SKIPPED)"
 if [ $FAILED -gt 0 ]; then
     warn "失败: $FAILED (${FAILED_PACKAGES[*]})"
 fi
 
-# 统计产物
-log "产物统计:"
+log "产物统计 (staging sysroot):"
 log "  .so 文件: $(find "$PREFIX/lib" -name "*.so*" 2>/dev/null | wc -l)"
 log "  可执行文件: $(find "$PREFIX/bin" -type f 2>/dev/null | wc -l)"
-log "  总大小: $(du -sh "$ROOTFS" 2>/dev/null | cut -f1)"
+log "  staging 大小: $(du -sh "$STAGING_DIR" 2>/dev/null | cut -f1)"
 
 if [ $FAILED -gt 0 ]; then
     error "构建未完全成功，跳过打包"
     exit 1
 fi
 
-# ---- 5. 打包 ----
+# ---- 5. staging → target 裁剪打包 ----
 if [ -f "$SCRIPT_DIR/package-imagefs.sh" ]; then
     bash "$SCRIPT_DIR/package-imagefs.sh"
 fi

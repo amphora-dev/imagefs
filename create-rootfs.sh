@@ -5,16 +5,16 @@
 set -euo pipefail
 source "$(dirname "$0")/config.sh"
 
-section "创建 merged-usr rootfs 布局"
+section "创建 staging sysroot 布局 (merged-usr)"
 
 # ---- 清理策略 ----
-# 默认增量 (保留已安装产物, 配合 build-all.sh 的 .done 缓存)。
-# REBUILD_ROOTFS=1 时全清重建 (用于干净构建或缓存损坏时)。
+# 默认增量 (保留已安装产物, 配合 build-all.sh 的 content stamp)。
+# REBUILD_ROOTFS=1 时全清重建 staging (用于干净构建或缓存损坏时)。
 if [ "${REBUILD_ROOTFS:-0}" = "1" ]; then
-    log "REBUILD_ROOTFS=1: 全清重建 rootfs"
-    rm -rf "$ROOTFS"
+    log "REBUILD_ROOTFS=1: 全清重建 STAGING_DIR"
+    rm -rf "$STAGING_DIR"
 fi
-mkdir -p "$ROOTFS"
+mkdir -p "$STAGING_DIR" "$HOST_DIR" "$TARGET_DIR"
 
 # ---- usr 子目录 ----
 mkdir -p "$PREFIX"/{bin,lib,etc,share,tmp,include,var/{cache,run}}
@@ -75,6 +75,7 @@ mkdir -p "$PREFIX/share/vulkan"/{explicit_layer.d,implicit_layer.d}
 # ---- gstreamer 插件目录 ----
 mkdir -p "$PREFIX/lib/gstreamer-1.0"
 
-log "rootfs 布局创建完成: $ROOTFS"
-log "  merged-usr: $(ls -la "$ROOTFS" | grep '\->' | wc -l) 个软链"
+log "staging sysroot 布局创建完成: $STAGING_DIR"
+log "  HOST_DIR=$HOST_DIR  TARGET_DIR=$TARGET_DIR"
+log "  merged-usr: $(ls -la "$STAGING_DIR" | grep '\->' | wc -l) 个软链"
 log "  Bionic libc: $(ls -la "$PREFIX/lib/libc.so" 2>/dev/null | awk '{print $NF}')"

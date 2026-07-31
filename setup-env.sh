@@ -110,9 +110,15 @@ else
 fi
 
 # ---- 3. 编译 flags ----
+# LDFLAGS_BASE: safe default for versioned SONAMEs (PNG16_0, etc.).
+# LDFLAGS_PERMISSIVE: opt-in for packages whose version-scripts need
+# Android lld's --undefined-version (set locally in that package script).
+export LDFLAGS_BASE="-Wl,-rpath,/usr/lib -L$PREFIX/lib -Wl,--allow-shlib-undefined"
+export LDFLAGS_PERMISSIVE="$LDFLAGS_BASE -Wl,--undefined-version"
+# Keep historical default for existing packages; prefer LDFLAGS_BASE in new/fixed recipes.
+export LDFLAGS="${LDFLAGS:-$LDFLAGS_PERMISSIVE}"
 export CFLAGS="-fPIC -O2 -I$PREFIX/include"
 export CXXFLAGS="-fPIC -O2 -I$PREFIX/include"
-export LDFLAGS="-Wl,-rpath,/usr/lib -L$PREFIX/lib -Wl,--allow-shlib-undefined -Wl,--undefined-version"
 
 # ---- 4. pkg-config 交叉编译 ----
 export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig"

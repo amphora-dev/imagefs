@@ -16,15 +16,27 @@ NDK_FILENAME="android-ndk-r29-linux.zip"
 ARCH="${ARCH:-aarch64}"
 ANDROID_API="${ANDROID_API:-26}"
 
-# ---- 路径 ----
+# ---- 路径 (Buildroot-inspired layout) ----
+#   host/     — host tools (do not ship in imagefs.txz)
+#   staging/  — cross-compile sysroot (headers + libs + pkgconfig)
+#   target/   — runtime rootfs assembled for packaging
 BUILD_DIR="${BUILD_DIR:-/tmp/imagefs-build}"
 CACHE_DIR="$BUILD_DIR/cache"
 SRC_DIR="$BUILD_DIR/src"
 WORK_DIR="$BUILD_DIR/workdir"
 LOGS_DIR="$BUILD_DIR/logs"
-ROOTFS="$BUILD_DIR/imagefs"
-PREFIX="$ROOTFS/usr"
+HOST_DIR="$BUILD_DIR/host"
+STAGING_DIR="$BUILD_DIR/staging"
+TARGET_DIR="$BUILD_DIR/target"
+# Back-compat aliases: package scripts still use ROOTFS / PREFIX.
+ROOTFS="$STAGING_DIR"
+PREFIX="$STAGING_DIR/usr"
 BUILT_DIR="$BUILD_DIR/built-pkgs"
+
+# Migrate leftover path from pre-Buildroot-lite layout.
+if [ -d "$BUILD_DIR/imagefs" ] && [ ! -e "$STAGING_DIR" ]; then
+    mv "$BUILD_DIR/imagefs" "$STAGING_DIR"
+fi
 
 # ---- imagefs 打包 ----
 IMAGEFS_NAME="imagefs.txz"

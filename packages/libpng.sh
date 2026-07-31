@@ -19,7 +19,7 @@ cd "$PKG_NAME"
 rm -rf build_dir && mkdir build_dir && cd build_dir
 
 # 全程覆盖环境 LDFLAGS，避免 make/libtool 重新带上 --undefined-version
-PNG_LDFLAGS="-L$PREFIX/lib -Wl,-rpath,/usr/lib"
+PNG_LDFLAGS="${LDFLAGS_BASE:--L$PREFIX/lib -Wl,-rpath,/usr/lib} -L$PREFIX/lib"
 export LDFLAGS="$PNG_LDFLAGS"
 
 ../configure \

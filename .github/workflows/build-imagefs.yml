@@ -79,8 +79,9 @@ jobs:
             /tmp/imagefs-build/cache/*.tar*
             /tmp/imagefs-build/src
             /tmp/imagefs-build/built-pkgs
-            /tmp/imagefs-build/imagefs
-          key: imagefs-pkgs-${{ runner.os }}-${{ hashFiles('packages/**', 'vendor/**', 'build-all.sh', 'config.sh', 'create-rootfs.sh', 'package-imagefs.sh', 'setup-env.sh') }}
+            /tmp/imagefs-build/staging
+            /tmp/imagefs-build/host
+          key: imagefs-pkgs-${{ runner.os }}-${{ hashFiles('packages/**', 'vendor/**', 'lib/**', 'build-all.sh', 'config.sh', 'create-rootfs.sh', 'package-imagefs.sh', 'setup-env.sh') }}
           restore-keys: |
             imagefs-pkgs-${{ runner.os }}-
 
@@ -91,6 +92,9 @@ jobs:
           key: imagefs-ccache-${{ runner.os }}-${{ github.run_id }}
           restore-keys: |
             imagefs-ccache-${{ runner.os }}-
+
+      - name: Package helper selftest
+        run: bash ci/pkg-selftest.sh
 
       - name: Build imagefs
         run: |
@@ -123,7 +127,7 @@ jobs:
 
       - name: Verify Wine dependency sonames
         run: |
-          export IMAGEFS_RUNTIME_STAGE="$BUILD_DIR/imagefs-runtime-stage"
+          export IMAGEFS_RUNTIME_STAGE="$BUILD_DIR/target"
           bash ci/verify-wine-deps.sh
 
       - name: Collect artifacts
