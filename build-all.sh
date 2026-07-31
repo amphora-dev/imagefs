@@ -116,7 +116,12 @@ FAILED_PACKAGES=()
 
 for package in "${SELECTED_PACKAGES[@]}"; do
     CURRENT=$((CURRENT + 1))
-    PKG_SCRIPT="$SCRIPT_DIR/packages/${package}.sh"
+    PKG_SCRIPT="$(pkg_recipe_path "$package")" || {
+        error "[$CURRENT/$TOTAL] $package: 构建脚本不存在 (packages/*/${package}.sh)"
+        FAILED=$((FAILED + 1))
+        FAILED_PACKAGES+=("$package")
+        continue
+    }
 
     if [ ! -f "$PKG_SCRIPT" ]; then
         error "[$CURRENT/$TOTAL] $package: 构建脚本不存在 ($PKG_SCRIPT)"

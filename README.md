@@ -13,12 +13,21 @@ export ANDROID_NDK_HOME=/path/to/ndk
 ./build-all.sh              # 编译全部包并打包 imagefs.txz
 JOBS=8 ./build-all.sh       # 指定并发
 ./build-all.sh zlib glib    # 构建指定包及其传递依赖
-bash ci/pkg-selftest.sh     # 不编包，只测 DEPENDS / topo / stamp
+bash ci/verify/pkg-selftest.sh   # 不编包，只测 DEPENDS / topo / stamp
 ```
 
 依赖：cmake / meson / autotools / patchelf / ccache / NDK。CI 在 `ubuntu-latest` 上直接装这些工具运行，不再包一层 Docker。
 
 `android-sysvshm` / `alsa-android-aserver` 源码在 [`vendor/winlator-bionic/`](vendor/winlator-bionic/)。
+
+## 目录结构
+
+```text
+ci/{setup,gate,publish,verify,box64}/   # CI 脚本（见 ci/README.md）
+packages/{compress,text,android,x11,…}/ # 配方按类别分目录 + depends.conf
+docs/{analysis,meson,scripts,evidence}/
+lib/pkg.sh                              # DEPENDS / topo / stamp
+```
 
 ## Buildroot-lite 布局
 
@@ -30,7 +39,7 @@ bash ci/pkg-selftest.sh     # 不编包，只测 DEPENDS / topo / stamp
 | `$BUILD_DIR/staging` | 交叉编译 sysroot（headers + libs，增量编译） |
 | `$BUILD_DIR/target` | 运行时 rootfs（裁剪后打包） |
 
-- 依赖：[`packages/depends.conf`](packages/depends.conf) + [`lib/pkg.sh`](lib/pkg.sh) 做传递展开与拓扑排序
+- 依赖：[`packages/depends.conf`](packages/depends.conf) + [`lib/pkg.sh`](lib/pkg.sh) 做传递展开与拓扑排序（配方在 [`packages/`](packages/README.md) 各子目录）
 - 增量：content stamp = 配方脚本 + depends 行 + 依赖 stamp + toolchain fingerprint（改依赖会失效下游）
 - 包脚本仍写 `$PREFIX`（=`staging/usr`），无需逐包大改
 
@@ -50,7 +59,7 @@ https://github.com/amphora-dev/imagefs/releases/download/box64/Box64-<ver>-<sha>
 
 ```bash
 export ANDROID_NDK_HOME=/path/to/ndk
-bash ci/build-box64-wcp.sh
+bash ci/box64/build-wcp.sh
 ```
 
 ## 构建产物
@@ -61,7 +70,7 @@ bash ci/build-box64-wcp.sh
 
 ## 包列表
 
-基础库、X11/Vulkan 垫片、openssl/gnutls、alsa、sdl2、gstreamer、android-spawn/sysv-semaphore/sysvshm。见 `build-all.sh` 的 `ALL_PACKAGES` 与 `packages/depends.conf`。
+基础库、X11/Vulkan 垫片、openssl/gnutls、alsa、sdl2、gstreamer、android-*。见 `build-all.sh` 的 `ALL_PACKAGES`、[`packages/depends.conf`](packages/depends.conf) 与 [`packages/README.md`](packages/README.md)。
 
 ## 关键设计
 

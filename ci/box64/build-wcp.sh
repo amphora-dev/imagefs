@@ -26,7 +26,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 BOX64_REPO="${BOX64_REPO:-https://github.com/ptitSeb/box64.git}"
 BOX64_REF="${BOX64_REF:-}"

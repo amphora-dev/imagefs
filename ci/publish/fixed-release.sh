@@ -2,7 +2,7 @@
 # Create or refresh a fixed-tag GitHub Release and upload assets (clobber).
 #
 # Usage:
-#   ci/publish-fixed-release.sh \
+#   ci/publish/fixed-release.sh \
 #     --tag TAG --title TITLE --body TEXT [--latest] [--] FILE [FILE...]
 #
 # Env:

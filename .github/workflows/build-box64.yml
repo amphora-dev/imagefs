@@ -17,11 +17,13 @@ on:
   push:
     branches: [main]
     paths:
-      - "ci/build-box64-wcp.sh"
-      - "ci/publish-fixed-release.sh"
-      - "ci/prune-release-assets.sh"
+      - "ci/box64/**"
+      - "ci/publish/**"
+      - "ci/gate/box64-build.sh"
+      - "ci/setup/**"
       - "vendor/box64-patches/**"
       - ".github/workflows/build-box64.yml"
+      - ".github/actions/**"
 
 permissions:
   contents: write
@@ -48,7 +50,7 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           REPO: ${{ github.repository }}
           BOX64_REF_INPUT: ${{ inputs.box64_ref || '' }}
-        run: bash ci/gate-box64-build.sh
+        run: bash ci/gate/box64-build.sh
 
       - name: Build WCP
         if: steps.gate.outputs.should_build == 'true'
@@ -56,7 +58,7 @@ jobs:
           BOX64_REF: ${{ steps.gate.outputs.box64_ref }}
         run: |
           mkdir -p "$OUTPUT_DIR" "$BUILD_DIR"
-          bash ci/build-box64-wcp.sh
+          bash ci/box64/build-wcp.sh
           # shellcheck disable=SC1091
           source "$OUTPUT_DIR/box64-wcp.env"
           {
@@ -87,7 +89,7 @@ jobs:
           https://github.com/ptitSeb/box64/commit/${{ env.COMMIT_FULL }}
           EOF
           )
-          bash ci/publish-fixed-release.sh \
+          bash ci/publish/fixed-release.sh \
             --tag box64 \
             --title box64 \
             --body "$BODY" \
@@ -99,7 +101,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
         run: |
-          bash ci/prune-release-assets.sh \
+          bash ci/publish/prune-assets.sh \
             --tag box64 \
             --match 'Box64-*' \
             --keep "${{ env.WCP_NAME }}" "${{ env.WCP_NAME }}.sha256sum"

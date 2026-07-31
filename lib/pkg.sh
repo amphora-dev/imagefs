@@ -7,8 +7,20 @@
 #   - TARGET_DIR   : runtime rootfs that becomes imagefs.txz
 #   - HOST_DIR     : host tools (do not mix into target /usr)
 #   - DEPENDS      : declared in packages/depends.conf
+#   - recipes      : packages/<category>/<name>.sh via pkg_recipe_path
 #   - content stamp: recipe + deps stamps + toolchain fingerprint
 # =============================================================================
+
+# Resolve packages/<category>/<name>.sh (or legacy packages/<name>.sh).
+pkg_recipe_path() {
+    local package="$1"
+    local f="$SCRIPT_DIR/packages/${package}.sh"
+    [ -f "$f" ] && { printf '%s\n' "$f"; return 0; }
+    for f in "$SCRIPT_DIR/packages"/*/"${package}.sh"; do
+        [ -f "$f" ] && { printf '%s\n' "$f"; return 0; }
+    done
+    return 1
+}
 
 # ---- load depends.conf into PKG_DEPS[<name>]="dep1 dep2" ----
 pkg_load_depends() {
@@ -134,12 +146,17 @@ pkg_env_fingerprint() {
 # Content stamp for a package: recipe + depends.conf line + dep stamps + env.
 pkg_content_stamp() {
     local package="$1"
-    local script="$SCRIPT_DIR/packages/${package}.sh"
-    local conf="$SCRIPT_DIR/packages/depends.conf"
+    local script conf
+    script="$(pkg_recipe_path "$package" 2>/dev/null || true)"
+    conf="$SCRIPT_DIR/packages/depends.conf"
     {
         echo "package=$package"
         echo "depends=$(pkg_deps_of "$package")"
-        sha256sum "$script" 2>/dev/null || echo "missing-script"
+        if [ -n "$script" ] && [ -f "$script" ]; then
+            sha256sum "$script"
+        else
+            echo "missing-script"
+        fi
         # Pin depends.conf line for this package (not the whole file — avoids
         # unrelated dep edits busting every stamp).
         grep -E "^${package}[[:space:]]*:" "$conf" 2>/dev/null || true

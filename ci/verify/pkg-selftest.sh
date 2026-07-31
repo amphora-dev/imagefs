@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Smoke-test Buildroot-lite package helpers (no NDK / no compile).
 set -euo pipefail
-SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 # Minimal stubs so config.sh path migration does not touch real build dirs.
 export BUILD_DIR="${BUILD_DIR:-/tmp/imagefs-pkg-selftest}"
 mkdir -p "$BUILD_DIR"
@@ -42,13 +42,13 @@ done
 mapfile -t full < <(pkg_topo_sort "${ALL_PACKAGES[@]}")
 [ "${#full[@]}" -eq "${#ALL_PACKAGES[@]}" ] || fail "full topo size ${#full[@]} != ${#ALL_PACKAGES[@]}"
 
-# Every package in depends.conf must exist as packages/*.sh
+# Every package in depends.conf must exist as packages/*/<name>.sh
 while IFS= read -r line; do
     line="${line%%#*}"; line="$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
     [ -z "$line" ] && continue
     name="${line%%:*}"
     name="$(echo "$name" | sed 's/[[:space:]]*$//')"
-    [ -f "$SCRIPT_DIR/packages/${name}.sh" ] || fail "depends.conf lists missing package script: $name"
+    pkg_recipe_path "$name" >/dev/null || fail "depends.conf lists missing package script: $name"
 done < "$SCRIPT_DIR/packages/depends.conf"
 
 # Stamp is stable for identical inputs

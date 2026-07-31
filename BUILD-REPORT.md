@@ -21,7 +21,7 @@
 >
 > 补齐 Wine 与图形栈的真实依赖（gnutls 链、GStreamer、FFmpeg、zstd、
 > libandroid-shmem）后体积从 18 MB 增到 27.5 MB，仍是官方的约 1/7；解压后约 1/4.7。
-> `ci/verify-wine-deps.sh` 的 30 项必需依赖与 9 项可选依赖全部 OK。
+> `ci/verify/wine-deps.sh` 的 30 项必需依赖与 9 项可选依赖全部 OK。
 >
 > **2026-07-30（Amphora 资产通道拍板 + 清理）**：`wrapper` + adrenotools hooks **不焊进
 > imagefs**，走独立更新通道；Amphora 运行时 hooks 只认 APK `nativeLibraryDir`，
@@ -91,7 +91,7 @@ dlopen `libGL.so.1`，不经过 SDL）。运行期 `libEGL`/`libGLESv2` 也不�
 | `libandroid-shmem.so` | `libGL.so.1`。**与 `libandroid-sysvshm.so` 不是同一个东西**：前者是 Termux 的 ASharedMemory 实现，后者是 winlator 的 socket server 实现，官方 imagefs 里两者并存 |
 
 缺了不会报错，表现是 Vulkan/OpenGL 驱动加载失败即黑屏，所以
-`ci/verify-wine-deps.sh` 现在把整个图形栈的 NEEDED 也纳入断言，并对已判定无消费者
+`ci/verify/wine-deps.sh` 现在把整个图形栈的 NEEDED 也纳入断言，并对已判定无消费者
 的库做反向提示（重新出现时提醒复核）。
 
 ## Wine 依赖对齐 (2026-07-29)
@@ -168,7 +168,7 @@ SONAME 就是 `libavutil.so.59`）。可接受的理由：`DT_NEEDED` 的解析�
 —— **官方那份完整 imagefs 里 `winedmo.so` 本来就加载不了**，而镜像照常可用。这
 正好是 winedmo 属于可选路径的旁证。
 
-这类错配从文件列表上看不出来，所以 `ci/verify-wine-deps.sh` 分「必需 / 可选」两级
+这类错配从文件列表上看不出来，所以 `ci/verify/wine-deps.sh` 分「必需 / 可选」两级
 断言，并打印实测 SONAME，升级 FFmpeg 大版本时会直接失败而不是静默降级。
 
 ### 相比官方省掉了什么

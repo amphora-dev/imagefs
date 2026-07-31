@@ -41,4 +41,4 @@ runs:
         REMOTE_URL: ${{ inputs.remote_url }}
         KIND: ${{ inputs.kind }}
         CONTENT_TYPE: ${{ inputs.content_type }}
-      run: bash ci/bump-content-manifest.sh
+      run: bash ci/publish/bump-manifest.sh

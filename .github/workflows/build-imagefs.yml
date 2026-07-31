@@ -16,7 +16,7 @@ on:
       - "**/*.md"
       - "docs/**"
       - "references/**"
-      - "ci/build-box64-wcp.sh"
+      - "ci/box64/**"
       - "vendor/box64-patches/**"
       - ".github/workflows/build-box64.yml"
   pull_request:
@@ -25,7 +25,7 @@ on:
       - "**/*.md"
       - "docs/**"
       - "references/**"
-      - "ci/build-box64-wcp.sh"
+      - "ci/box64/**"
       - "vendor/box64-patches/**"
       - ".github/workflows/build-box64.yml"
 
@@ -68,7 +68,7 @@ jobs:
           restore-keys: |
             imagefs-ccache-${{ runner.os }}-
 
-      - run: bash ci/pkg-selftest.sh
+      - run: bash ci/verify/pkg-selftest.sh
       - run: |
           mkdir -p "$BUILD_DIR" "$OUTPUT_DIR" "$CCACHE_DIR" artifacts
           ./build-all.sh
@@ -81,7 +81,7 @@ jobs:
           key: imagefs-ccache-${{ runner.os }}-${{ github.run_id }}
 
       - name: Verify artifact
-        run: bash ci/verify-imagefs-artifact.sh
+        run: bash ci/verify/imagefs-artifact.sh
 
       - id: publish
         env:
@@ -90,7 +90,7 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           GIT_REF: ${{ github.ref }}
           REPO: ${{ github.repository }}
-        run: bash ci/gate-imagefs-publish.sh
+        run: bash ci/gate/imagefs-publish.sh
 
       - uses: actions/upload-artifact@v4
         with:
@@ -113,7 +113,7 @@ jobs:
           Box64 ships on Release tag \`box64\`.
           EOF
           )
-          bash ci/publish-fixed-release.sh \
+          bash ci/publish/fixed-release.sh \
             --tag amphora \
             --title amphora \
             --body "$BODY" \
@@ -136,7 +136,7 @@ jobs:
           REPO: ${{ github.repository }}
           TARGET_REF: ${{ github.sha }}
         run: |
-          bash ci/publish-fixed-release.sh \
+          bash ci/publish/fixed-release.sh \
             --tag "${{ github.ref_name }}" \
             --title "${{ github.ref_name }}" \
             --body "winlator bionic imagefs build artifacts" \

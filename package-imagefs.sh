@@ -103,7 +103,7 @@ log "复制 STAGING_DIR → TARGET_DIR..."
 cp -a "$STAGING_DIR"/. "$TARGET_DIR"/
 prune_runtime_rootfs "$TARGET_DIR"
 
-# Back-compat for ci/verify-wine-deps.sh
+# Back-compat for ci/verify/wine-deps.sh
 export IMAGEFS_RUNTIME_STAGE="$TARGET_DIR"
 
 cd "$BUILD_DIR"

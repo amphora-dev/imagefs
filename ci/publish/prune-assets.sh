@@ -2,8 +2,8 @@
 # On a fixed-tag Release, delete assets that are not in the keep list.
 #
 # Usage:
-#   ci/prune-release-assets.sh --tag TAG --keep NAME [--keep NAME ...]
-#   ci/prune-release-assets.sh --tag TAG --keep NAME1 NAME2 ...
+#   ci/publish/prune-assets.sh --tag TAG --keep NAME [--keep NAME ...]
+#   ci/publish/prune-assets.sh --tag TAG --keep NAME1 NAME2 ...
 #   Optional: --match GLOB   only consider assets matching GLOB (default: *)
 #
 # Env: GH_TOKEN, REPO

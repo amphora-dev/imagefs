@@ -26,7 +26,7 @@ if tar -tJf "$OUTPUT_DIR/imagefs.txz" | grep -Eq '^(\./)?usr/include/'; then
 fi
 
 export IMAGEFS_RUNTIME_STAGE="${IMAGEFS_RUNTIME_STAGE:-$BUILD_DIR/target}"
-bash "$SCRIPT_DIR/verify-wine-deps.sh"
+bash "$SCRIPT_DIR/wine-deps.sh"
 
 cp "$OUTPUT_DIR/imagefs.txz" "$OUTPUT_DIR/imagefs.txz.sha256sum" "$ARTIFACTS/"
 ls -lh "$ARTIFACTS"

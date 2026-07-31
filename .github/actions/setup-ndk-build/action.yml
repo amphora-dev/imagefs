@@ -2,7 +2,7 @@ name: Setup NDK build
 description: Install apt deps (leaf|graph) and resolve runner Android NDK
 inputs:
   deps:
-    description: "ci/install-build-deps.sh mode — leaf (single product) or graph (imagefs)"
+    description: "ci/setup/install-build-deps.sh mode — leaf (single product) or graph (imagefs)"
     required: false
     default: graph
 runs:
@@ -10,7 +10,7 @@ runs:
   steps:
     - name: Install build deps
       shell: bash
-      run: bash ci/install-build-deps.sh "${{ inputs.deps }}"
+      run: bash ci/setup/install-build-deps.sh "${{ inputs.deps }}"
     - name: Resolve NDK
       shell: bash
-      run: bash ci/resolve-runner-ndk.sh
+      run: bash ci/setup/resolve-runner-ndk.sh
