@@ -1,0 +1,263 @@
+# Single CI entry: imagefs rootfs + Box64 WCP.
+# No path allowlists — docs-only pushes are ignored; job selection is in
+# ci/detect-ci-jobs.sh (push/PR → imagefs; box64 only if its sources changed,
+# or daily schedule / manual dispatch).
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*", "imagefs-*"]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "references/**"
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "references/**"
+  schedule:
+    - cron: "20 4 * * *"
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Which jobs to run"
+        type: choice
+        options: [auto, imagefs, box64, both]
+        default: auto
+      force_publish:
+        description: "Refresh Release even if artifact SHA unchanged"
+        type: boolean
+        default: false
+      box64_ref:
+        description: "ptitSeb/box64 git ref (empty = main tip)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      imagefs: ${{ steps.d.outputs.imagefs }}
+      box64: ${{ steps.d.outputs.box64 }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: d
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_BEFORE: ${{ github.event.before }}
+          SHA: ${{ github.sha }}
+          TARGET: ${{ inputs.target || 'auto' }}
+          GITHUB_BASE_REF: ${{ github.base_ref }}
+        run: bash ci/detect-ci-jobs.sh
+
+  imagefs:
+    needs: detect
+    if: needs.detect.outputs.imagefs == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      BUILD_DIR: /tmp/imagefs-build
+      OUTPUT_DIR: /tmp/imagefs-output
+      JOBS: "4"
+      CCACHE_DIR: /tmp/imagefs-build/cache/ccache
+      CCACHE_MAXSIZE: 5G
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-ndk-build
+        with:
+          deps: full
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            /tmp/imagefs-build/cache/*.tar*
+            /tmp/imagefs-build/src
+            /tmp/imagefs-build/built-pkgs
+            /tmp/imagefs-build/staging
+            /tmp/imagefs-build/host
+          key: imagefs-pkgs-${{ runner.os }}-${{ hashFiles('packages/**', 'vendor/winlator-bionic/**', 'lib/**', 'build-all.sh', 'config.sh', 'create-rootfs.sh', 'package-imagefs.sh', 'setup-env.sh') }}
+          restore-keys: |
+            imagefs-pkgs-${{ runner.os }}-
+
+      - uses: actions/cache/restore@v4
+        with:
+          path: /tmp/imagefs-build/cache/ccache
+          key: imagefs-ccache-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            imagefs-ccache-${{ runner.os }}-
+
+      - run: bash ci/pkg-selftest.sh
+      - run: |
+          mkdir -p "$BUILD_DIR" "$OUTPUT_DIR" "$CCACHE_DIR" artifacts
+          ./build-all.sh
+      - if: always()
+        run: ccache -s || true
+      - if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: /tmp/imagefs-build/cache/ccache
+          key: imagefs-ccache-${{ runner.os }}-${{ github.run_id }}
+
+      - name: Verify
+        run: |
+          mkdir -p artifacts
+          test -f "$OUTPUT_DIR/imagefs.txz"
+          if tar -tJf "$OUTPUT_DIR/imagefs.txz" | grep -Eq '^(\./)?usr/bin/box64$'; then
+            echo "FAIL: box64 in imagefs.txz" >&2; exit 1
+          fi
+          if tar -tJf "$OUTPUT_DIR/imagefs.txz" | grep -Eq '^(\./)?usr/include/'; then
+            echo "FAIL: usr/include in imagefs.txz" >&2; exit 1
+          fi
+          export IMAGEFS_RUNTIME_STAGE="$BUILD_DIR/target"
+          bash ci/verify-wine-deps.sh
+          cp "$OUTPUT_DIR"/imagefs.txz "$OUTPUT_DIR"/imagefs.txz.sha256sum artifacts/
+          ls -lh artifacts/
+
+      - id: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force_publish || false }}
+          EVENT_NAME: ${{ github.event_name }}
+          GIT_REF: ${{ github.ref }}
+          REPO: ${{ github.repository }}
+        run: bash ci/gate-imagefs-publish.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: imagefs
+          path: artifacts/imagefs.txz*
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish Release amphora
+        if: steps.publish.outputs.should_publish == 'true' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: amphora
+          name: amphora
+          body: Self-built Bionic imagefs (fixed tag). Box64 is Release tag `box64`.
+          files: artifacts/imagefs.txz*
+          fail_on_unmatched_files: true
+          make_latest: true
+
+      - name: Pin content_manifest rootfs
+        if: steps.publish.outputs.should_publish == 'true' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.AMPHORA_REPO_TOKEN }}
+          COMPONENT: rootfs
+          SHA256: ${{ steps.publish.outputs.sha }}
+          SIZE: ${{ steps.publish.outputs.size }}
+        run: bash ci/bump-content-manifest.sh
+
+      - name: Publish tagged Release
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          body: winlator bionic imagefs build artifacts
+          files: artifacts/imagefs.txz*
+          fail_on_unmatched_files: true
+
+  box64:
+    needs: detect
+    if: needs.detect.outputs.box64 == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      OUTPUT_DIR: ${{ github.workspace }}/artifacts
+      BUILD_DIR: /tmp/box64-wcp-build
+      JOBS: "4"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-ndk-build
+        with:
+          deps: box64
+
+      - id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && (inputs.force_publish || false) || false }}
+          EVENT_NAME: ${{ github.event_name }}
+          REPO: ${{ github.repository }}
+          BOX64_REF_INPUT: ${{ inputs.box64_ref || '' }}
+        run: bash ci/gate-box64-build.sh
+
+      - name: Build WCP
+        if: steps.gate.outputs.should_build == 'true'
+        env:
+          BOX64_REF: ${{ steps.gate.outputs.box64_ref }}
+        run: |
+          mkdir -p "$OUTPUT_DIR" "$BUILD_DIR"
+          bash ci/build-box64-wcp.sh
+          # shellcheck disable=SC1091
+          source "$OUTPUT_DIR/box64-wcp.env"
+          {
+            echo "WCP_NAME=$WCP_NAME"
+            echo "FULL_VERSION=$FULL_VERSION"
+            echo "SHA256=$SHA256"
+            echo "SIZE=$SIZE"
+            echo "COMMIT_FULL=$COMMIT_FULL"
+          } >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        if: steps.gate.outputs.should_build == 'true'
+        with:
+          name: box64-wcp
+          path: artifacts/Box64-*
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish Release box64
+        if: steps.gate.outputs.should_build == 'true' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: box64
+          name: box64
+          body: |
+            Box64 `${{ env.FULL_VERSION }}`
+            https://github.com/ptitSeb/box64/commit/${{ env.COMMIT_FULL }}
+          files: |
+            artifacts/${{ env.WCP_NAME }}
+            artifacts/${{ env.WCP_NAME }}.sha256sum
+          fail_on_unmatched_files: true
+          make_latest: false
+
+      - name: Prune old box64 assets
+        if: steps.gate.outputs.should_build == 'true' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KEEP: ${{ env.WCP_NAME }}
+        run: |
+          set -euo pipefail
+          mapfile -t ASSETS < <(gh release view box64 --repo "${{ github.repository }}" \
+            --json assets --jq '.assets[].name')
+          for name in "${ASSETS[@]}"; do
+            case "$name" in
+              "$KEEP"|"${KEEP}.sha256sum") ;;
+              Box64-*.wcp|Box64-*.wcp.sha256sum)
+                gh release delete-asset box64 "$name" --repo "${{ github.repository }}" --yes || true
+                ;;
+            esac
+          done
+
+      - name: Pin content_manifest box64
+        if: steps.gate.outputs.should_build == 'true' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.AMPHORA_REPO_TOKEN }}
+          COMPONENT: box64
+          SHA256: ${{ env.SHA256 }}
+          SIZE: ${{ env.SIZE }}
+          ASSET_PATH: ${{ env.WCP_NAME }}
+          VER_NAME: ${{ env.FULL_VERSION }}
+          REMOTE_URL: https://github.com/${{ github.repository }}/releases/download/box64/${{ env.WCP_NAME }}
+          KIND: WCP
+          CONTENT_TYPE: Box64
+        run: bash ci/bump-content-manifest.sh

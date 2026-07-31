@@ -1,0 +1,16 @@
+name: Setup NDK build
+description: Install apt deps and resolve runner Android NDK
+inputs:
+  deps:
+    description: "ci/install-build-deps.sh mode (full|box64)"
+    required: false
+    default: full
+runs:
+  using: composite
+  steps:
+    - name: Install build deps
+      shell: bash
+      run: bash ci/install-build-deps.sh "${{ inputs.deps }}"
+    - name: Resolve NDK
+      shell: bash
+      run: bash ci/resolve-runner-ndk.sh

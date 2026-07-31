@@ -36,52 +36,29 @@ bash ci/pkg-selftest.sh     # 不编包，只测 DEPENDS / topo / stamp
 
 ## CI / Release
 
-两条流水线，刻意解耦（Box64 更新更频繁，不必重下整份 rootfs）。
-
-共享脚本（避免 workflow 复制粘贴）：
-
-| 脚本 | 作用 |
-|------|------|
-| [`ci/install-build-deps.sh`](ci/install-build-deps.sh) | apt/pip 依赖（`full` / `box64`） |
-| [`ci/resolve-runner-ndk.sh`](ci/resolve-runner-ndk.sh) | 解析 runner / 本机 NDK |
-| [`ci/bump-content-manifest.sh`](ci/bump-content-manifest.sh) | 只 bump `content_manifest` 里指定 component |
-
-
-
-### imagefs rootfs — [`.github/workflows/build-imagefs.yml`](.github/workflows/build-imagefs.yml)
+单一 workflow：[`.github/workflows/ci.yml`](.github/workflows/ci.yml)（两个 job：`imagefs` / `box64`）。
 
 | 触发 | 行为 |
 |------|------|
-| `main` 上改 **rootfs 相关路径**（`packages/` `lib/` `vendor/winlator-bionic/` 构建脚本等） | 完整构建；仅当 `imagefs.txz` SHA **相对已发布 amphora 有变化** 时才刷新 Release **`amphora`** 并 bump `content_manifest.components.rootfs`（打包用固定 mtime/排序，内容不变则 SHA 不变；二进制若因冷编译漂移仍会变） |
-| 只改 README / docs / Box64 流水线 | **不跑**本 workflow（path allowlist） |
-| `workflow_dispatch` | 手动构建；SHA 未变则默认不发布（可勾 `force_publish`） |
-| Pull Request（同上路径） | 仅构建验证 |
-| tag `v*` / `imagefs-*` | 按 tag 名发 Release（tag 提交也需碰 rootfs 路径） |
+| `main` push / PR（忽略 `*.md` / `docs/` / `references/`） | 跑 **imagefs**；产物 SHA 相对已发布 amphora 不变则不刷新 Release / pin |
+| 同上且改了 `ci/build-box64-wcp.sh` 或 `vendor/box64-patches/` | 额外跑 **box64** |
+| 每日 schedule | 只跑 **box64**（上游 tip 已发布则跳过） |
+| `workflow_dispatch` | `target=auto\|imagefs\|box64\|both` |
 
 ```text
 https://github.com/amphora-dev/imagefs/releases/download/amphora/imagefs.txz
-```
-
-### Box64 WCP — [`.github/workflows/build-box64.yml`](.github/workflows/build-box64.yml)
-
-| 触发 | 行为 |
-|------|------|
-| 每日 schedule / `workflow_dispatch` | 编 Bionic `box64`，打 `Box64-<ver>-<sha>.wcp`，覆盖固定标签 Release **`box64`**；只 bump `content_manifest.components.box64` |
-| `main` 上改 `ci/build-box64-wcp.sh` / `vendor/box64-patches/**` | 同上 |
-| 上游 tip 已发布过 | schedule 自动跳过 |
-
-```bash
-# 本地
-export ANDROID_NDK_HOME=/path/to/ndk
-bash ci/build-box64-wcp.sh
-# → artifacts/Box64-0.4.x-<shortsha>.wcp
-```
-
-```text
 https://github.com/amphora-dev/imagefs/releases/download/box64/Box64-<ver>-<sha>.wcp
 ```
 
-CMake 对齐 WinNative Bionic：`-DANDROID=1 -DBIONIC=1 -DARM_DYNAREC=1 -DBAD_SIGNAL=1 -DTERMUX=0`，NDK API **31**（Bionic 提供 inheritsched/mutex protocol；运行时仍只依赖 `libc`/`libm`/`libdl`，与 imagefs API 26 rootfs 共存）。可选应用 [`vendor/box64-patches/pipetto-controller-fix.patch`](vendor/box64-patches/pipetto-controller-fix.patch)。
+```bash
+# 本地 Box64
+export ANDROID_NDK_HOME=/path/to/ndk
+bash ci/build-box64-wcp.sh
+```
+
+共享脚本 / action：`ci/install-build-deps.sh`、`ci/resolve-runner-ndk.sh`、`ci/bump-content-manifest.sh`、`ci/detect-ci-jobs.sh`、`.github/actions/setup-ndk-build`。
+
+CMake 对齐 WinNative Bionic：`-DANDROID=1 -DBIONIC=1 -DARM_DYNAREC=1 -DBAD_SIGNAL=1 -DTERMUX=0`，NDK API **31**。可选 [`vendor/box64-patches/pipetto-controller-fix.patch`](vendor/box64-patches/pipetto-controller-fix.patch)。
 
 ## 构建产物
 
