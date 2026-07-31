@@ -42,9 +42,11 @@ bash ci/pkg-selftest.sh     # 不编包，只测 DEPENDS / topo / stamp
 
 | 触发 | 行为 |
 |------|------|
-| `main` push | 完整构建，覆盖固定标签 Release **`amphora`**；只 bump `content_manifest.components.rootfs` |
-| Pull Request | 仅构建验证 |
-| tag push | 按 tag 名创建 Release |
+| `main` 上改 **rootfs 相关路径**（`packages/` `lib/` `vendor/winlator-bionic/` 构建脚本等） | 完整构建；仅当 `imagefs.txz` SHA **相对已发布 amphora 有变化** 时才刷新 Release **`amphora`** 并 bump `content_manifest.components.rootfs` |
+| 只改 README / docs / Box64 流水线 | **不跑**本 workflow（path allowlist） |
+| `workflow_dispatch` | 手动构建；SHA 未变则默认不发布（可勾 `force_publish`） |
+| Pull Request（同上路径） | 仅构建验证 |
+| tag `v*` / `imagefs-*` | 按 tag 名发 Release（tag 提交也需碰 rootfs 路径） |
 
 ```text
 https://github.com/amphora-dev/imagefs/releases/download/amphora/imagefs.txz
