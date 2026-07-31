@@ -18,7 +18,7 @@
 #                          pthread_attr_*inheritsched / mutexattr_*protocol which
 #                          Bionic exposes at higher APIs. TERMUX=0. imagefs stays
 #                          on API 26; box64 only needs libc/libm/libdl at runtime.)
-#   APPLY_PIPETTO_PATCH    1=apply patches/box64/pipetto-controller-fix.patch
+#   APPLY_PIPETTO_PATCH    1=apply vendor/box64-patches/pipetto-controller-fix.patch
 #   OUTPUT_DIR             default $PWD/artifacts
 #   BUILD_DIR              default /tmp/box64-wcp-build
 #   JOBS                   parallel make jobs (default nproc)
@@ -107,7 +107,7 @@ echo "Building Box64 ${FULL_VERSION} (commit ${COMMIT_FULL})"
 
 # ---- optional WinNative controller / android-spawn wrap patch ----
 if [ "$APPLY_PIPETTO_PATCH" = "1" ]; then
-    PATCH="$REPO_ROOT/patches/box64/pipetto-controller-fix.patch"
+    PATCH="$REPO_ROOT/vendor/box64-patches/pipetto-controller-fix.patch"
     if [ -f "$PATCH" ]; then
         echo "Applying $PATCH"
         # Mailbox series from WinNative; upstream moves fast — fall back cleanly.

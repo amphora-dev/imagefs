@@ -69,7 +69,7 @@ bash ci/build-box64-wcp.sh
 https://github.com/amphora-dev/imagefs/releases/download/box64/Box64-<ver>-<sha>.wcp
 ```
 
-CMake 对齐 WinNative Bionic：`-DANDROID=1 -DBIONIC=1 -DARM_DYNAREC=1 -DBAD_SIGNAL=1 -DTERMUX=0`，NDK API **31**（Bionic 提供 inheritsched/mutex protocol；运行时仍只依赖 `libc`/`libm`/`libdl`，与 imagefs API 26 rootfs 共存）。可选应用 [`patches/box64/pipetto-controller-fix.patch`](patches/box64/pipetto-controller-fix.patch)。
+CMake 对齐 WinNative Bionic：`-DANDROID=1 -DBIONIC=1 -DARM_DYNAREC=1 -DBAD_SIGNAL=1 -DTERMUX=0`，NDK API **31**（Bionic 提供 inheritsched/mutex protocol；运行时仍只依赖 `libc`/`libm`/`libdl`，与 imagefs API 26 rootfs 共存）。可选应用 [`vendor/box64-patches/pipetto-controller-fix.patch`](vendor/box64-patches/pipetto-controller-fix.patch)。
 
 ## 构建产物
 

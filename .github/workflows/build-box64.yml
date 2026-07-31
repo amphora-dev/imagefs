@@ -26,7 +26,7 @@ on:
     branches: [main]
     paths:
       - "ci/build-box64-wcp.sh"
-      - "patches/box64/**"
+      - "vendor/box64-patches/**"
       - ".github/workflows/build-box64.yml"
 
 permissions:
@@ -155,10 +155,7 @@ jobs:
           retention-days: 14
 
       - name: Publish fixed-tag Release (box64)
-        if: >-
-          steps.gate.outputs.should_build == 'true' &&
-          (github.event_name != 'pull_request') &&
-          (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule')
+        if: steps.gate.outputs.should_build == 'true' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: box64
@@ -178,9 +175,7 @@ jobs:
           make_latest: false
 
       - name: Prune older Box64 assets on tag box64
-        if: >-
-          steps.gate.outputs.should_build == 'true' &&
-          (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule')
+        if: steps.gate.outputs.should_build == 'true' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
           KEEP: ${{ env.WCP_NAME }}
@@ -201,9 +196,7 @@ jobs:
           done
 
       - name: Update content_manifest box64 pin
-        if: >-
-          steps.gate.outputs.should_build == 'true' &&
-          (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule')
+        if: steps.gate.outputs.should_build == 'true' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ secrets.AMPHORA_REPO_TOKEN }}
           WCP_NAME: ${{ env.WCP_NAME }}
