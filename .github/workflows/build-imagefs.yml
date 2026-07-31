@@ -31,9 +31,9 @@ permissions:
   contents: write
 
 env:
+  # Paths must match cache steps + package-imagefs/verify defaults in CI.
   BUILD_DIR: /tmp/imagefs-build
   OUTPUT_DIR: /tmp/imagefs-output
-  JOBS: "4"
   CCACHE_DIR: /tmp/imagefs-build/cache/ccache
   CCACHE_MAXSIZE: 5G
 

@@ -25,11 +25,6 @@ on:
 permissions:
   contents: write
 
-env:
-  OUTPUT_DIR: ${{ github.workspace }}/artifacts
-  BUILD_DIR: /tmp/box64-wcp-build
-  JOBS: "4"
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -54,10 +49,9 @@ jobs:
         env:
           BOX64_REF: ${{ steps.gate.outputs.box64_ref }}
         run: |
-          mkdir -p "$OUTPUT_DIR" "$BUILD_DIR"
           bash ci/box64/build-wcp.sh
           # shellcheck disable=SC1091
-          source "$OUTPUT_DIR/box64-wcp.env"
+          source artifacts/box64-wcp.env
           {
             echo "WCP_NAME=$WCP_NAME"
             echo "FULL_VERSION=$FULL_VERSION"
