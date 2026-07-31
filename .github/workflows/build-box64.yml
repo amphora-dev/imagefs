@@ -3,6 +3,7 @@
 # No schedule — run manually or when Box64 sources change.
 name: build-box64
 
+# Auto: only leaf inputs. Shared ci/setup|publish|gate → workflow_dispatch.
 on:
   workflow_dispatch:
     inputs:
@@ -18,12 +19,8 @@ on:
     branches: [main]
     paths:
       - "ci/box64/**"
-      - "ci/publish/**"
-      - "ci/gate/box64-build.sh"
-      - "ci/setup/**"
       - "vendor/box64-patches/**"
       - ".github/workflows/build-box64.yml"
-      - ".github/actions/**"
 
 permissions:
   contents: write

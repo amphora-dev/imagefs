@@ -49,8 +49,8 @@ lib/pkg.sh                              # DEPENDS / topo / stamp
 
 | Workflow | 触发 | 产物 |
 |----------|------|------|
-| [`build-imagefs.yml`](.github/workflows/build-imagefs.yml) | push/PR（ignore 文档与 box64）、手动、tag | `amphora` → pin `rootfs` |
-| [`build-box64.yml`](.github/workflows/build-box64.yml) | 改 box64 源、手动（无 schedule） | `box64` → pin `box64` |
+| [`build-imagefs.yml`](.github/workflows/build-imagefs.yml) | 改 packages/lib/vendor/root `*.sh`；或手动 | `amphora` → pin `rootfs` |
+| [`build-box64.yml`](.github/workflows/build-box64.yml) | 改 `ci/box64` / patches；或手动 | `box64` → pin `box64` |
 
 ```text
 https://github.com/amphora-dev/imagefs/releases/download/amphora/imagefs.txz

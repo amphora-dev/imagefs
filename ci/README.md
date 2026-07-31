@@ -35,5 +35,12 @@ Do **not** split `packages/*` into per-package Actions jobs. Incremental rebuild
 
 ## Triggers
 
-- **imagefs:** push/PR with paths-ignore for docs + leaf sources; `workflow_dispatch`; tags
-- **box64:** push on leaf sources only; `workflow_dispatch` (no schedule)
+Only **positive** `paths:` (no `paths-ignore`). Anything else → **Actions → Run workflow**.
+
+| Workflow | Auto (`push` / `pull_request`) | Manual |
+|----------|--------------------------------|--------|
+| imagefs | `packages/**` `lib/**` `vendor/winlator-bionic/**` `*.sh` (repo root) + own workflow file | `workflow_dispatch` (`force_publish`) |
+| box64 | `ci/box64/**` `vendor/box64-patches/**` + own workflow file | `workflow_dispatch` (`box64_ref` / `force`) |
+
+Not on the allow-list (docs, `ci/setup|gate|publish|verify`, actions, README): edit freely; rebuild when you need it via dispatch.
+No schedule. Fixed Release tags remain `amphora` / `box64` (not git version tags).

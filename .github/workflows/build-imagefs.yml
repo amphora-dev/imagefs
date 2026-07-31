@@ -2,6 +2,7 @@
 # Contracts: ci/README.md
 name: build-imagefs
 
+# Auto: only graph inputs. Docs / ci plumbing / box64 → workflow_dispatch.
 on:
   workflow_dispatch:
     inputs:
@@ -11,23 +12,20 @@ on:
         default: false
   push:
     branches: [main]
-    tags: ["v*", "imagefs-*"]
-    paths-ignore:
-      - "**/*.md"
-      - "docs/**"
-      - "references/**"
-      - "ci/box64/**"
-      - "vendor/box64-patches/**"
-      - ".github/workflows/build-box64.yml"
+    paths:
+      - "packages/**"
+      - "lib/**"
+      - "vendor/winlator-bionic/**"
+      - "*.sh"
+      - ".github/workflows/build-imagefs.yml"
   pull_request:
     branches: [main]
-    paths-ignore:
-      - "**/*.md"
-      - "docs/**"
-      - "references/**"
-      - "ci/box64/**"
-      - "vendor/box64-patches/**"
-      - ".github/workflows/build-box64.yml"
+    paths:
+      - "packages/**"
+      - "lib/**"
+      - "vendor/winlator-bionic/**"
+      - "*.sh"
+      - ".github/workflows/build-imagefs.yml"
 
 permissions:
   contents: write
@@ -128,16 +126,3 @@ jobs:
           sha256: ${{ steps.publish.outputs.sha }}
           size: ${{ steps.publish.outputs.size }}
           token: ${{ secrets.AMPHORA_REPO_TOKEN }}
-
-      - name: Publish tagged Release
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          TARGET_REF: ${{ github.sha }}
-        run: |
-          bash ci/publish/fixed-release.sh \
-            --tag "${{ github.ref_name }}" \
-            --title "${{ github.ref_name }}" \
-            --body "winlator bionic imagefs build artifacts" \
-            -- artifacts/imagefs.txz artifacts/imagefs.txz.sha256sum
