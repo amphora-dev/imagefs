@@ -1,0 +1,140 @@
+# Build imagefs.txz → Release tag `amphora` → content_manifest.rootfs
+# Shared setup: .github/actions/setup-ndk-build + ci/*.sh
+
+name: build-imagefs
+
+on:
+  workflow_dispatch:
+    inputs:
+      force_publish:
+        description: "Refresh Release amphora even if SHA matches published asset"
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    tags: ["v*", "imagefs-*"]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "references/**"
+      - "ci/build-box64-wcp.sh"
+      - "vendor/box64-patches/**"
+      - ".github/workflows/build-box64.yml"
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "references/**"
+      - "ci/build-box64-wcp.sh"
+      - "vendor/box64-patches/**"
+      - ".github/workflows/build-box64.yml"
+
+permissions:
+  contents: write
+
+env:
+  BUILD_DIR: /tmp/imagefs-build
+  OUTPUT_DIR: /tmp/imagefs-output
+  JOBS: "4"
+  CCACHE_DIR: /tmp/imagefs-build/cache/ccache
+  CCACHE_MAXSIZE: 5G
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-ndk-build
+        with:
+          deps: full
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            /tmp/imagefs-build/cache/*.tar*
+            /tmp/imagefs-build/src
+            /tmp/imagefs-build/built-pkgs
+            /tmp/imagefs-build/staging
+            /tmp/imagefs-build/host
+          key: imagefs-pkgs-${{ runner.os }}-${{ hashFiles('packages/**', 'vendor/winlator-bionic/**', 'lib/**', 'build-all.sh', 'config.sh', 'create-rootfs.sh', 'package-imagefs.sh', 'setup-env.sh') }}
+          restore-keys: |
+            imagefs-pkgs-${{ runner.os }}-
+
+      - uses: actions/cache/restore@v4
+        with:
+          path: /tmp/imagefs-build/cache/ccache
+          key: imagefs-ccache-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            imagefs-ccache-${{ runner.os }}-
+
+      - run: bash ci/pkg-selftest.sh
+      - run: |
+          mkdir -p "$BUILD_DIR" "$OUTPUT_DIR" "$CCACHE_DIR" artifacts
+          ./build-all.sh
+      - if: always()
+        run: ccache -s || true
+      - if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: /tmp/imagefs-build/cache/ccache
+          key: imagefs-ccache-${{ runner.os }}-${{ github.run_id }}
+
+      - name: Verify
+        run: |
+          mkdir -p artifacts
+          test -f "$OUTPUT_DIR/imagefs.txz"
+          if tar -tJf "$OUTPUT_DIR/imagefs.txz" | grep -Eq '^(\./)?usr/bin/box64$'; then
+            echo "FAIL: box64 in imagefs.txz" >&2; exit 1
+          fi
+          if tar -tJf "$OUTPUT_DIR/imagefs.txz" | grep -Eq '^(\./)?usr/include/'; then
+            echo "FAIL: usr/include in imagefs.txz" >&2; exit 1
+          fi
+          export IMAGEFS_RUNTIME_STAGE="$BUILD_DIR/target"
+          bash ci/verify-wine-deps.sh
+          cp "$OUTPUT_DIR"/imagefs.txz "$OUTPUT_DIR"/imagefs.txz.sha256sum artifacts/
+
+      - id: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force_publish || false }}
+          EVENT_NAME: ${{ github.event_name }}
+          GIT_REF: ${{ github.ref }}
+          REPO: ${{ github.repository }}
+        run: bash ci/gate-imagefs-publish.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: imagefs
+          path: artifacts/imagefs.txz*
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish Release amphora
+        if: steps.publish.outputs.should_publish == 'true' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: amphora
+          name: amphora
+          body: Self-built Bionic imagefs (fixed tag). Box64 is Release tag `box64`.
+          files: artifacts/imagefs.txz*
+          fail_on_unmatched_files: true
+          make_latest: true
+
+      - name: Pin content_manifest rootfs
+        if: steps.publish.outputs.should_publish == 'true' && github.ref == 'refs/heads/main'
+        uses: ./.github/actions/bump-manifest
+        with:
+          component: rootfs
+          sha256: ${{ steps.publish.outputs.sha }}
+          size: ${{ steps.publish.outputs.size }}
+          token: ${{ secrets.AMPHORA_REPO_TOKEN }}
+
+      - name: Publish tagged Release
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          body: winlator bionic imagefs build artifacts
+          files: artifacts/imagefs.txz*
+          fail_on_unmatched_files: true

@@ -1,0 +1,122 @@
+# Build Box64-*.wcp → Release tag `box64` → content_manifest.box64
+# Shared setup: .github/actions/setup-ndk-build + ci/*.sh
+# No schedule — run manually or when Box64 sources change.
+
+name: build-box64
+
+on:
+  workflow_dispatch:
+    inputs:
+      box64_ref:
+        description: "ptitSeb/box64 git ref (empty = main tip)"
+        required: false
+        default: ""
+      force:
+        description: "Build even if this commit was already published"
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    paths:
+      - "ci/build-box64-wcp.sh"
+      - "vendor/box64-patches/**"
+      - ".github/workflows/build-box64.yml"
+
+permissions:
+  contents: write
+
+env:
+  OUTPUT_DIR: ${{ github.workspace }}/artifacts
+  BUILD_DIR: /tmp/box64-wcp-build
+  JOBS: "4"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-ndk-build
+        with:
+          deps: box64
+
+      - id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force || false }}
+          EVENT_NAME: ${{ github.event_name }}
+          REPO: ${{ github.repository }}
+          BOX64_REF_INPUT: ${{ inputs.box64_ref || '' }}
+        run: bash ci/gate-box64-build.sh
+
+      - name: Build WCP
+        if: steps.gate.outputs.should_build == 'true'
+        env:
+          BOX64_REF: ${{ steps.gate.outputs.box64_ref }}
+        run: |
+          mkdir -p "$OUTPUT_DIR" "$BUILD_DIR"
+          bash ci/build-box64-wcp.sh
+          # shellcheck disable=SC1091
+          source "$OUTPUT_DIR/box64-wcp.env"
+          {
+            echo "WCP_NAME=$WCP_NAME"
+            echo "FULL_VERSION=$FULL_VERSION"
+            echo "SHA256=$SHA256"
+            echo "SIZE=$SIZE"
+            echo "COMMIT_FULL=$COMMIT_FULL"
+          } >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        if: steps.gate.outputs.should_build == 'true'
+        with:
+          name: box64-wcp
+          path: artifacts/Box64-*
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish Release box64
+        if: steps.gate.outputs.should_build == 'true' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: box64
+          name: box64
+          body: |
+            Box64 `${{ env.FULL_VERSION }}`
+            https://github.com/ptitSeb/box64/commit/${{ env.COMMIT_FULL }}
+          files: |
+            artifacts/${{ env.WCP_NAME }}
+            artifacts/${{ env.WCP_NAME }}.sha256sum
+          fail_on_unmatched_files: true
+          make_latest: false
+
+      - name: Prune old box64 assets
+        if: steps.gate.outputs.should_build == 'true' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KEEP: ${{ env.WCP_NAME }}
+        run: |
+          set -euo pipefail
+          mapfile -t ASSETS < <(gh release view box64 --repo "${{ github.repository }}" \
+            --json assets --jq '.assets[].name')
+          for name in "${ASSETS[@]}"; do
+            case "$name" in
+              "$KEEP"|"${KEEP}.sha256sum") ;;
+              Box64-*.wcp|Box64-*.wcp.sha256sum)
+                gh release delete-asset box64 "$name" --repo "${{ github.repository }}" --yes || true
+                ;;
+            esac
+          done
+
+      - name: Pin content_manifest box64
+        if: steps.gate.outputs.should_build == 'true' && github.ref == 'refs/heads/main'
+        uses: ./.github/actions/bump-manifest
+        with:
+          component: box64
+          sha256: ${{ env.SHA256 }}
+          size: ${{ env.SIZE }}
+          asset_path: ${{ env.WCP_NAME }}
+          ver_name: ${{ env.FULL_VERSION }}
+          remote_url: https://github.com/${{ github.repository }}/releases/download/box64/${{ env.WCP_NAME }}
+          kind: WCP
+          content_type: Box64
+          token: ${{ secrets.AMPHORA_REPO_TOKEN }}

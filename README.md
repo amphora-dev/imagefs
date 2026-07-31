@@ -36,14 +36,22 @@ bash ci/pkg-selftest.sh     # 不编包，只测 DEPENDS / topo / stamp
 
 ## CI / Release
 
-单一 workflow：[`.github/workflows/ci.yml`](.github/workflows/ci.yml)（两个 job：`imagefs` / `box64`）。
+两个独立 workflow，共享 **composite actions** + `ci/*.sh`（GitHub 的本地复用方式，不是合成一个 yaml）：
 
-| 触发 | 行为 |
+| Workflow | 触发 | 产物 |
+|----------|------|------|
+| [`build-imagefs.yml`](.github/workflows/build-imagefs.yml) | `main` push/PR（`paths-ignore` 文档与 box64 源）、`workflow_dispatch`、tag `v*`/`imagefs-*` | Release **`amphora`** → pin `rootfs` |
+| [`build-box64.yml`](.github/workflows/build-box64.yml) | 改 box64 源 / `workflow_dispatch`（**无**每日 schedule） | Release **`box64`** → pin `box64` |
+
+共享：
+
+| 路径 | 作用 |
 |------|------|
-| `main` push / PR（忽略 `*.md` / `docs/` / `references/`） | 跑 **imagefs**；产物 SHA 相对已发布 amphora 不变则不刷新 Release / pin |
-| 同上且改了 `ci/build-box64-wcp.sh` 或 `vendor/box64-patches/` | 额外跑 **box64** |
-| 每日 schedule | 只跑 **box64**（上游 tip 已发布则跳过） |
-| `workflow_dispatch` | `target=auto\|imagefs\|box64\|both` |
+| [`.github/actions/setup-ndk-build`](.github/actions/setup-ndk-build) | apt 依赖 + 解析 NDK |
+| [`.github/actions/bump-manifest`](.github/actions/bump-manifest) | bump `content_manifest` 某一 component |
+| `ci/gate-*.sh` / `ci/build-box64-wcp.sh` / … | 门闩与构建逻辑 |
+
+imagefs 发布仍看产物 SHA；内容不变则不刷新 Release / pin。
 
 ```text
 https://github.com/amphora-dev/imagefs/releases/download/amphora/imagefs.txz
@@ -55,8 +63,6 @@ https://github.com/amphora-dev/imagefs/releases/download/box64/Box64-<ver>-<sha>
 export ANDROID_NDK_HOME=/path/to/ndk
 bash ci/build-box64-wcp.sh
 ```
-
-共享脚本 / action：`ci/install-build-deps.sh`、`ci/resolve-runner-ndk.sh`、`ci/bump-content-manifest.sh`、`ci/detect-ci-jobs.sh`、`.github/actions/setup-ndk-build`。
 
 CMake 对齐 WinNative Bionic：`-DANDROID=1 -DBIONIC=1 -DARM_DYNAREC=1 -DBAD_SIGNAL=1 -DTERMUX=0`，NDK API **31**。可选 [`vendor/box64-patches/pipetto-controller-fix.patch`](vendor/box64-patches/pipetto-controller-fix.patch)。
 
