@@ -7,7 +7,7 @@ winlator bionic fork 的 imagefs 根文件系统完整构建系统。目标架�
 ## 快速开始
 
 ```bash
-# 可选：指向本机 NDK（CI 用 GitHub runner 自带的，不必下载）
+# 可选：指向本机 NDK（CI 用 GitHub runner 自带的）
 export ANDROID_NDK_HOME=/path/to/ndk
 
 ./build-all.sh              # 编译全部包并打包 imagefs.txz
@@ -15,18 +15,9 @@ JOBS=8 ./build-all.sh       # 指定并发
 ./build-all.sh zlib glib    # 仅构建指定包
 ```
 
-CI 环境见 [`ci/Dockerfile`](ci/Dockerfile)；本地也可：
+依赖：cmake / meson / autotools / patchelf / ccache / NDK。CI 在 `ubuntu-latest` 上直接装这些工具运行，不再包一层 Docker。
 
-```bash
-docker build -f ci/Dockerfile -t imagefs-ci ci
-docker run --rm -it \
-  -v "$PWD:/workspace" \
-  -v "$ANDROID_NDK_HOME:$ANDROID_NDK_HOME:ro" \
-  -e ANDROID_NDK_HOME \
-  imagefs-ci ./build-all.sh
-```
-
-`android-sysvshm` / `alsa-android-aserver` 源码在 [`vendor/winlator-bionic/`](vendor/winlator-bionic/)（无需再 clone winlator）。
+`android-sysvshm` / `alsa-android-aserver` 源码在 [`vendor/winlator-bionic/`](vendor/winlator-bionic/)。
 
 ## CI / Release
 
