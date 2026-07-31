@@ -36,24 +36,12 @@ bash ci/pkg-selftest.sh     # 不编包，只测 DEPENDS / topo / stamp
 
 ## CI / Release
 
-分层（推荐做法，**不要**把 `depends.conf` 里每个包拆成独立 GHA job）：
-
-| 层 | 机制 | 例子 |
-|----|------|------|
-| **L0 工具** | composite action + `ci/*.sh` | `setup-ndk-build`（`leaf`/`graph`）、`bump-manifest` |
-| **L1 leaf** | 独立 workflow；上游少、产物单一 | [`build-box64.yml`](.github/workflows/build-box64.yml) → Release `box64` |
-| **L2 graph** | 独立 workflow；仓内多包拓扑 | [`build-imagefs.yml`](.github/workflows/build-imagefs.yml) → Release `amphora` |
-
-- **leaf**：几乎无仓内依赖（Box64 自带源码 + NDK），触发面小（改 `ci/build-box64-wcp.sh` / patch / 手动）。
-- **graph**：`packages/` + `depends.conf` 增量；触发忽略文档与 leaf 源即可。包级增量在 **同一次 job** 里靠 content stamp，不必每包一个 Actions job（否则要在 job 间传整个 staging，又慢又脆）。
-- 以后若再加 DXVK/VKD3D 一类 leaf：复制 `build-box64.yml` 模式，或再抽 `workflow_call` 复用；**≥2 个同类 leaf 时**再上 reusable workflow 才划算。
+分层（L0 脚本 / L1 leaf Box64 / L2 graph imagefs）、固定 Release tag、pin 约定见 **[`ci/README.md`](ci/README.md)**。不要把 `depends.conf` 拆成每包一个 GHA job。
 
 | Workflow | 触发 | 产物 |
 |----------|------|------|
-| `build-imagefs.yml` | push/PR（ignore 文档与 box64 源）、手动、tag | `amphora` → pin `rootfs` |
-| `build-box64.yml` | 改 box64 源、手动（无 schedule） | `box64` → pin `box64` |
-
-imagefs 发布仍看产物 SHA；内容不变则不刷新 Release / pin。
+| [`build-imagefs.yml`](.github/workflows/build-imagefs.yml) | push/PR（ignore 文档与 box64）、手动、tag | `amphora` → pin `rootfs` |
+| [`build-box64.yml`](.github/workflows/build-box64.yml) | 改 box64 源、手动（无 schedule） | `box64` → pin `box64` |
 
 ```text
 https://github.com/amphora-dev/imagefs/releases/download/amphora/imagefs.txz
@@ -61,12 +49,9 @@ https://github.com/amphora-dev/imagefs/releases/download/box64/Box64-<ver>-<sha>
 ```
 
 ```bash
-# 本地 Box64
 export ANDROID_NDK_HOME=/path/to/ndk
 bash ci/build-box64-wcp.sh
 ```
-
-CMake 对齐 WinNative Bionic：`-DANDROID=1 -DBIONIC=1 -DARM_DYNAREC=1 -DBAD_SIGNAL=1 -DTERMUX=0`，NDK API **31**。可选 [`vendor/box64-patches/pipetto-controller-fix.patch`](vendor/box64-patches/pipetto-controller-fix.patch)。
 
 ## 构建产物
 

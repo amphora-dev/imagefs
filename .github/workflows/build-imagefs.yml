@@ -1,6 +1,5 @@
 # Build imagefs.txz → Release tag `amphora` → content_manifest.rootfs
-# Shared setup: .github/actions/setup-ndk-build + ci/*.sh
-
+# Contracts: ci/README.md
 name: build-imagefs
 
 on:
@@ -81,19 +80,8 @@ jobs:
           path: /tmp/imagefs-build/cache/ccache
           key: imagefs-ccache-${{ runner.os }}-${{ github.run_id }}
 
-      - name: Verify
-        run: |
-          mkdir -p artifacts
-          test -f "$OUTPUT_DIR/imagefs.txz"
-          if tar -tJf "$OUTPUT_DIR/imagefs.txz" | grep -Eq '^(\./)?usr/bin/box64$'; then
-            echo "FAIL: box64 in imagefs.txz" >&2; exit 1
-          fi
-          if tar -tJf "$OUTPUT_DIR/imagefs.txz" | grep -Eq '^(\./)?usr/include/'; then
-            echo "FAIL: usr/include in imagefs.txz" >&2; exit 1
-          fi
-          export IMAGEFS_RUNTIME_STAGE="$BUILD_DIR/target"
-          bash ci/verify-wine-deps.sh
-          cp "$OUTPUT_DIR"/imagefs.txz "$OUTPUT_DIR"/imagefs.txz.sha256sum artifacts/
+      - name: Verify artifact
+        run: bash ci/verify-imagefs-artifact.sh
 
       - id: publish
         env:
@@ -113,14 +101,24 @@ jobs:
 
       - name: Publish Release amphora
         if: steps.publish.outputs.should_publish == 'true' && github.ref == 'refs/heads/main'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: amphora
-          name: amphora
-          body: Self-built Bionic imagefs (fixed tag). Box64 is Release tag `box64`.
-          files: artifacts/imagefs.txz*
-          fail_on_unmatched_files: true
-          make_latest: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TARGET_REF: ${{ github.sha }}
+        run: |
+          BODY=$(cat <<EOF
+          Self-built Bionic imagefs (fixed tag \`amphora\`).
+          Commit: \`${{ github.sha }}\`
+          SHA-256: \`${{ steps.publish.outputs.sha }}\`
+          Box64 ships on Release tag \`box64\`.
+          EOF
+          )
+          bash ci/publish-fixed-release.sh \
+            --tag amphora \
+            --title amphora \
+            --body "$BODY" \
+            --latest \
+            -- artifacts/imagefs.txz artifacts/imagefs.txz.sha256sum
 
       - name: Pin content_manifest rootfs
         if: steps.publish.outputs.should_publish == 'true' && github.ref == 'refs/heads/main'
@@ -133,8 +131,13 @@ jobs:
 
       - name: Publish tagged Release
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          body: winlator bionic imagefs build artifacts
-          files: artifacts/imagefs.txz*
-          fail_on_unmatched_files: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TARGET_REF: ${{ github.sha }}
+        run: |
+          bash ci/publish-fixed-release.sh \
+            --tag "${{ github.ref_name }}" \
+            --title "${{ github.ref_name }}" \
+            --body "winlator bionic imagefs build artifacts" \
+            -- artifacts/imagefs.txz artifacts/imagefs.txz.sha256sum

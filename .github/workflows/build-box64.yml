@@ -1,7 +1,6 @@
 # Build Box64-*.wcp → Release tag `box64` → content_manifest.box64
-# Shared setup: .github/actions/setup-ndk-build + ci/*.sh
+# Contracts: ci/README.md
 # No schedule — run manually or when Box64 sources change.
-
 name: build-box64
 
 on:
@@ -19,6 +18,8 @@ on:
     branches: [main]
     paths:
       - "ci/build-box64-wcp.sh"
+      - "ci/publish-fixed-release.sh"
+      - "ci/prune-release-assets.sh"
       - "vendor/box64-patches/**"
       - ".github/workflows/build-box64.yml"
 
@@ -76,36 +77,32 @@ jobs:
 
       - name: Publish Release box64
         if: steps.gate.outputs.should_build == 'true' && github.ref == 'refs/heads/main'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: box64
-          name: box64
-          body: |
-            Box64 `${{ env.FULL_VERSION }}`
-            https://github.com/ptitSeb/box64/commit/${{ env.COMMIT_FULL }}
-          files: |
-            artifacts/${{ env.WCP_NAME }}
-            artifacts/${{ env.WCP_NAME }}.sha256sum
-          fail_on_unmatched_files: true
-          make_latest: false
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TARGET_REF: ${{ github.sha }}
+        run: |
+          BODY=$(cat <<EOF
+          Box64 \`${{ env.FULL_VERSION }}\`
+          https://github.com/ptitSeb/box64/commit/${{ env.COMMIT_FULL }}
+          EOF
+          )
+          bash ci/publish-fixed-release.sh \
+            --tag box64 \
+            --title box64 \
+            --body "$BODY" \
+            -- "artifacts/${{ env.WCP_NAME }}" "artifacts/${{ env.WCP_NAME }}.sha256sum"
 
       - name: Prune old box64 assets
         if: steps.gate.outputs.should_build == 'true' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
-          KEEP: ${{ env.WCP_NAME }}
+          REPO: ${{ github.repository }}
         run: |
-          set -euo pipefail
-          mapfile -t ASSETS < <(gh release view box64 --repo "${{ github.repository }}" \
-            --json assets --jq '.assets[].name')
-          for name in "${ASSETS[@]}"; do
-            case "$name" in
-              "$KEEP"|"${KEEP}.sha256sum") ;;
-              Box64-*.wcp|Box64-*.wcp.sha256sum)
-                gh release delete-asset box64 "$name" --repo "${{ github.repository }}" --yes || true
-                ;;
-            esac
-          done
+          bash ci/prune-release-assets.sh \
+            --tag box64 \
+            --match 'Box64-*' \
+            --keep "${{ env.WCP_NAME }}" "${{ env.WCP_NAME }}.sha256sum"
 
       - name: Pin content_manifest box64
         if: steps.gate.outputs.should_build == 'true' && github.ref == 'refs/heads/main'
