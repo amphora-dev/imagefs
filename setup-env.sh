@@ -62,6 +62,12 @@ fi
 
 # ---- 2. 交叉编译工具链 ----
 export PATH="$TC/bin:$PATH"
+
+# Host-usable scripts installed into the staging prefix (glib-mkenums,
+# glib-compile-resources, …) must be on PATH for meson find_program() during
+# later packages (gst-plugins-base). Cross-compiled ELF bins in the same dir
+# are not executed on the build machine.
+export PATH="$PREFIX/bin:$HOST_DIR/bin:$PATH"
 REAL_CC="$TC/bin/${ARCH}-linux-android${ANDROID_API}-clang"
 REAL_CXX="$TC/bin/${ARCH}-linux-android${ANDROID_API}-clang++"
 export AR="$TC/bin/llvm-ar"
