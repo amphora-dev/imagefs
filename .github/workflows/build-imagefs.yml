@@ -161,23 +161,23 @@ jobs:
           fail_on_unmatched_files: true
           make_latest: true
 
-      # Push rootfs pin into amphora-dev/amphora so devices pick it up via the
-      # remote content_manifest.json (no APK rebuild / no amphora APK CI).
-      - name: Update amphora content_manifest rootfs pin
+      # Push rootfs pin into amphora-dev/content_manifest so devices pick it up
+      # via the remote content_manifest.json (no APK rebuild / no amphora CI).
+      - name: Update content_manifest rootfs pin
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ secrets.AMPHORA_REPO_TOKEN }}
         run: |
           set -euo pipefail
           if [ -z "${GH_TOKEN:-}" ]; then
-            echo "WARN: AMPHORA_REPO_TOKEN not set; skip amphora manifest pin update" >&2
+            echo "WARN: AMPHORA_REPO_TOKEN not set; skip content_manifest pin update" >&2
             exit 0
           fi
           SHA="$(awk '{print $1}' artifacts/imagefs.txz.sha256sum)"
           SIZE="$(stat -c%s artifacts/imagefs.txz)"
           WORK="$(mktemp -d)"
-          git clone --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/amphora-dev/amphora.git" "$WORK/amphora"
-          MANIFEST="$WORK/amphora/core/content/content_manifest.json"
+          git clone --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/amphora-dev/content_manifest.git" "$WORK/content_manifest"
+          MANIFEST="$WORK/content_manifest/content_manifest.json"
           test -f "$MANIFEST"
           python3 - "$MANIFEST" "$SHA" "$SIZE" <<'PY'
           import json, sys
@@ -189,7 +189,7 @@ jobs:
           old_ver = int(str(rootfs.get("version", "0")))
           if old_sha == sha and int(rootfs.get("size") or 0) == size:
               print("rootfs pin already up to date; nothing to commit")
-              open("/tmp/amphora-pin-skip", "w").write("1")
+              open("/tmp/content-manifest-pin-skip", "w").write("1")
               raise SystemExit(0)
           rootfs["sha256"] = sha
           rootfs["size"] = size
@@ -199,16 +199,16 @@ jobs:
               f.write("\n")
           print(f"bumped rootfs pin v{old_ver} -> v{old_ver + 1} sha={sha} size={size}")
           PY
-          if [ -f /tmp/amphora-pin-skip ]; then
+          if [ -f /tmp/content-manifest-pin-skip ]; then
             exit 0
           fi
-          cd "$WORK/amphora"
+          cd "$WORK/content_manifest"
           git config user.name "imagefs-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add core/content/content_manifest.json
-          NEW_VER="$(python3 -c 'import json;print(json.load(open("core/content/content_manifest.json"))["components"]["rootfs"]["version"])')"
+          git add content_manifest.json
+          NEW_VER="$(python3 -c 'import json;print(json.load(open("content_manifest.json"))["components"]["rootfs"]["version"])')"
           git commit -m "$(cat <<EOF
-          chore(content): pin imagefs rootfs v${NEW_VER} [skip ci]
+          chore: pin imagefs rootfs v${NEW_VER}
 
           Published by amphora-dev/imagefs CI after Release amphora refresh.
           EOF
