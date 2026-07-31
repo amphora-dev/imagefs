@@ -36,23 +36,45 @@ bash ci/pkg-selftest.sh     # 不编包，只测 DEPENDS / topo / stamp
 
 ## CI / Release
 
-GitHub Actions（[`.github/workflows/build-imagefs.yml`](.github/workflows/build-imagefs.yml)）：
+两条流水线，刻意解耦（Box64 更新更频繁，不必重下整份 rootfs）：
+
+### imagefs rootfs — [`.github/workflows/build-imagefs.yml`](.github/workflows/build-imagefs.yml)
 
 | 触发 | 行为 |
 |------|------|
-| `main` push | 完整构建，覆盖固定标签 Release **`amphora`**；成功后 bump [`amphora-dev/content_manifest`](https://github.com/amphora-dev/content_manifest) |
+| `main` push | 完整构建，覆盖固定标签 Release **`amphora`**；只 bump `content_manifest.components.rootfs` |
 | Pull Request | 仅构建验证 |
 | tag push | 按 tag 名创建 Release |
 
 ```text
 https://github.com/amphora-dev/imagefs/releases/download/amphora/imagefs.txz
-https://github.com/amphora-dev/imagefs/releases/download/amphora/imagefs.txz.sha256sum
 ```
+
+### Box64 WCP — [`.github/workflows/build-box64.yml`](.github/workflows/build-box64.yml)
+
+| 触发 | 行为 |
+|------|------|
+| 每日 schedule / `workflow_dispatch` | 编 Bionic `box64`，打 `Box64-<ver>-<sha>.wcp`，覆盖固定标签 Release **`box64`**；只 bump `content_manifest.components.box64` |
+| `main` 上改 `ci/build-box64-wcp.sh` / `patches/box64/**` | 同上 |
+| 上游 tip 已发布过 | schedule 自动跳过 |
+
+```bash
+# 本地
+export ANDROID_NDK_HOME=/path/to/ndk
+bash ci/build-box64-wcp.sh
+# → artifacts/Box64-0.4.x-<shortsha>.wcp
+```
+
+```text
+https://github.com/amphora-dev/imagefs/releases/download/box64/Box64-<ver>-<sha>.wcp
+```
+
+CMake 对齐 WinNative Bionic：`-DANDROID=1 -DBIONIC=1 -DARM_DYNAREC=1 -DBAD_SIGNAL=1 -DTERMUX=0`，NDK API **31**（Bionic 提供 inheritsched/mutex protocol；运行时仍只依赖 `libc`/`libm`/`libdl`，与 imagefs API 26 rootfs 共存）。可选应用 [`patches/box64/pipetto-controller-fix.patch`](patches/box64/pipetto-controller-fix.patch)。
 
 ## 构建产物
 
-- `imagefs.txz` — 运行时 rootfs（已裁剪 headers / 静态库 / man / glvnd / 多余 bin）
-- Box64 不进本仓库（Amphora `Box64.wcp`）
+- `imagefs.txz` — 运行时 rootfs（已裁剪 headers / 静态库 / man / glvnd / 多余 bin）；**不含** box64
+- `Box64-*.wcp` — 独立模拟器包（xz tar + `profile.json`），由 Amphora `ContentsManager` 装到 `${bindir}/box64`
 - 音频：ALSA + android_aserver（无 pulseaudio）
 
 ## 包列表

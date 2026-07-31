@@ -157,8 +157,9 @@ jobs:
           body: |
             Self-built Bionic imagefs (fixed tag — overwritten on every main build).
 
-            ALSA-only audio path; Box64 via WCP. Wine sonames asserted by
-            `ci/verify-wine-deps.sh`.
+            ALSA-only audio path. Box64 is NOT in this archive — see Release tag
+            `box64` / workflow `build-box64` (separate pin in content_manifest).
+            Wine sonames asserted by `ci/verify-wine-deps.sh`.
           files: |
             artifacts/imagefs.txz
             artifacts/imagefs.txz.sha256sum
