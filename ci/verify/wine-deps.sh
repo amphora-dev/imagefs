@@ -150,6 +150,35 @@ for entry in "${optional[@]}"; do
   fi
 done
 
+section "ELF LOAD 段页对齐同余 (patchelf 事后改写会破坏)"
+# p_vaddr 与 p_offset 必须模页大小同余, 否则设备把 .dynstr 映射到错位置:
+# 运行期按 DT_STRTAB 读出的 verneed/verdef 名字变成乱码 (真实事故:
+# libpng 被 patchelf --set-soname 后报 cannot find "_chunk_fn" from verneed[0],
+# 连累 libfreetype 加载失败 → Wine 无字体 → 窗口全白)。
+# readelf 走 section header 看不出来, 只有真机 dlopen 会炸, 所以在这里断言。
+load_segments_congruent() {
+  # readelf -lW: "LOAD  0x031508 0x0000000000040000 ..." → (vaddr - offset) % page
+  local off va
+  while read -r off va; do
+    [ -n "$off" ] || continue
+    (( ((va - off) % 4096) == 0 )) || return 1
+  done < <(readelf -lW "$1" 2>/dev/null | awk '$1 == "LOAD" { print $2, $3 }')
+  return 0
+}
+
+misaligned=0
+while IFS= read -r so; do
+  if ! load_segments_congruent "$so"; then
+    echo "  BAD     $(basename "$so") — LOAD p_vaddr/p_offset 不同余" >&2
+    misaligned=$((misaligned + 1))
+  fi
+done < <(find "$LIB" -name '*.so*' -type f 2>/dev/null)
+if [ "$misaligned" -ne 0 ]; then
+  fail=1
+else
+  echo "  OK      所有 .so 的 LOAD 段同余"
+fi
+
 section "已判定无消费者的库 (若出现说明被重新引入)"
 extra=0
 for name in "${unused[@]}"; do
