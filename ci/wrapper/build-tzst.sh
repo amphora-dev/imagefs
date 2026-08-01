@@ -11,6 +11,18 @@
 # Do NOT mix Termux headers with foreign libs — that produced runtime
 # VK_ERROR_INCOMPATIBLE_DRIVER (-9) in earlier experiments.
 #
+# Link / pack profile (must match a working Termux-style ICD):
+#   - -D__TERMUX__ + patch 0003 → DETECT_OS_ANDROID off (no stub DT_NEEDED)
+#   - never pack android-stub libcutils/liblog/libsync into usr/lib
+#   - self-build libadrenotools + hooks from Mesa subproject (pinned revision;
+#     keep C++ exceptions enabled in the cross file — -fno-exceptions produced
+#     a broken hook vintage and guest adrenotools_open_libvulkan failures)
+#
+# Link profile must match Termux/official wrapper ICDs:
+#   - -D__TERMUX__ + patch 0003 → DETECT_OS_ANDROID off (no stub DT_NEEDED)
+#   - pack vendor/adrenotools-prebuilt (not NDK-cross subproject hooks)
+#   - never pack android-stub libcutils/liblog/libsync into usr/lib
+#
 # Output (under $OUTPUT_DIR):
 #   wrapper-<mesa_shortsha>.tzst
 #   wrapper-<mesa_shortsha>.tzst.sha256sum
@@ -18,6 +30,7 @@
 #
 # Env:
 #   MESA_REF / MESA_REPO / MESA_SRC
+#   ADRENOTOOLS_REF  pin for subprojects/libadrenotools.wrap (default 8483dfd…)
 #   ANDROID_NDK_HOME   required
 #   WRAPPER_API        NDK API for mesa compile (default 30 — memfd_create)
 #   BUILD_DIR          default /tmp/imagefs-build (shared staging with graph)
@@ -45,6 +58,8 @@ BUILD_DIR="${BUILD_DIR:-/tmp/imagefs-build}"
 SKIP_STAGING="${SKIP_STAGING:-0}"
 JOBS="${JOBS:-$(nproc)}"
 WORKDIR="${WORKDIR:-$BUILD_DIR/wrapper-mesa}"
+# Pin Pipetto libadrenotools (mesa wrap defaults to HEAD). Override with full SHA.
+ADRENOTOOLS_REF="${ADRENOTOOLS_REF:-8483dfdaa2abf97ee89ad0e5f337e7b508550c6b}"
 
 # Runtime RPATH matches imagefs packaging style; Amphora also sets LD_LIBRARY_PATH.
 RPATH_USR="/usr/lib"
@@ -183,6 +198,24 @@ if t2 != t:
     p.write_text(t2)
     print("stripped -Werror=gnu-empty-initializer from meson.build trial lists")
 PY
+  # Pin libadrenotools wrap (upstream uses revision=HEAD).
+  local wrap="$MESA_SRC/subprojects/libadrenotools.wrap"
+  [[ -f "$wrap" ]] || {
+    echo "FAIL: missing $wrap" >&2
+    exit 1
+  }
+  python3 - <<PY
+from pathlib import Path
+p = Path("$wrap")
+lines = []
+for line in p.read_text().splitlines(True):
+    if line.startswith("revision"):
+        lines.append("revision = $ADRENOTOOLS_REF\n")
+    else:
+        lines.append(line)
+p.write_text("".join(lines))
+print(f"pinned libadrenotools.wrap revision=$ADRENOTOOLS_REF")
+PY
 }
 
 write_cross_files() {
@@ -222,23 +255,27 @@ write_cross_files() {
 [binaries]
 ar = '$tc/bin/llvm-ar'
 c = ['ccache', '$clang']
-cpp = ['ccache', '$clangxx', '-fno-exceptions', '-fno-unwind-tables', '-fno-asynchronous-unwind-tables']
+# Keep exceptions for C++ subprojects (libadrenotools); mesa C++ files are fine with them.
+cpp = ['ccache', '$clangxx']
 c_ld = '$tc/bin/ld.lld'
 cpp_ld = '$tc/bin/ld.lld'
 strip = '$tc/bin/llvm-strip'
 pkg-config = 'pkg-config'
 
 [built-in options]
-# __TERMUX__ unlocks Pipetto AHardwareBuffer / X11 WSI fields.
+# __TERMUX__ unlocks Pipetto AHardwareBuffer / X11 WSI fields and (with patch
+# 0003) keeps DETECT_OS_ANDROID off so we do not DT_NEEDED android-stub libs.
 c_args = ['-I$prefix/include', '-Wno-error', '-D__USE_GNU', '-D__TERMUX__']
 cpp_args = ['-I$prefix/include', '-Wno-error', '-D__USE_GNU', '-D__TERMUX__']
-c_link_args = ['-L$prefix/lib', '-landroid-sysvshm', '-lc++_shared', '-Wl,-rpath,$RPATH_USR']
-cpp_link_args = ['-L$prefix/lib', '-landroid-sysvshm', '-lc++_shared', '-Wl,-rpath,$RPATH_USR']
+c_link_args = ['-L$prefix/lib', '-landroid-sysvshm', '-lc++_shared', '-Wl,-rpath,$RPATH_USR', '-Wl,--as-needed']
+cpp_link_args = ['-L$prefix/lib', '-landroid-sysvshm', '-lc++_shared', '-Wl,-rpath,$RPATH_USR', '-Wl,--as-needed']
 
 [host_machine]
-system = 'android'
+# Termux-style: NDK clang triple is still aarch64-linux-android*, but meson
+# host system is linux (platforms=x11, not android).
+system = 'linux'
 cpu_family = 'aarch64'
-cpu = 'armv8'
+cpu = 'aarch64'
 endian = 'little'
 
 [properties]
@@ -353,30 +390,36 @@ pack_tzst() {
   normalize_needed "$stage/usr/lib/libvulkan_wrapper.so"
   patchelf --set-rpath "$RPATH_USR" "$stage/usr/lib/libvulkan_wrapper.so"
 
-  # adrenotools (+ hooks) from subproject — match official wrapper.tzst layout.
+  # Drop android-stub DT_NEEDED if the linker still recorded them. Official /
+  # Termux ICDs never ship stub libcutils/liblog/libsync in imagefs — those
+  # names must resolve from /system (or not appear at all).
+  local stub
+  for stub in libcutils.so liblog.so libsync.so libhardware.so; do
+    if readelf -d "$stage/usr/lib/libvulkan_wrapper.so" | awk -F'[][]' '/NEEDED/{print $2}' | grep -qx "$stub"; then
+      echo "patchelf --remove-needed $stub (android-stub must not ship in imagefs)"
+      patchelf --remove-needed "$stub" "$stage/usr/lib/libvulkan_wrapper.so"
+    fi
+  done
+  # libnativewindow.so is real on /system; keep NEEDED, do not pack a stub.
+
+  # Self-built adrenotools (+ hooks) from the Mesa subproject — same vintage as
+  # each other. Guest ADRENOTOOLS_HOOKS_PATH is imagefs usr/lib.
   local adreno="$builddir/subprojects/libadrenotools/libadrenotools.so"
-  if [[ -f "$adreno" ]]; then
-    cp -a "$adreno" "$stage/usr/lib/"
-    patchelf --set-rpath "$RPATH_USR" "$stage/usr/lib/libadrenotools.so" 2>/dev/null || true
-  else
-    echo "FAIL: libadrenotools.so missing from subproject" >&2
+  [[ -f "$adreno" ]] || {
+    echo "FAIL: libadrenotools.so missing from subproject build" >&2
     exit 1
-  fi
+  }
+  "$tc/bin/llvm-strip" --strip-unneeded "$adreno" -o "$stage/usr/lib/libadrenotools.so"
+  patchelf --set-rpath "$RPATH_USR" "$stage/usr/lib/libadrenotools.so" 2>/dev/null || true
   local h f
   for h in main_hook file_redirect_hook gsl_alloc_hook hook_impl; do
     f="$(find "$builddir/subprojects/libadrenotools" -name "lib${h}.so" 2>/dev/null | head -1 || true)"
-    [[ -n "$f" ]] && cp -a "$f" "$stage/usr/lib/"
-  done
-
-  # Android stubs only if the ICD NEEDED them (NDK android-stub link).
-  local needed
-  needed="$(readelf -d "$stage/usr/lib/libvulkan_wrapper.so" | awk -F'[][]' '/NEEDED/{print $2}')"
-  for s in libcutils liblog libnativewindow libsync libhardware; do
-    if echo "$needed" | grep -qx "${s}.so"; then
-      if [[ -f "$builddir/src/android_stub/${s}.so" ]]; then
-        cp -a "$builddir/src/android_stub/${s}.so" "$stage/usr/lib/"
-      fi
-    fi
+    [[ -n "$f" && -f "$f" ]] || {
+      echo "FAIL: missing self-built hook lib${h}.so" >&2
+      exit 1
+    }
+    "$tc/bin/llvm-strip" --strip-unneeded "$f" -o "$stage/usr/lib/lib${h}.so"
+    patchelf --set-rpath "$RPATH_USR" "$stage/usr/lib/lib${h}.so" 2>/dev/null || true
   done
 
   python3 - <<PY
@@ -387,7 +430,9 @@ json.dump(d, open("$stage/usr/share/vulkan/icd.d/wrapper_icd.aarch64.json", "w")
 print("ICD api:", d.get("ICD", {}).get("api_version"))
 PY
 
-  # Sanity: unversioned xcb + expected leaf deps.
+  local needed
+  needed="$(readelf -d "$stage/usr/lib/libvulkan_wrapper.so" | awk -F'[][]' '/NEEDED/{print $2}')"
+  # Sanity: unversioned xcb + expected leaf deps; no android stubs.
   echo "NEEDED: $needed"
   echo "$needed" | grep -qx 'libandroid-sysvshm.so' || {
     echo "FAIL: expected NEEDED libandroid-sysvshm.so" >&2
@@ -401,6 +446,23 @@ PY
     echo "FAIL: versioned libxcb still in NEEDED" >&2
     exit 1
   }
+  echo "$needed" | grep -qx 'libadrenotools.so' || {
+    echo "FAIL: expected NEEDED libadrenotools.so" >&2
+    exit 1
+  }
+  for stub in libcutils.so liblog.so libsync.so libhardware.so; do
+    echo "$needed" | grep -qx "$stub" && {
+      echo "FAIL: android-stub $stub still in NEEDED (would shadow /system in imagefs)" >&2
+      exit 1
+    }
+  done
+  # Refuse to pack stub .so files into usr/lib.
+  for stub in libcutils.so liblog.so libsync.so libhardware.so; do
+    [[ -e "$stage/usr/lib/$stub" ]] && {
+      echo "FAIL: refusing to pack android-stub $stub into tzst" >&2
+      exit 1
+    }
+  done
 
   mkdir -p "$OUTPUT_DIR"
   local out="$OUTPUT_DIR/$TZST_NAME"
@@ -421,6 +483,7 @@ FULL_VERSION=${FULL_VERSION}
 COMMIT_FULL=${COMMIT_FULL}
 COMMIT_SHORT=${COMMIT_SHORT}
 MESA_REF=${MESA_REF}
+ADRENOTOOLS_REF=${ADRENOTOOLS_REF}
 TZST_NAME=${TZST_NAME}
 SHA256=${SHA256}
 SIZE=${SIZE}
