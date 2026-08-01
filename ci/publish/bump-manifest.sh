@@ -1,15 +1,21 @@
 #!/usr/bin/env bash
-# Bump one component pin in amphora-dev/content_manifest and push to main.
+# Bump one pin in amphora-dev/content_manifest and push to main.
+#
+# A pin lives in exactly one of two places, and the caller says which:
+#   COMPONENT=<name>          components.<name>   — resolved by ContentSource
+#   RUNTIME_ASSET=<assetPath> runtimeAssets[]     — provisioned by
+#                                                   RuntimeAssetProvisioner into
+#                                                   filesDir/runtime-assets/
 #
 # Required env:
 #   GH_TOKEN              — PAT with write access to content_manifest
-#   COMPONENT             — e.g. rootfs | box64
+#   COMPONENT | RUNTIME_ASSET  (exactly one)
 #   SHA256                — artifact sha256
 #   SIZE                  — artifact size in bytes
 #
-# Optional env (box64 / versioned assets):
-#   ASSET_PATH            — e.g. Box64-0.4.3-abc.wcp (defaults unchanged)
-#   VER_NAME              — e.g. 0.4.3-abc
+# Optional env:
+#   ASSET_PATH            — components.<name>.assetPath (e.g. Box64-0.4.3-abc.wcp)
+#   VER_NAME              — e.g. 0.4.3-abc; also used in the commit subject
 #   REMOTE_URL            — full download URL
 #   KIND / CONTENT_TYPE   — defaults: ROOTFS for rootfs, WCP/Box64 for box64
 #   COMMIT_SUBJECT        — override commit title body first line
@@ -21,9 +27,17 @@ if [ -z "${GH_TOKEN:-}" ]; then
   exit 0
 fi
 
-: "${COMPONENT:?COMPONENT required}"
 : "${SHA256:?SHA256 required}"
 : "${SIZE:?SIZE required}"
+
+if [ -n "${COMPONENT:-}" ] && [ -n "${RUNTIME_ASSET:-}" ]; then
+  echo "FAIL: set COMPONENT or RUNTIME_ASSET, not both" >&2
+  exit 1
+fi
+if [ -z "${COMPONENT:-}" ] && [ -z "${RUNTIME_ASSET:-}" ]; then
+  echo "FAIL: one of COMPONENT / RUNTIME_ASSET is required" >&2
+  exit 1
+fi
 
 BOT_NAME="${BOT_NAME:-imagefs-bot}"
 BOT_EMAIL="${BOT_EMAIL:-41898282+github-actions[bot]@users.noreply.github.com}"
@@ -40,7 +54,8 @@ python3 - "$MANIFEST" <<'PY'
 import json, os, sys
 
 path = sys.argv[1]
-component = os.environ["COMPONENT"]
+component = os.environ.get("COMPONENT") or None
+runtime_asset = os.environ.get("RUNTIME_ASSET") or None
 sha = os.environ["SHA256"]
 size = int(os.environ["SIZE"])
 asset = os.environ.get("ASSET_PATH") or None
@@ -52,89 +67,72 @@ content_type = os.environ.get("CONTENT_TYPE") or None
 with open(path, encoding="utf-8") as f:
     data = json.load(f)
 
-entry = data["components"][component]
-same = entry.get("sha256") == sha and int(entry.get("size") or 0) == size
-if asset is not None:
-    same = same and entry.get("assetPath") == asset
-if remote is not None:
-    same = same and entry.get("remoteUrl") == remote
 
-# Amphora installs ARCHIVE wrappers via RuntimeAssetProvisioner from
-# runtimeAssets[] (TarCompressorUtils reads filesDir/runtime-assets/<assetPath>).
-# components.turnip is the UI/pin; both must stay in sync or the device keeps
-# the stale WinNative blob even after components.* is bumped.
-runtime_synced = True
-target_asset = asset or entry.get("assetPath")
-if target_asset and isinstance(data.get("runtimeAssets"), list):
-    for ra in data["runtimeAssets"]:
-        if ra.get("assetPath") != target_asset:
-            continue
-        if (
-            ra.get("sha256") != sha
-            or int(ra.get("size") or 0) != size
-            or (remote is not None and ra.get("remoteUrl") != remote)
-        ):
-            runtime_synced = False
-        break
-
-if same and runtime_synced:
-    print(f"{component} pin already up to date; nothing to commit")
+def skip(message):
+    print(message)
     open("/tmp/content-manifest-pin-skip", "w").write("1")
     raise SystemExit(0)
 
-entry["sha256"] = sha
-entry["size"] = size
-if asset is not None:
-    entry["assetPath"] = asset
-if remote is not None:
-    entry["remoteUrl"] = remote
-if kind is not None:
-    entry["kind"] = kind
-if content_type is not None:
-    entry["contentType"] = content_type
 
-if component == "rootfs":
-    old_ver = int(str(entry.get("version", "0")))
-    entry["version"] = str(old_ver + 1)
-    print(f"bumped rootfs pin v{old_ver} -> v{old_ver + 1} sha={sha} size={size}")
-elif component == "box64":
-    if ver_name is None:
-        raise SystemExit("VER_NAME required for box64")
-    entry["verName"] = ver_name
-    entry["verCode"] = int(os.environ.get("VER_CODE") or 0)
-    entry["version"] = f"Box64-{ver_name}-{entry['verCode']}"
-    entry.setdefault("kind", "WCP")
-    entry.setdefault("contentType", "Box64")
-    print(f"bumped box64 pin -> {entry.get('assetPath')} sha={sha} size={size}")
-elif component == "turnip":
-    # turnip pin = Pipetto vulkan wrapper.tzst (ARCHIVE), not freedreno Turnip.
-    entry.setdefault("kind", "ARCHIVE")
-    entry.setdefault("compression", "zstd")
-    entry.setdefault("assetPath", "graphics_driver/wrapper.tzst")
-    if ver_name is not None:
-        entry["version"] = ver_name
-    print(f"bumped turnip(wrapper) pin -> {entry.get('assetPath')} sha={sha} size={size}")
+if runtime_asset is not None:
+    entries = data.get("runtimeAssets")
+    if not isinstance(entries, list):
+        raise SystemExit("manifest has no runtimeAssets[]")
+    entry = next((e for e in entries if e.get("assetPath") == runtime_asset), None)
+    if entry is None:
+        raise SystemExit(f"runtimeAssets[] has no entry for {runtime_asset}")
+
+    unchanged = entry.get("sha256") == sha and int(entry.get("size") or 0) == size
+    if remote is not None:
+        unchanged = unchanged and entry.get("remoteUrl") == remote
+    if unchanged:
+        skip(f"{runtime_asset} pin already up to date; nothing to commit")
+
+    entry["sha256"] = sha
+    entry["size"] = size
+    if remote is not None:
+        entry["remoteUrl"] = remote
+    print(f"bumped runtimeAssets[{runtime_asset}] sha={sha} size={size}")
 else:
-    if ver_name is not None:
-        entry["verName"] = ver_name
-        entry["version"] = ver_name
-    print(f"bumped {component} pin sha={sha} size={size}")
+    entry = data["components"][component]
 
-# Keep runtimeAssets[] twin in sync for the same assetPath (wrapper.tzst, …).
-if target_asset and isinstance(data.get("runtimeAssets"), list):
-    for ra in data["runtimeAssets"]:
-        if ra.get("assetPath") != target_asset:
-            continue
-        old = (ra.get("sha256"), ra.get("size"), ra.get("remoteUrl"))
-        ra["sha256"] = sha
-        ra["size"] = size
-        if remote is not None:
-            ra["remoteUrl"] = remote
-        print(
-            f"synced runtimeAssets[{target_asset}] "
-            f"{old} -> {(ra.get('sha256'), ra.get('size'), ra.get('remoteUrl'))}"
-        )
-        break
+    unchanged = entry.get("sha256") == sha and int(entry.get("size") or 0) == size
+    if asset is not None:
+        unchanged = unchanged and entry.get("assetPath") == asset
+    if remote is not None:
+        unchanged = unchanged and entry.get("remoteUrl") == remote
+    if unchanged:
+        skip(f"{component} pin already up to date; nothing to commit")
+
+    entry["sha256"] = sha
+    entry["size"] = size
+    if asset is not None:
+        entry["assetPath"] = asset
+    if remote is not None:
+        entry["remoteUrl"] = remote
+    if kind is not None:
+        entry["kind"] = kind
+    if content_type is not None:
+        entry["contentType"] = content_type
+
+    if component == "rootfs":
+        old_ver = int(str(entry.get("version", "0")))
+        entry["version"] = str(old_ver + 1)
+        print(f"bumped rootfs pin v{old_ver} -> v{old_ver + 1} sha={sha} size={size}")
+    elif component == "box64":
+        if ver_name is None:
+            raise SystemExit("VER_NAME required for box64")
+        entry["verName"] = ver_name
+        entry["verCode"] = int(os.environ.get("VER_CODE") or 0)
+        entry["version"] = f"Box64-{ver_name}-{entry['verCode']}"
+        entry.setdefault("kind", "WCP")
+        entry.setdefault("contentType", "Box64")
+        print(f"bumped box64 pin -> {entry.get('assetPath')} sha={sha} size={size}")
+    else:
+        if ver_name is not None:
+            entry["verName"] = ver_name
+            entry["version"] = ver_name
+        print(f"bumped {component} pin sha={sha} size={size}")
 
 with open(path, "w", encoding="utf-8") as f:
     json.dump(data, f, indent=2)
@@ -152,13 +150,13 @@ git add content_manifest.json
 
 if [ -n "${COMMIT_SUBJECT:-}" ]; then
   SUBJECT="$COMMIT_SUBJECT"
+elif [ -n "${RUNTIME_ASSET:-}" ]; then
+  SUBJECT="chore: pin ${RUNTIME_ASSET##*/} ${VER_NAME:-$SHA256}"
 elif [ "$COMPONENT" = "rootfs" ]; then
   NEW_VER="$(python3 -c 'import json;print(json.load(open("content_manifest.json"))["components"]["rootfs"]["version"])')"
   SUBJECT="chore: pin imagefs rootfs v${NEW_VER}"
 elif [ "$COMPONENT" = "box64" ]; then
   SUBJECT="chore: pin Box64 ${VER_NAME}"
-elif [ "$COMPONENT" = "turnip" ]; then
-  SUBJECT="chore: pin wrapper ${VER_NAME:-tzst}"
 else
   SUBJECT="chore: pin ${COMPONENT}"
 fi

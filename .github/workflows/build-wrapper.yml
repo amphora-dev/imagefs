@@ -148,15 +148,16 @@ jobs:
             --match 'wrapper-*' \
             --keep "${{ env.TZST_NAME }}" "${{ env.TZST_NAME }}.sha256sum"
 
-      - name: Pin content_manifest turnip
+      # The wrapper is a runtimeAssets[] pin: Amphora provisions it into
+      # filesDir/runtime-assets/ and the kernel reads it from there. It used to
+      # be mirrored into components.turnip as well, which nothing resolved.
+      - name: Pin content_manifest wrapper.tzst
         if: steps.gate.outputs.should_build == 'true' && github.ref == 'refs/heads/main'
         uses: ./.github/actions/bump-manifest
         with:
-          component: turnip
+          runtime_asset: graphics_driver/wrapper.tzst
           sha256: ${{ env.SHA256 }}
           size: ${{ env.SIZE }}
-          asset_path: graphics_driver/wrapper.tzst
           ver_name: ${{ env.FULL_VERSION }}
           remote_url: https://github.com/${{ github.repository }}/releases/download/wrapper/${{ env.TZST_NAME }}
-          kind: ARCHIVE
           token: ${{ secrets.AMPHORA_REPO_TOKEN }}

@@ -1,9 +1,14 @@
 name: Bump content_manifest pin
-description: Update one component pin in amphora-dev/content_manifest
+description: Update one pin in amphora-dev/content_manifest
 inputs:
   component:
-    description: "components.<name> key (rootfs, box64, …)"
-    required: true
+    description: "components.<name> key (rootfs, box64, …). Mutually exclusive with runtime_asset."
+    required: false
+    default: ""
+  runtime_asset:
+    description: "runtimeAssets[].assetPath (e.g. graphics_driver/wrapper.tzst). Mutually exclusive with component."
+    required: false
+    default: ""
   sha256:
     required: true
   size:
@@ -34,6 +39,7 @@ runs:
       env:
         GH_TOKEN: ${{ inputs.token }}
         COMPONENT: ${{ inputs.component }}
+        RUNTIME_ASSET: ${{ inputs.runtime_asset }}
         SHA256: ${{ inputs.sha256 }}
         SIZE: ${{ inputs.size }}
         ASSET_PATH: ${{ inputs.asset_path }}

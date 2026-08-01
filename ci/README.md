@@ -42,7 +42,7 @@ L1 **wrapper** reuses the graph's staging sysroot (subset of packages) but publi
 - Pin via `.github/actions/bump-manifest` → `ci/publish/bump-manifest.sh`
 - imagefs: skip when artifact SHA == published amphora (`ci/gate/imagefs-publish.sh`)
 - box64: skip when tip shortsha already on tag (`ci/gate/box64-build.sh`), then prune (`ci/publish/prune-assets.sh`)
-- wrapper: skip when mesa shortsha already on tag (`ci/gate/wrapper-build.sh`), then prune; pins **`content_manifest.components.turnip`** *and* the matching **`runtimeAssets[]`** entry for `graphics_driver/wrapper.tzst` (Amphora installs from the latter via `RuntimeAssetProvisioner`). Same Mesa shortsha with a recipe fix: merge to `main` (push always rebuilds) or `workflow_dispatch` with **force**; Release upload `--clobber`s `wrapper-<shortsha>.tzst`.
+- wrapper: skip when mesa shortsha already on tag (`ci/gate/wrapper-build.sh`), then prune; pins the **`runtimeAssets[]`** entry for `graphics_driver/wrapper.tzst` — that is the one Amphora installs from, via `RuntimeAssetProvisioner`. (It used to be mirrored into `components.turnip` too; nothing resolved that copy and the two drifted, so it is gone.) Same Mesa shortsha with a recipe fix: merge to `main` (push always rebuilds) or `workflow_dispatch` with **force**; Release upload `--clobber`s `wrapper-<shortsha>.tzst`.
 - Local device inject (keeps `runtime-assets` + `imagefs` + `contents/adrenotools/wrapper` pins in sync, and arms Amphora `.local-override`): `bash ci/wrapper/push-device.sh artifacts/wrapper-*.tzst`
 - Clear override (resume remote pin): `bash ci/wrapper/push-device.sh --clear`
 
