@@ -5,7 +5,7 @@
 set -euo pipefail
 source "$(dirname "$0")/../config.sh"
 
-VENDOR="$(cd "$(dirname "$0")/../vendor/winlator-bionic/android_sysvshm" && pwd)"
+VENDOR="$(cd "$(dirname "$0")/../../vendor/winlator-bionic/android_sysvshm" && pwd)"
 SRC_FILE="$VENDOR/android_sysvshm.c"
 
 if [ ! -f "$SRC_FILE" ]; then
