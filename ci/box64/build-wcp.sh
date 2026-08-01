@@ -38,34 +38,8 @@ JOBS="${JOBS:-$(nproc)}"
 SRC_DIR="$BUILD_DIR/src"
 CMAKE_BUILD="$BUILD_DIR/cmake-build"
 
-resolve_ndk() {
-    local cand pick=""
-    for cand in \
-        "${ANDROID_NDK_HOME:-}" \
-        "${ANDROID_NDK_ROOT:-}" \
-        "${ANDROID_NDK_LATEST_HOME:-}" \
-        "${ANDROID_NDK:-}"; do
-        if [ -n "$cand" ] && [ -x "$cand/toolchains/llvm/prebuilt/linux-x86_64/bin/clang" ]; then
-            pick="$cand"
-            break
-        fi
-    done
-    if [ -z "$pick" ] && [ -d "${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}/ndk" ]; then
-        pick="$(ls -d "${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}"/ndk/* 2>/dev/null | sort -V | tail -1 || true)"
-    fi
-    if [ -z "$pick" ] && [ -d /opt/android-sdk/ndk ]; then
-        pick="$(ls -d /opt/android-sdk/ndk/* 2>/dev/null | sort -V | tail -1 || true)"
-    fi
-    if [ -z "$pick" ] || [ ! -x "$pick/toolchains/llvm/prebuilt/linux-x86_64/bin/clang" ]; then
-        echo "FAIL: no usable Android NDK (set ANDROID_NDK_HOME)" >&2
-        exit 1
-    fi
-    export ANDROID_NDK_HOME="$pick"
-    export ANDROID_NDK_ROOT="$pick"
-    echo "Using NDK: $ANDROID_NDK_HOME"
-}
-
-resolve_ndk
+source "$REPO_ROOT/lib/ndk.sh"
+ndk_require
 
 TC="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64"
 CC_BIN="$TC/bin/aarch64-linux-android${ANDROID_API}-clang"

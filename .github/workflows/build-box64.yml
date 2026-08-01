@@ -19,6 +19,7 @@ on:
     branches: [main]
     paths:
       - "ci/box64/**"
+      - "lib/ndk.sh"
       - "vendor/box64-patches/**"
       - ".github/workflows/build-box64.yml"
 

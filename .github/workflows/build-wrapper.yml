@@ -24,6 +24,7 @@ on:
     paths:
       - "ci/wrapper/**"
       - "ci/gate/wrapper-build.sh"
+      - "lib/ndk.sh"
       - "vendor/wrapper-patches/**"
       - "packages/x11/**"
       - "packages/graphics/libdrm.sh"

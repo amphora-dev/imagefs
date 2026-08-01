@@ -67,29 +67,7 @@ WRAPPER_STAGING_PKGS=(
   libdrm
 )
 
-resolve_ndk() {
-  local cand pick=""
-  for cand in \
-    "${ANDROID_NDK_HOME:-}" \
-    "${ANDROID_NDK_ROOT:-}" \
-    "${ANDROID_NDK_LATEST_HOME:-}" \
-    "${ANDROID_NDK:-}"; do
-    if [ -n "$cand" ] && [ -x "$cand/toolchains/llvm/prebuilt/linux-x86_64/bin/clang" ]; then
-      pick="$cand"
-      break
-    fi
-  done
-  if [ -z "$pick" ] && [ -d "${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}/ndk" ]; then
-    pick="$(ls -d "${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}"/ndk/* 2>/dev/null | sort -V | tail -1 || true)"
-  fi
-  if [ -z "$pick" ] || [ ! -x "$pick/toolchains/llvm/prebuilt/linux-x86_64/bin/clang" ]; then
-    echo "FAIL: no usable Android NDK (set ANDROID_NDK_HOME)" >&2
-    exit 1
-  fi
-  export ANDROID_NDK_HOME="$pick"
-  export ANDROID_NDK_ROOT="$pick"
-  echo "Using NDK: $ANDROID_NDK_HOME"
-}
+source "$REPO_ROOT/lib/ndk.sh"
 
 need() { command -v "$1" >/dev/null 2>&1 || { echo "FAIL: missing $1" >&2; exit 1; }; }
 
@@ -453,7 +431,7 @@ EOF
 }
 
 main() {
-  resolve_ndk
+  ndk_require
   check_deps
   mkdir -p "$WORKDIR" "$OUTPUT_DIR"
   build_staging

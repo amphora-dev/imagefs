@@ -7,28 +7,10 @@
 # =============================================================================
 set -euo pipefail
 source "$(dirname "$0")/config.sh"
-
-resolve_ndk_dir() {
-    local cand tc
-    for cand in \
-        "${ANDROID_NDK_HOME:-}" \
-        "${ANDROID_NDK_ROOT:-}" \
-        "${ANDROID_NDK_LATEST_HOME:-}" \
-        "${ANDROID_NDK:-}" \
-        "${NDK_DIR:-}" \
-        "$CACHE_DIR/android-ndk-$NDK_VERSION"; do
-        [ -n "$cand" ] || continue
-        tc="$cand/toolchains/llvm/prebuilt/linux-x86_64"
-        if [ -x "$tc/bin/clang" ]; then
-            printf '%s\n' "$cand"
-            return 0
-        fi
-    done
-    return 1
-}
+source "$(dirname "$0")/lib/ndk.sh"
 
 # ---- 1. NDK ----
-if NDK_DIR="$(resolve_ndk_dir)"; then
+if NDK_DIR="$(ndk_resolve_dir "${NDK_DIR:-}" "$CACHE_DIR/android-ndk-$NDK_VERSION")"; then
     log "NDK 路径: $NDK_DIR (已有，跳过下载)"
 else
     section "下载 Android NDK $NDK_VERSION（未检测到 ANDROID_NDK_*）"
