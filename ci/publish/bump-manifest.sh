@@ -85,6 +85,14 @@ elif component == "box64":
     entry.setdefault("kind", "WCP")
     entry.setdefault("contentType", "Box64")
     print(f"bumped box64 pin -> {entry.get('assetPath')} sha={sha} size={size}")
+elif component == "turnip":
+    # turnip pin = Pipetto vulkan wrapper.tzst (ARCHIVE), not freedreno Turnip.
+    entry.setdefault("kind", "ARCHIVE")
+    entry.setdefault("compression", "zstd")
+    entry.setdefault("assetPath", "graphics_driver/wrapper.tzst")
+    if ver_name is not None:
+        entry["version"] = ver_name
+    print(f"bumped turnip(wrapper) pin -> {entry.get('assetPath')} sha={sha} size={size}")
 else:
     if ver_name is not None:
         entry["verName"] = ver_name
@@ -112,6 +120,8 @@ elif [ "$COMPONENT" = "rootfs" ]; then
   SUBJECT="chore: pin imagefs rootfs v${NEW_VER}"
 elif [ "$COMPONENT" = "box64" ]; then
   SUBJECT="chore: pin Box64 ${VER_NAME}"
+elif [ "$COMPONENT" = "turnip" ]; then
+  SUBJECT="chore: pin wrapper ${VER_NAME:-tzst}"
 else
   SUBJECT="chore: pin ${COMPONENT}"
 fi

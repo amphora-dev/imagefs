@@ -1,0 +1,35 @@
+diff --git a/src/vulkan/wrapper/wrapper_device_memory.c b/src/vulkan/wrapper/wrapper_device_memory.c
+index 49855b0..c7a4f14 100644
+--- a/src/vulkan/wrapper/wrapper_device_memory.c
++++ b/src/vulkan/wrapper/wrapper_device_memory.c
+@@ -10,6 +10,7 @@
+ #include <sys/mman.h>
+ #include <sys/ioctl.h>
+ #include <linux/dma-heap.h>
++#include <fcntl.h>
+ 
+ static int
+ safe_ioctl(int fd, unsigned long request, void *arg)
+diff --git a/src/vulkan/wrapper/wrapper_log.c b/src/vulkan/wrapper/wrapper_log.c
+index 11a630a..2dd17d7 100644
+--- a/src/vulkan/wrapper/wrapper_log.c
++++ b/src/vulkan/wrapper/wrapper_log.c
+@@ -1,5 +1,6 @@
+ #include "wrapper_log.h"
+ #include "wrapper_util.h"
++#include <fcntl.h>
+ 
+ #define PATH_MAX_SIZE 1024
+ #define WRAPPER_DIR "/sdcard/wrapper"
+diff --git a/src/vulkan/wrapper/wrapper_physical_device.c b/src/vulkan/wrapper/wrapper_physical_device.c
+index fca5a79..6bf23b8 100644
+--- a/src/vulkan/wrapper/wrapper_physical_device.c
++++ b/src/vulkan/wrapper/wrapper_physical_device.c
+@@ -12,6 +12,7 @@
+ #include "vk_util.h"
+ #include "wsi_common.h"
+ #include "util/os_misc.h"
++#include <fcntl.h>
+ 
+ static uint32_t
+ parse_vk_version_from_env()

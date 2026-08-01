@@ -23,7 +23,7 @@ bash ci/verify/pkg-selftest.sh   # 不编包，只测 DEPENDS / topo / stamp
 ## 目录结构
 
 ```text
-ci/{setup,gate,publish,verify,box64}/   # CI 脚本（见 ci/README.md）
+ci/{setup,gate,publish,verify,box64,wrapper}/   # CI 脚本（见 ci/README.md）
 packages/{compress,text,android,x11,…}/ # 配方按类别分目录 + depends.conf
 docs/{analysis,meson,scripts,evidence}/
 lib/pkg.sh                              # DEPENDS / topo / stamp
@@ -45,27 +45,32 @@ lib/pkg.sh                              # DEPENDS / topo / stamp
 
 ## CI / Release
 
-分层（L0 脚本 / L1 leaf Box64 / L2 graph imagefs）、固定 Release tag、pin 约定见 **[`ci/README.md`](ci/README.md)**。不要把 `depends.conf` 拆成每包一个 GHA job。
+分层（L0 脚本 / L1 leaf Box64+wrapper / L2 graph imagefs）、固定 Release tag、pin 约定见 **[`ci/README.md`](ci/README.md)**。不要把 `depends.conf` 拆成每包一个 GHA job。
 
 | Workflow | 触发 | 产物 |
 |----------|------|------|
 | [`build-imagefs.yml`](.github/workflows/build-imagefs.yml) | 改 packages/lib/vendor/root `*.sh`；或手动 | `amphora` → pin `rootfs` |
 | [`build-box64.yml`](.github/workflows/build-box64.yml) | 改 `ci/box64` / patches；或手动 | `box64` → pin `box64` |
+| [`build-wrapper.yml`](.github/workflows/build-wrapper.yml) | 改 `ci/wrapper` / X11 staging / patches；或手动 | `wrapper` → pin `turnip` |
 
 ```text
 https://github.com/amphora-dev/imagefs/releases/download/amphora/imagefs.txz
 https://github.com/amphora-dev/imagefs/releases/download/box64/Box64-<ver>-<sha>.wcp
+https://github.com/amphora-dev/imagefs/releases/download/wrapper/wrapper-<mesa_sha>.tzst
 ```
 
 ```bash
 export ANDROID_NDK_HOME=/path/to/ndk
 bash ci/box64/build-wcp.sh
+# Pipetto vulkan wrapper (uses staging X11/drm as sysroot; not in imagefs.txz)
+bash ci/wrapper/build-tzst.sh
 ```
 
 ## 构建产物
 
-- `imagefs.txz` — 运行时 rootfs（已裁剪 headers / 静态库 / man / glvnd / 多余 bin）；**不含** box64
+- `imagefs.txz` — 运行时 rootfs（已裁剪 headers / 静态库 / man / glvnd / 多余 bin）；**不含** box64 / wrapper
 - `Box64-*.wcp` — 独立模拟器包（xz tar + `profile.json`），由 Amphora `ContentsManager` 装到 `${bindir}/box64`
+- `wrapper-*.tzst` — Pipetto `libvulkan_wrapper.so` + adrenotools/ICD（zstd tar），pin 为 manifest `turnip`
 - 音频：ALSA + android_aserver（无 pulseaudio）
 
 ## 包列表

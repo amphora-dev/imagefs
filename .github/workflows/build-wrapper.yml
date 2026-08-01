@@ -1,0 +1,161 @@
+# Build wrapper-*.tzst → Release tag `wrapper` → content_manifest.turnip
+# Contracts: ci/README.md
+# No schedule — run manually or when wrapper / staging X11 inputs change.
+name: build-wrapper
+
+# Auto: leaf inputs + X11/drm/sysvshm staging recipes that affect the ICD ABI.
+on:
+  workflow_dispatch:
+    inputs:
+      mesa_ref:
+        description: "Pipetto-crypto/mesa git ref (default wrapper-25)"
+        required: false
+        default: "wrapper-25"
+      force:
+        description: "Build even if this commit was already published"
+        type: boolean
+        default: false
+      skip_staging:
+        description: "Reuse cached staging only (dangerous if cache stale)"
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    paths:
+      - "ci/wrapper/**"
+      - "ci/gate/wrapper-build.sh"
+      - "vendor/wrapper-patches/**"
+      - "packages/x11/**"
+      - "packages/graphics/libdrm.sh"
+      - "packages/android/android-sysvshm.sh"
+      - "packages/android/libcxx-shared.sh"
+      - "packages/compress/zlib.sh"
+      - "packages/compress/zstd.sh"
+      - "packages/depends.conf"
+      - ".github/workflows/build-wrapper.yml"
+
+permissions:
+  contents: write
+
+env:
+  BUILD_DIR: /tmp/imagefs-build
+  OUTPUT_DIR: ${{ github.workspace }}/artifacts
+  CCACHE_DIR: /tmp/imagefs-build/cache/ccache
+  CCACHE_MAXSIZE: 5G
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-ndk-build
+        with:
+          deps: wrapper
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            /tmp/imagefs-build/cache/*.tar*
+            /tmp/imagefs-build/src
+            /tmp/imagefs-build/built-pkgs
+            /tmp/imagefs-build/staging
+            /tmp/imagefs-build/host
+            /tmp/imagefs-build/wrapper-mesa
+          key: wrapper-pkgs-${{ runner.os }}-${{ hashFiles('packages/x11/**', 'packages/graphics/libdrm.sh', 'packages/android/android-sysvshm.sh', 'packages/android/libcxx-shared.sh', 'packages/compress/zlib.sh', 'packages/compress/zstd.sh', 'packages/depends.conf', 'lib/**', 'build-all.sh', 'config.sh', 'create-rootfs.sh', 'setup-env.sh', 'ci/wrapper/**', 'vendor/wrapper-patches/**') }}
+          restore-keys: |
+            wrapper-pkgs-${{ runner.os }}-
+
+      - uses: actions/cache/restore@v4
+        with:
+          path: /tmp/imagefs-build/cache/ccache
+          key: wrapper-ccache-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            wrapper-ccache-${{ runner.os }}-
+
+      - id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force || false }}
+          EVENT_NAME: ${{ github.event_name }}
+          REPO: ${{ github.repository }}
+          MESA_REF_INPUT: ${{ inputs.mesa_ref || 'wrapper-25' }}
+        run: bash ci/gate/wrapper-build.sh
+
+      - name: Build wrapper.tzst
+        if: steps.gate.outputs.should_build == 'true'
+        env:
+          MESA_REF: ${{ steps.gate.outputs.mesa_ref }}
+          SKIP_STAGING: ${{ github.event_name == 'workflow_dispatch' && inputs.skip_staging && '1' || '0' }}
+        run: |
+          mkdir -p "$BUILD_DIR" "$OUTPUT_DIR" "$CCACHE_DIR"
+          bash ci/wrapper/build-tzst.sh
+          # shellcheck disable=SC1091
+          source artifacts/wrapper-tzst.env
+          {
+            echo "TZST_NAME=$TZST_NAME"
+            echo "FULL_VERSION=$FULL_VERSION"
+            echo "SHA256=$SHA256"
+            echo "SIZE=$SIZE"
+            echo "COMMIT_FULL=$COMMIT_FULL"
+            echo "COMMIT_SHORT=$COMMIT_SHORT"
+          } >> "$GITHUB_ENV"
+
+      - if: always()
+        run: ccache -s || true
+      - if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: /tmp/imagefs-build/cache/ccache
+          key: wrapper-ccache-${{ runner.os }}-${{ github.run_id }}
+
+      - uses: actions/upload-artifact@v4
+        if: steps.gate.outputs.should_build == 'true'
+        with:
+          name: wrapper-tzst
+          path: artifacts/wrapper-*
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish Release wrapper
+        if: steps.gate.outputs.should_build == 'true' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TARGET_REF: ${{ github.sha }}
+        run: |
+          BODY=$(cat <<EOF
+          Pipetto Mesa vulkan wrapper \`${{ env.FULL_VERSION }}\`
+          https://github.com/Pipetto-crypto/mesa/commit/${{ env.COMMIT_FULL }}
+          Built against imagefs staging (X11/drm/sysvshm). Not packed into imagefs.txz.
+          EOF
+          )
+          bash ci/publish/fixed-release.sh \
+            --tag wrapper \
+            --title wrapper \
+            --body "$BODY" \
+            -- "artifacts/${{ env.TZST_NAME }}" "artifacts/${{ env.TZST_NAME }}.sha256sum"
+
+      - name: Prune old wrapper assets
+        if: steps.gate.outputs.should_build == 'true' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          bash ci/publish/prune-assets.sh \
+            --tag wrapper \
+            --match 'wrapper-*' \
+            --keep "${{ env.TZST_NAME }}" "${{ env.TZST_NAME }}.sha256sum"
+
+      - name: Pin content_manifest turnip
+        if: steps.gate.outputs.should_build == 'true' && github.ref == 'refs/heads/main'
+        uses: ./.github/actions/bump-manifest
+        with:
+          component: turnip
+          sha256: ${{ env.SHA256 }}
+          size: ${{ env.SIZE }}
+          asset_path: graphics_driver/wrapper.tzst
+          ver_name: ${{ env.FULL_VERSION }}
+          remote_url: https://github.com/${{ github.repository }}/releases/download/wrapper/${{ env.TZST_NAME }}
+          kind: ARCHIVE
+          token: ${{ secrets.AMPHORA_REPO_TOKEN }}
