@@ -10,4 +10,4 @@ Applied by `ci/wrapper/build-tzst.sh` onto [Pipetto-crypto/mesa](https://github.
 
 Do not vendor the full Mesa tree here — CI clones upstream.
 
-Runtime adrenotools/hooks are **not** patched here; see `vendor/adrenotools-prebuilt/`.
+`libadrenotools` + hooks are **self-built** from Mesa's `subprojects/libadrenotools` (pinned by `ADRENOTOOLS_REF` in `ci/wrapper/build-tzst.sh`). Keep C++ exceptions enabled in the wrapper cross file — `-fno-exceptions` produced a broken hook vintage.

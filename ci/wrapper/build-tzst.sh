@@ -11,10 +11,12 @@
 # Do NOT mix Termux headers with foreign libs — that produced runtime
 # VK_ERROR_INCOMPATIBLE_DRIVER (-9) in earlier experiments.
 #
-# Link profile must match Termux/official wrapper ICDs:
+# Link / pack profile (must match a working Termux-style ICD):
 #   - -D__TERMUX__ + patch 0003 → DETECT_OS_ANDROID off (no stub DT_NEEDED)
-#   - pack vendor/adrenotools-prebuilt (not NDK-cross subproject hooks)
 #   - never pack android-stub libcutils/liblog/libsync into usr/lib
+#   - self-build libadrenotools + hooks from Mesa subproject (pinned revision;
+#     keep C++ exceptions enabled in the cross file — -fno-exceptions produced
+#     a broken hook vintage and guest adrenotools_open_libvulkan failures)
 #
 # Link profile must match Termux/official wrapper ICDs:
 #   - -D__TERMUX__ + patch 0003 → DETECT_OS_ANDROID off (no stub DT_NEEDED)
@@ -28,6 +30,7 @@
 #
 # Env:
 #   MESA_REF / MESA_REPO / MESA_SRC
+#   ADRENOTOOLS_REF  pin for subprojects/libadrenotools.wrap (default 8483dfd…)
 #   ANDROID_NDK_HOME   required
 #   WRAPPER_API        NDK API for mesa compile (default 30 — memfd_create)
 #   BUILD_DIR          default /tmp/imagefs-build (shared staging with graph)
@@ -55,6 +58,8 @@ BUILD_DIR="${BUILD_DIR:-/tmp/imagefs-build}"
 SKIP_STAGING="${SKIP_STAGING:-0}"
 JOBS="${JOBS:-$(nproc)}"
 WORKDIR="${WORKDIR:-$BUILD_DIR/wrapper-mesa}"
+# Pin Pipetto libadrenotools (mesa wrap defaults to HEAD). Override with full SHA.
+ADRENOTOOLS_REF="${ADRENOTOOLS_REF:-8483dfdaa2abf97ee89ad0e5f337e7b508550c6b}"
 
 # Runtime RPATH matches imagefs packaging style; Amphora also sets LD_LIBRARY_PATH.
 RPATH_USR="/usr/lib"
@@ -214,6 +219,24 @@ t2 = t.replace("'-Werror=gnu-empty-initializer', ", "").replace(", '-Werror=gnu-
 if t2 != t:
     p.write_text(t2)
     print("stripped -Werror=gnu-empty-initializer from meson.build trial lists")
+PY
+  # Pin libadrenotools wrap (upstream uses revision=HEAD).
+  local wrap="$MESA_SRC/subprojects/libadrenotools.wrap"
+  [[ -f "$wrap" ]] || {
+    echo "FAIL: missing $wrap" >&2
+    exit 1
+  }
+  python3 - <<PY
+from pathlib import Path
+p = Path("$wrap")
+lines = []
+for line in p.read_text().splitlines(True):
+    if line.startswith("revision"):
+        lines.append("revision = $ADRENOTOOLS_REF\n")
+    else:
+        lines.append(line)
+p.write_text("".join(lines))
+print(f"pinned libadrenotools.wrap revision=$ADRENOTOOLS_REF")
 PY
 }
 
@@ -375,15 +398,10 @@ pack_tzst() {
   local builddir="$WORKDIR/build"
   local stage="$WORKDIR/tzst-stage"
   local so="$builddir/src/vulkan/wrapper/libvulkan_wrapper.so"
-  local prebuilt="$REPO_ROOT/vendor/adrenotools-prebuilt"
   local icd
   icd="$(find "$builddir" -name 'wrapper_icd.*.json' | head -1)"
   [[ -n "$icd" ]] || {
     echo "FAIL: wrapper ICD json missing" >&2
-    exit 1
-  }
-  [[ -f "$prebuilt/libadrenotools.so" ]] || {
-    echo "FAIL: missing $prebuilt/libadrenotools.so" >&2
     exit 1
   }
 
@@ -406,17 +424,24 @@ pack_tzst() {
   done
   # libnativewindow.so is real on /system; keep NEEDED, do not pack a stub.
 
-  # Pack known-good adrenotools + hooks (not the NDK-cross subproject output).
-  local f
-  for f in libadrenotools.so libmain_hook.so libhook_impl.so \
-           libfile_redirect_hook.so libgsl_alloc_hook.so; do
-    [[ -f "$prebuilt/$f" ]] || {
-      echo "FAIL: missing prebuilt $prebuilt/$f" >&2
+  # Self-built adrenotools (+ hooks) from the Mesa subproject — same vintage as
+  # each other. Guest ADRENOTOOLS_HOOKS_PATH is imagefs usr/lib.
+  local adreno="$builddir/subprojects/libadrenotools/libadrenotools.so"
+  [[ -f "$adreno" ]] || {
+    echo "FAIL: libadrenotools.so missing from subproject build" >&2
+    exit 1
+  }
+  "$tc/bin/llvm-strip" --strip-unneeded "$adreno" -o "$stage/usr/lib/libadrenotools.so"
+  patchelf --set-rpath "$RPATH_USR" "$stage/usr/lib/libadrenotools.so" 2>/dev/null || true
+  local h f
+  for h in main_hook file_redirect_hook gsl_alloc_hook hook_impl; do
+    f="$(find "$builddir/subprojects/libadrenotools" -name "lib${h}.so" 2>/dev/null | head -1 || true)"
+    [[ -n "$f" && -f "$f" ]] || {
+      echo "FAIL: missing self-built hook lib${h}.so" >&2
       exit 1
     }
-    cp -a "$prebuilt/$f" "$stage/usr/lib/"
-    chmod 755 "$stage/usr/lib/$f"
-    patchelf --set-rpath "$RPATH_USR" "$stage/usr/lib/$f" 2>/dev/null || true
+    "$tc/bin/llvm-strip" --strip-unneeded "$f" -o "$stage/usr/lib/lib${h}.so"
+    patchelf --set-rpath "$RPATH_USR" "$stage/usr/lib/lib${h}.so" 2>/dev/null || true
   done
 
   python3 - <<PY
@@ -480,6 +505,7 @@ FULL_VERSION=${FULL_VERSION}
 COMMIT_FULL=${COMMIT_FULL}
 COMMIT_SHORT=${COMMIT_SHORT}
 MESA_REF=${MESA_REF}
+ADRENOTOOLS_REF=${ADRENOTOOLS_REF}
 TZST_NAME=${TZST_NAME}
 SHA256=${SHA256}
 SIZE=${SIZE}
