@@ -25,8 +25,9 @@ bash ci/verify/pkg-selftest.sh   # 不编包，只测 DEPENDS / topo / stamp
 ```text
 ci/{setup,gate,publish,verify,box64,wrapper}/   # CI 脚本（见 ci/README.md）
 packages/{compress,text,android,x11,…}/ # 配方按类别分目录 + depends.conf
-docs/{analysis,meson,scripts,evidence}/
+docs/{analysis,meson,evidence}/
 lib/pkg.sh                              # DEPENDS / topo / stamp
+lib/ndk.sh                              # NDK 发现（图构建与 L1 leaf 共用）
 ```
 
 ## Buildroot-lite 布局
@@ -77,10 +78,10 @@ bash ci/wrapper/build-tzst.sh
 
 基础库、X11/Vulkan 垫片、openssl/gnutls、alsa、sdl2、gstreamer、android-*。见 `build-all.sh` 的 `ALL_PACKAGES`、[`packages/depends.conf`](packages/depends.conf) 与 [`packages/README.md`](packages/README.md)。
 
+取舍依据（为什么是这些包、为什么不是那些）见 [`docs/analysis/PACKAGE-SELECTION.md`](docs/analysis/PACKAGE-SELECTION.md)；可执行版本是 [`ci/verify/wine-deps.sh`](ci/verify/wine-deps.sh)。
+
 ## 关键设计
 
 - **Bionic libc**: 链接 `libc.so`，interpreter = `/system/bin/linker64`
 - **merged-usr**: `/bin` `/etc` `/lib` → `usr/*`
 - **ALSA android_aserver**: ALSA → Android 音频服务器
-
-详见 [BUILD-REPORT.md](BUILD-REPORT.md)

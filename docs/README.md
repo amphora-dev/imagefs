@@ -2,7 +2,6 @@
 
 | Dir | Contents |
 |-----|----------|
-| `analysis/` | design / assets / MiceWine comparison notes |
+| `analysis/` | package-selection rationale, imagefs reverse engineering, asset notes |
 | `meson/` | meson cross-file references |
-| `scripts/` | one-off repro / comparison helpers (not CI) |
 | `evidence/` | ELF dumps used in analysis |

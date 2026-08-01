@@ -2,7 +2,9 @@
 # gst-plugins-base 1.26.1 — meson。补齐 winegstreamer.so 剩下的 5 个 NEEDED:
 #   libgstapp-1.0  libgstaudio-1.0  libgstvideo-1.0  libgsttag-1.0  libgstgl-1.0
 #
-# libgstgl 需要 GL/EGL, 走 imagefs 里的 libglvnd (Tier 4) + Bionic 的 libEGL 软链。
+# libgstgl 需要 GL/EGL。imagefs 不再打 libglvnd (package-imagefs.sh 会主动裁掉它,
+# ci/verify/wine-deps.sh 断言其缺席), GL 由 extra_libs 的 Mesa libGL.so.1 提供,
+# EGL 走 Bionic 的软链。
 #
 # 注意 audio / video / tag **不是** meson option (1.26.1 实测: 只有 app / alsa /
 # gl / gl_api / gl_platform / gl_winsys / ogg / opus / theora / vorbis / pango /
