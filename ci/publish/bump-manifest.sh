@@ -56,7 +56,28 @@ entry = data["components"][component]
 same = entry.get("sha256") == sha and int(entry.get("size") or 0) == size
 if asset is not None:
     same = same and entry.get("assetPath") == asset
-if same:
+if remote is not None:
+    same = same and entry.get("remoteUrl") == remote
+
+# Amphora installs ARCHIVE wrappers via RuntimeAssetProvisioner from
+# runtimeAssets[] (TarCompressorUtils reads filesDir/runtime-assets/<assetPath>).
+# components.turnip is the UI/pin; both must stay in sync or the device keeps
+# the stale WinNative blob even after components.* is bumped.
+runtime_synced = True
+target_asset = asset or entry.get("assetPath")
+if target_asset and isinstance(data.get("runtimeAssets"), list):
+    for ra in data["runtimeAssets"]:
+        if ra.get("assetPath") != target_asset:
+            continue
+        if (
+            ra.get("sha256") != sha
+            or int(ra.get("size") or 0) != size
+            or (remote is not None and ra.get("remoteUrl") != remote)
+        ):
+            runtime_synced = False
+        break
+
+if same and runtime_synced:
     print(f"{component} pin already up to date; nothing to commit")
     open("/tmp/content-manifest-pin-skip", "w").write("1")
     raise SystemExit(0)
@@ -98,6 +119,22 @@ else:
         entry["verName"] = ver_name
         entry["version"] = ver_name
     print(f"bumped {component} pin sha={sha} size={size}")
+
+# Keep runtimeAssets[] twin in sync for the same assetPath (wrapper.tzst, …).
+if target_asset and isinstance(data.get("runtimeAssets"), list):
+    for ra in data["runtimeAssets"]:
+        if ra.get("assetPath") != target_asset:
+            continue
+        old = (ra.get("sha256"), ra.get("size"), ra.get("remoteUrl"))
+        ra["sha256"] = sha
+        ra["size"] = size
+        if remote is not None:
+            ra["remoteUrl"] = remote
+        print(
+            f"synced runtimeAssets[{target_asset}] "
+            f"{old} -> {(ra.get('sha256'), ra.get('size'), ra.get('remoteUrl'))}"
+        )
+        break
 
 with open(path, "w", encoding="utf-8") as f:
     json.dump(data, f, indent=2)
