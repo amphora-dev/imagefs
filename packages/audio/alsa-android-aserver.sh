@@ -5,7 +5,7 @@
 set -euo pipefail
 source "$(dirname "$0")/../config.sh"
 
-VENDOR="$(cd "$(dirname "$0")/../vendor/winlator-bionic/audio_plugin" && pwd)"
+VENDOR="$(cd "$(dirname "$0")/../../vendor/winlator-bionic/audio_plugin" && pwd)"
 SRC_FILE="$VENDOR/module_pcm_android_aserver.c"
 
 if [ ! -f "$SRC_FILE" ]; then
