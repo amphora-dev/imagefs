@@ -1,0 +1,14 @@
+diff --git a/src/util/anon_file.c b/src/util/anon_file.c
+index 7e79679..5a4ecda 100644
+--- a/src/util/anon_file.c
++++ b/src/util/anon_file.c
+@@ -124,7 +124,8 @@ os_create_anonymous_file(int64_t size, const char *debug_name)
+ #elif DETECT_OS_ANDROID
+    if (!debug_name)
+       debug_name = "mesa-shared";
+-   fd = syscall(SYS_memfd_create, debug_name, MFD_CLOEXEC | MFD_ALLOW_SEALING);
++   /* NDK often lacks SYS_memfd_create; use the libc wrapper (API 30+). */
++   fd = memfd_create(debug_name, MFD_CLOEXEC | MFD_ALLOW_SEALING);
+ #elif defined(__FreeBSD__)
+    fd = shm_open(SHM_ANON, O_CREAT | O_RDWR | O_CLOEXEC, 0600);
+ #elif defined(__OpenBSD__)

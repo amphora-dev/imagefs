@@ -186,7 +186,10 @@ if [ $FAILED -gt 0 ]; then
 fi
 
 # ---- 5. staging → target 裁剪打包 ----
-if [ -f "$SCRIPT_DIR/package-imagefs.sh" ]; then
+# L1 leaves (e.g. wrapper) only need staging as a sysroot — set SKIP_IMAGEFS_PACKAGE=1.
+if [ "${SKIP_IMAGEFS_PACKAGE:-0}" = "1" ]; then
+    log "SKIP_IMAGEFS_PACKAGE=1 — not packing imagefs.txz"
+elif [ -f "$SCRIPT_DIR/package-imagefs.sh" ]; then
     bash "$SCRIPT_DIR/package-imagefs.sh"
 fi
 
