@@ -43,8 +43,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-MESA_REPO="${MESA_REPO:-https://github.com/Pipetto-crypto/mesa.git}"
-MESA_REF="${MESA_REF:-wrapper-25}"
+# shellcheck disable=SC1091
+source "$REPO_ROOT/ci/upstream.sh"
+MESA_REF="${MESA_REF:-$MESA_DEFAULT_REF}"
 # Prefer WRAPPER_MESA_SRC. Ignore ambient MESA_SRC unless WRAPPER_HONOR_MESA_SRC=1
 # (avoids stale /tmp/pipetto-mesa from local experiments).
 if [ "${WRAPPER_HONOR_MESA_SRC:-0}" = "1" ]; then

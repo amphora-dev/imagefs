@@ -8,9 +8,9 @@ on:
   workflow_dispatch:
     inputs:
       mesa_ref:
-        description: "Pipetto-crypto/mesa git ref (default wrapper-25)"
+        description: "mesa git ref (empty = MESA_DEFAULT_REF in ci/upstream.sh)"
         required: false
-        default: "wrapper-25"
+        default: ""
       force:
         description: "Build even if this commit was already published"
         type: boolean
@@ -80,7 +80,7 @@ jobs:
           FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force || false }}
           EVENT_NAME: ${{ github.event_name }}
           REPO: ${{ github.repository }}
-          MESA_REF_INPUT: ${{ inputs.mesa_ref || 'wrapper-25' }}
+          MESA_REF_INPUT: ${{ inputs.mesa_ref }}
         run: bash ci/gate/wrapper-build.sh
 
       - name: Build wrapper.tzst

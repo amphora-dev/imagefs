@@ -8,11 +8,14 @@
 set -euo pipefail
 : "${GITHUB_OUTPUT:?GITHUB_OUTPUT required}"
 
+# shellcheck disable=SC1091
+source "$(cd "$(dirname "$0")/.." && pwd)/upstream.sh"
+
 REF="${BOX64_REF_INPUT:-}"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
-git clone --filter=blob:none https://github.com/ptitSeb/box64.git "$TMP/box64"
+git clone --filter=blob:none "$BOX64_REPO" "$TMP/box64"
 cd "$TMP/box64"
 if [ -n "$REF" ]; then
   git fetch --depth 1 origin "$REF"

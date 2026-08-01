@@ -12,7 +12,7 @@
 #
 # Env:
 #   BOX64_REF              git ref to build (default: origin/main tip)
-#   BOX64_REPO             default https://github.com/ptitSeb/box64.git
+#   BOX64_REPO             upstream repo (default in ci/upstream.sh)
 #   ANDROID_NDK_HOME       required (or ANDROID_NDK_ROOT / runner NDK)
 #   ANDROID_API            NDK API level (default 31 — WinNative Bionic; needs
 #                          pthread_attr_*inheritsched / mutexattr_*protocol which
@@ -28,7 +28,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-BOX64_REPO="${BOX64_REPO:-https://github.com/ptitSeb/box64.git}"
+# shellcheck disable=SC1091
+source "$REPO_ROOT/ci/upstream.sh"
 BOX64_REF="${BOX64_REF:-}"
 ANDROID_API="${ANDROID_API:-31}"
 APPLY_PIPETTO_PATCH="${APPLY_PIPETTO_PATCH:-1}"

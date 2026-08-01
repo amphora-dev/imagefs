@@ -4,15 +4,18 @@
 #
 # Env:
 #   FORCE, EVENT_NAME, REPO, GH_TOKEN
-#   MESA_REF_INPUT — optional git ref from workflow_dispatch (default wrapper-25)
+#   MESA_REF_INPUT — optional git ref from workflow_dispatch (empty = default)
 set -euo pipefail
 : "${GITHUB_OUTPUT:?GITHUB_OUTPUT required}"
 
-REF="${MESA_REF_INPUT:-wrapper-25}"
+# shellcheck disable=SC1091
+source "$(cd "$(dirname "$0")/.." && pwd)/upstream.sh"
+
+REF="${MESA_REF_INPUT:-$MESA_DEFAULT_REF}"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
-git clone --filter=blob:none https://github.com/Pipetto-crypto/mesa.git "$TMP/mesa"
+git clone --filter=blob:none "$MESA_REPO" "$TMP/mesa"
 cd "$TMP/mesa"
 git fetch --depth 1 origin "$REF" 2>/dev/null || git fetch --depth 1 origin "+refs/heads/${REF}:refs/remotes/origin/${REF}" || true
 if git rev-parse --verify "origin/$REF" >/dev/null 2>&1; then

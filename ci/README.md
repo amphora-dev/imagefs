@@ -4,6 +4,7 @@
 
 ```text
 ci/
+  upstream.sh              # L1 leaf upstream repos + default refs (single source)
   setup/     install-build-deps.sh  resolve-runner-ndk.sh
   gate/      imagefs-publish.sh     box64-build.sh  wrapper-build.sh
   publish/   fixed-release.sh       prune-assets.sh  bump-manifest.sh
@@ -11,6 +12,11 @@ ci/
   box64/     build-wcp.sh
   wrapper/   build-tzst.sh  push-device.sh
 ```
+
+A gate and its builder must clone the **same** repo and ref, otherwise the gate
+decides "already published" from a sha the builder never produces. Both read
+[`ci/upstream.sh`](upstream.sh); NDK discovery is likewise shared via
+[`lib/ndk.sh`](../lib/ndk.sh).
 
 ## Layers
 
