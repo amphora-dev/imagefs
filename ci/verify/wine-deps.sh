@@ -16,7 +16,11 @@
 # 分两级, 因为「是 NEEDED」不等于「不可缺」: unixlib 按需加载, 所以某个 unixlib
 # 的 NEEDED 缺失只会让那一个 Wine 模块用不了, 而不是拖垮启动。
 set -euo pipefail
-source "$(dirname "$0")/../config.sh"
+
+# Repo root (ci/verify → ../..), same pattern as pkg-selftest.sh.
+SCRIPT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/config.sh"
 
 LIB="$ROOTFS/usr/lib"
 fail=0
