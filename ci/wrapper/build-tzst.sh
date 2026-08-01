@@ -32,9 +32,13 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 MESA_REPO="${MESA_REPO:-https://github.com/Pipetto-crypto/mesa.git}"
 MESA_REF="${MESA_REF:-wrapper-25}"
-# Only honor MESA_SRC when explicitly non-empty; avoid inheriting a stale
-# checkout from the developer shell (common after local experiments).
-MESA_SRC="${MESA_SRC-}"
+# Prefer WRAPPER_MESA_SRC. Ignore ambient MESA_SRC unless WRAPPER_HONOR_MESA_SRC=1
+# (avoids stale /tmp/pipetto-mesa from local experiments).
+if [ "${WRAPPER_HONOR_MESA_SRC:-0}" = "1" ]; then
+  MESA_SRC="${WRAPPER_MESA_SRC:-${MESA_SRC:-}}"
+else
+  MESA_SRC="${WRAPPER_MESA_SRC:-}"
+fi
 WRAPPER_API="${WRAPPER_API:-30}"
 OUTPUT_DIR="${OUTPUT_DIR:-$PWD/artifacts}"
 BUILD_DIR="${BUILD_DIR:-/tmp/imagefs-build}"
