@@ -191,9 +191,16 @@ pkg_write_stamp() {
     pkg_content_stamp "$package" > "$(pkg_stamp_path "$package")"
 }
 
-# Packages that must rebuild because a dependency stamp changed / is missing.
-pkg_needs_rebuild() {
-    local package="$1"
-    pkg_is_up_to_date "$package" && return 1
-    return 0
+# Drop stamps whose recipe no longer exists. A warm incremental cache otherwise
+# keeps claiming a removed package is built.
+pkg_prune_orphan_stamps() {
+    [ -d "$BUILT_DIR" ] || return 0
+    local marker package
+    for marker in "$BUILT_DIR"/*.done; do
+        [ -e "$marker" ] || continue
+        package="$(basename "$marker" .done)"
+        pkg_recipe_path "$package" >/dev/null 2>&1 && continue
+        log "  丢弃孤儿 stamp: $package (配方已移除)"
+        rm -f "$marker"
+    done
 }

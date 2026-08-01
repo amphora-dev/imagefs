@@ -99,10 +99,10 @@ source "$SCRIPT_DIR/setup-env.sh"
 # ---- 2. 创建 staging rootfs 布局 ----
 bash "$SCRIPT_DIR/create-rootfs.sh"
 
-# 增量缓存可能留下已移出包列表的产物 / marker
-rm -f "$PREFIX/bin/box64" "$BUILT_DIR"/box64.done
-rm -f "$BUILT_DIR"/{pulseaudio,libsndfile,libltdl,ffmpeg,libglvnd,curl,harfbuzz,libxml2}.done
-rm -f "$BUILT_DIR"/{libxcomposite,libxinerama,libxxf86vm,libxrandr}.done
+# 增量缓存可能留下已移出包列表的产物 / marker。以前这里是一串手写的包名, 每删一个
+# 包就得补一行 (而且漏补时缓存会一直谎报"已构建")，改成按"配方还在不在"判定。
+pkg_prune_orphan_stamps
+rm -f "$PREFIX/bin/box64"   # box64 独立发版为 .wcp, 不属于 imagefs
 
 # ---- 3. 逐包构建 (topo 序；content stamp 含 DEPENDS) ----
 section "开始编译 ${#SELECTED_PACKAGES[@]} 个包"
