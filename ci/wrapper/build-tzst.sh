@@ -220,22 +220,25 @@ write_cross_files() {
 
   mkdir -p "$WORKDIR" "$prefix/lib/pkgconfig"
   # Rewrite .pc prefix to staging so meson finds the right libs/headers.
+  # xorgproto installs to share/pkgconfig (xproto.pc); xcb Requires xau→xproto.
   mkdir -p "$WORKDIR/pkgconfig"
-  if [ -d "$prefix/lib/pkgconfig" ]; then
-    local pc base
-    for pc in "$prefix/lib/pkgconfig/"*.pc; do
-      [[ -f "$pc" ]] || continue
-      base="$(basename "$pc")"
-      case "$base" in
-        x11.pc|x11-xcb.pc|xcb*.pc|xshmfence.pc|libdrm.pc|xext.pc|xfixes.pc|zlib.pc|libzstd.pc|expat.pc|xorg-macros.pc) ;;
-        *) continue ;;
-      esac
-      sed -e "s|^prefix=.*|prefix=$prefix|" \
-          -e "s|^includedir=.*|includedir=$prefix/include|" \
-          -e "s|^libdir=.*|libdir=$prefix/lib|" \
-          "$pc" >"$WORKDIR/pkgconfig/$base"
-    done
-  fi
+  local pc base
+  for pc in "$prefix/lib/pkgconfig/"*.pc "$prefix/share/pkgconfig/"*.pc; do
+    [[ -f "$pc" ]] || continue
+    base="$(basename "$pc")"
+    case "$base" in
+      x11.pc|x11-xcb.pc|xcb*.pc|xshmfence.pc|libdrm.pc|xext.pc|xfixes.pc|zlib.pc|libzstd.pc|expat.pc|xorg-macros.pc|xau.pc|xdmcp.pc|xproto.pc|xtrans.pc|*proto.pc) ;;
+      *) continue ;;
+    esac
+    sed -e "s|^prefix=.*|prefix=$prefix|" \
+        -e "s|^includedir=.*|includedir=$prefix/include|" \
+        -e "s|^libdir=.*|libdir=$prefix/lib|" \
+        "$pc" >"$WORKDIR/pkgconfig/$base"
+  done
+  [[ -f "$WORKDIR/pkgconfig/xproto.pc" ]] || {
+    echo "FAIL: staging missing xproto.pc (xorgproto share/pkgconfig)" >&2
+    exit 1
+  }
 
   cat >"$WORKDIR/android-aarch64.txt" <<EOF
 [binaries]
@@ -261,7 +264,8 @@ cpu = 'armv8'
 endian = 'little'
 
 [properties]
-pkg_config_libdir = '$WORKDIR/pkgconfig:$prefix/lib/pkgconfig:/usr/share/pkgconfig'
+# Include staging share/pkgconfig for xproto.pc (do not rely on host /usr/share).
+pkg_config_libdir = '$WORKDIR/pkgconfig:$prefix/lib/pkgconfig:$prefix/share/pkgconfig'
 needs_exe_wrapper = true
 EOF
 
@@ -289,7 +293,7 @@ configure_and_build() {
   rm -rf "$builddir"
   mkdir -p "$builddir"
 
-  export PKG_CONFIG_LIBDIR="$WORKDIR/pkgconfig:$prefix/lib/pkgconfig:/usr/share/pkgconfig"
+  export PKG_CONFIG_LIBDIR="$WORKDIR/pkgconfig:$prefix/lib/pkgconfig:$prefix/share/pkgconfig"
   unset PKG_CONFIG_PATH || true
 
   cd "$MESA_SRC"
