@@ -7,7 +7,8 @@
 #   TARGET_DIR   — 运行时 rootfs（删构建期产物后打进 imagefs.txz）
 #
 # Box64 由 Amphora 的 Box64.wcp 安装，不进本包。
-# glvnd 的 libGL* 不进包（Mesa libGL.so.1 来自 extra_libs）。
+# Mesa libGL.so.1（packages/graphics/mesa-gl.sh 自建，zink+xlib GLX）进包；
+# glvnd 的 libGLdispatch/libGLX/libOpenGL 不进包（我们不用 glvnd 分发层）。
 # =============================================================================
 set -euo pipefail
 source "$(dirname "$0")/config.sh"
@@ -56,12 +57,12 @@ prune_runtime_rootfs() {
         "$root/usr/share/gir-1.0" \
         "$root/usr/lib/girepository-1.0"
 
+    # libGL.so / libGL.so.1 / libGL.so.1.5.0 是 mesa-gl 的实体与软链，必须留下。
     rm -f \
         "$root/usr/lib"/libGLdispatch.so* \
         "$root/usr/lib"/libGLESv1_CM.so* \
         "$root/usr/lib"/libGLX.so* \
         "$root/usr/lib"/libOpenGL.so* \
-        "$root/usr/lib"/libGL.so \
         "$root/usr/lib"/libEGL.so \
         "$root/usr/lib"/libGLESv2.so
 
@@ -87,6 +88,19 @@ prune_runtime_rootfs() {
         error "prune failed: glvnd libGLdispatch still present"
         bad=1
     fi
+    # Wine opengl32/ddraw → WineD3D dlopen 的是 libGL.so.1；软链断了等于没 GL。
+    if [ ! -e "$root/usr/lib/libGL.so.1" ]; then
+        error "missing usr/lib/libGL.so.1 (mesa-gl 未构建?)"
+        bad=1
+    fi
+    # extra_libs.tzst 已废止：Turnip / vkBasalt / bcn_layer 不得混进 imagefs。
+    # 默认 Vulkan 走 wrapper ICD（独立 wrapper.tzst），完整 Turnip 是可选 WCP/zip。
+    for unwanted in libvulkan_freedreno.so libvkbasalt.so libbcn_layer.so; do
+        if [ -e "$root/usr/lib/$unwanted" ]; then
+            error "unexpected $unwanted in imagefs (extra_libs 内容不应入包)"
+            bad=1
+        fi
+    done
     if [ "$bad" -ne 0 ]; then
         exit 1
     fi

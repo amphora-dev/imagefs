@@ -16,6 +16,7 @@ on:
       - "packages/**"
       - "lib/**"
       - "vendor/winlator-bionic/**"
+      - "vendor/mesa-gl-patches/**"
       - "*.sh"
       - ".github/workflows/build-imagefs.yml"
   pull_request:
@@ -24,6 +25,7 @@ on:
       - "packages/**"
       - "lib/**"
       - "vendor/winlator-bionic/**"
+      - "vendor/mesa-gl-patches/**"
       - "*.sh"
       - ".github/workflows/build-imagefs.yml"
 
@@ -55,7 +57,7 @@ jobs:
             /tmp/imagefs-build/built-pkgs
             /tmp/imagefs-build/staging
             /tmp/imagefs-build/host
-          key: imagefs-pkgs-${{ runner.os }}-${{ hashFiles('packages/**', 'vendor/winlator-bionic/**', 'lib/**', 'build-all.sh', 'config.sh', 'create-rootfs.sh', 'package-imagefs.sh', 'setup-env.sh') }}
+          key: imagefs-pkgs-${{ runner.os }}-${{ hashFiles('packages/**', 'vendor/winlator-bionic/**', 'vendor/mesa-gl-patches/**', 'lib/**', 'build-all.sh', 'config.sh', 'create-rootfs.sh', 'package-imagefs.sh', 'setup-env.sh') }}
           restore-keys: |
             imagefs-pkgs-${{ runner.os }}-
 

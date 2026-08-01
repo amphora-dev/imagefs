@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SDL2 — cmake；桌面 GL 关闭（不依赖 libglvnd；Mesa libGL 来自 extra_libs）
+# SDL2 — cmake；桌面 GL 关闭（不依赖 libglvnd；Mesa libGL 由 mesa-gl 自建）
 # 依赖: alsa-lib
 set -euo pipefail
 source "$(dirname "$0")/../config.sh"

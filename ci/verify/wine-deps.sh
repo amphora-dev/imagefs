@@ -1,17 +1,16 @@
 #!/usr/bin/env bash
 # 断言 imagefs 提供了它的消费者实际需要的库, 且 soname 精确匹配。
 #
-# 消费者不只有 Wine。imagefs 还要喂图形栈 —— 那些库由 runtimeAssets 提供
-# (wrapper.tzst / extra_libs.tzst), 但它们的 NEEDED 是从 imagefs/usr/lib 解析的:
+# 消费者不只有 Wine。imagefs 还要喂图形栈:
+#   libGL.so.1              (本包 mesa-gl)     Mesa/Zink — 自建, 已在 imagefs 内
 #   libvulkan_wrapper.so    (wrapper.tzst)     adrenotools 包装的 Vulkan
-#   libvulkan_freedreno.so  (extra_libs.tzst)  Turnip
-#   libGL.so.1              (extra_libs.tzst)  Mesa/Zink
+#   libvulkan_freedreno.so  (可选 WN-Turnip)   Turnip
 #
 # 期望值的来源 (可复核):
 #   readelf -dW <proton>/lib/wine/x86_64-unix/*.so | grep NEEDED           # Wine 硬依赖
 #   strings -a <proton>/lib/wine/x86_64-unix/*.so | grep -oE '^lib.*\.so'  # Wine dlopen
 #   objdump -p <proton>/lib/wine/x86_64-windows/*.dll | grep 'DLL Name'    # 谁消费
-#   readelf -dW <解开的 wrapper.tzst / extra_libs.tzst>/usr/lib/*.so       # 图形栈
+#   readelf -dW <解开的 wrapper.tzst>/usr/lib/*.so                         # 图形栈
 #
 # 分两级, 因为「是 NEEDED」不等于「不可缺」: unixlib 按需加载, 所以某个 unixlib
 # 的 NEEDED 缺失只会让那一个 Wine 模块用不了, 而不是拖垮启动。
@@ -36,8 +35,11 @@ required=(
   "libgio-2.0.so:多个 unix 模块"
   # 图形栈的 NEEDED。这几项缺了不是降级, 是 Vulkan/OpenGL 驱动直接加载失败,
   # 表现为黑屏而非报错, 所以必须断言。
-  "libzstd.so.1:libvulkan_freedreno.so + libGL.so.1 (Mesa shader cache)"
-  "libandroid-shmem.so:libGL.so.1 — Termux ASharedMemory 实现"
+  # 自建 Mesa GL (packages/graphics/mesa-gl.sh): Wine opengl32/ddraw → WineD3D
+  # → zink 的唯一入口, 缺了 OpenGL/DX7 直接黑屏。
+  "libGL.so.1:Wine opengl32/ddraw → WineD3D → zink"
+  "libzstd.so.1:libGL.so.1 + Turnip (Mesa shader cache)"
+  "libandroid-shmem.so:libGL.so.1 — XShm (Bionic 无 SysV shm)"
   "libandroid-sysvshm.so:libvulkan_wrapper.so + Turnip + GPLC 的 LD_PRELOAD"
   "libc++_shared.so:libvulkan_wrapper.so — Guest LD_LIBRARY_PATH 不含 nativeLibraryDir"
   "libdrm.so:libvulkan_wrapper.so + Turnip + libGL.so.1"
@@ -50,7 +52,8 @@ required=(
   "libxcb-shm.so:libvulkan_wrapper.so + Turnip"
   "libxshmfence.so:Turnip — 看着像可省, 实际是 NEEDED"
   "libexpat.so.1:Turnip + fontconfig"
-  "libz.so.1:Turnip + libGL.so.1"
+  "libz.so:libGL.so.1 (NEEDED 无版本号)"
+  "libz.so.1:Turnip"
   # gnutls 是 dlopen 而非 NEEDED, 但影响面比任何 NEEDED 都大: Wine 的
   # bcrypt/secur32 靠它做 TLS, 缺了游戏登录/更新检查/任何 HTTPS 全废。
   "libgnutls.so:bcrypt/secur32 的 TLS — 缺了没有 HTTPS"
@@ -100,6 +103,19 @@ if [ -n "${IMAGEFS_RUNTIME_STAGE:-}" ]; then
   else
     echo "  OK      no glvnd libGLdispatch"
   fi
+  if [ -e "$PRUNE_ROOT/usr/lib/libGL.so.1" ]; then
+    echo "  OK      libGL.so.1 (mesa-gl)"
+  else
+    echo "  MISSING libGL.so.1 — Wine OpenGL/DX7 会黑屏" >&2
+    fail=1
+  fi
+  # extra_libs.tzst 已废止, 它的其余内容不该被顺手搬进 imagefs。
+  for stray in libvulkan_freedreno.so libvkbasalt.so libbcn_layer.so; do
+    if [ -e "$PRUNE_ROOT/usr/lib/$stray" ]; then
+      echo "  UNEXPECTED $stray (extra_libs 内容不入 imagefs)" >&2
+      fail=1
+    fi
+  done
 else
   echo "  SKIP    IMAGEFS_RUNTIME_STAGE unset"
 fi

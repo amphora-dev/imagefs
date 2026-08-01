@@ -52,6 +52,7 @@ ALL_PACKAGES=(
     libdrm
     vulkan-headers
     vulkan-loader
+    mesa-gl
 
     openssl
     gmp

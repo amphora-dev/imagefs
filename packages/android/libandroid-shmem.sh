@@ -5,8 +5,9 @@
 #   libandroid-shmem.so    Termux 实现, API>=26 走 ASharedMemory
 #   libandroid-sysvshm.so  winlator 实现, 走 ANDROID_SYSVSHM_SERVER socket
 #
-# libGL.so.1 (Mesa/Zink, 由 extra_libs.tzst 提供) 的 NEEDED 指名要
-# libandroid-shmem.so, 缺了 OpenGL 路径起不来。首轮 42 包只做了 winlator 那份。
+# libGL.so.1 (Mesa/Zink, 见 packages/graphics/mesa-gl.sh) 的 NEEDED 指名要
+# libandroid-shmem.so —— Bionic 没有 SysV shm 实现, XShm 全靠它;
+# 缺了 OpenGL 路径起不来。首轮 42 包只做了 winlator 那份。
 #
 # 上游无 release tarball, 按 commit 锁定。上游 Makefile 假定在 Termux 里原生
 # 编译, 这里按它的编译方式手工交叉编译 (源码就一个 shmem.c)。
@@ -59,8 +60,8 @@ $CC $CFLAGS -std=c11 -fPIC -shared \
 # 实测这样会连带打挂 alsa-lib / pulseaudio / sdl2 / alsa-android-aserver /
 # gst-plugins-base 五个包。
 #
-# 我们只需要这个 .so 本体: 消费者是预编译的 libGL.so.1 (extra_libs.tzst), 它的
-# NEEDED 里写着 libandroid-shmem.so, 运行期由 linker 解析, 不需要头文件。
+# 我们只需要这个 .so 本体: 消费者是 mesa-gl 产出的 libGL.so.1, 它的 NEEDED 里
+# 写着 libandroid-shmem.so, 运行期由 linker 解析, 不需要头文件。
 
 $STRIP "$PREFIX/lib/libandroid-shmem.so" 2>/dev/null || true
 

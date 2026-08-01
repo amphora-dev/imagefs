@@ -30,6 +30,8 @@ Do **not** split `packages/*` into per-package Actions jobs. Incremental rebuild
 
 L1 **wrapper** reuses the graph's staging sysroot (subset of packages) but publishes a separate artifact — never packs into `imagefs.txz`.
 
+Mesa is built **twice, on purpose**: the Vulkan ICD (`libvulkan_wrapper.so`, L1 leaf, Pipetto fork) ships in `wrapper.tzst` because the Vulkan driver is a real swap point; desktop GL (`libGL.so.1`, package `mesa-gl`, upstream release tarball, zink + xlib GLX) rides inside `imagefs.txz` because nothing swaps libGL. Both use the same Termux link profile (`system=linux` + `-D__TERMUX__`), which is what keeps `liblog`/`libcutils`/`libsync` out of `DT_NEEDED`. This replaces WinNative's prebuilt `graphics_driver/extra_libs.tzst`, which is now abolished.
+
 ## Toolchain
 
 - **graph (imagefs):** `ANDROID_API=26` (`config.sh`) — Amphora minSdk / Bionic imagefs
@@ -52,7 +54,7 @@ Only **positive** `paths:` (no `paths-ignore`). Anything else → **Actions → 
 
 | Workflow | Auto (`push` / `pull_request`) | Manual |
 |----------|--------------------------------|--------|
-| imagefs | `packages/**` `lib/**` `vendor/winlator-bionic/**` `*.sh` (repo root) + own workflow file | `workflow_dispatch` (`force_publish`) |
+| imagefs | `packages/**` `lib/**` `vendor/winlator-bionic/**` `vendor/mesa-gl-patches/**` `*.sh` (repo root) + own workflow file | `workflow_dispatch` (`force_publish`) |
 | box64 | `ci/box64/**` `vendor/box64-patches/**` + own workflow file | `workflow_dispatch` (`box64_ref` / `force`) |
 | wrapper | `ci/wrapper/**` `vendor/wrapper-patches/**` X11/drm/sysvshm/zlib/zstd recipes + own workflow | `workflow_dispatch` (`mesa_ref` / `force`) |
 

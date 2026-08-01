@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # zstd 1.5.6 — cmake。图形栈的硬依赖, 不是可选压缩库。
 #
-# libvulkan_freedreno.so (Turnip, extra_libs.tzst) 与 libGL.so.1 (Mesa/Zink,
-# extra_libs.tzst) 的 NEEDED 都写着 libzstd.so.1 —— Mesa 用它做 shader cache。
+# 自建的 libGL.so.1 (packages/graphics/mesa-gl.sh) 与可选 Turnip
+# (libvulkan_freedreno.so) 的 NEEDED 都写着 libzstd.so.1 —— Mesa 用它做 shader cache。
 # 首轮 42 包漏了它, 官方 imagefs 是有的, 所以换自建 imagefs 会让 OpenGL/Vulkan
 # 驱动加载失败。
 set -euo pipefail
