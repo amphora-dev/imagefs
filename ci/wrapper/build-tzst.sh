@@ -32,7 +32,9 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 MESA_REPO="${MESA_REPO:-https://github.com/Pipetto-crypto/mesa.git}"
 MESA_REF="${MESA_REF:-wrapper-25}"
-MESA_SRC="${MESA_SRC:-}"
+# Only honor MESA_SRC when explicitly non-empty; avoid inheriting a stale
+# checkout from the developer shell (common after local experiments).
+MESA_SRC="${MESA_SRC-}"
 WRAPPER_API="${WRAPPER_API:-30}"
 OUTPUT_DIR="${OUTPUT_DIR:-$PWD/artifacts}"
 BUILD_DIR="${BUILD_DIR:-/tmp/imagefs-build}"
@@ -188,8 +190,17 @@ apply_patches() {
     fi
   done
   shopt -u nullglob
-  # Drop -Werror=gnu-empty-initializer if present (clang/NDK noise).
-  sed -i "/-Werror=gnu-empty-initializer/d" meson.build || true
+  # Drop -Werror=gnu-empty-initializer from trial flag lists without deleting
+  # the _trial_msvc = [...] assignment line (that used to break meson setup).
+  python3 - <<'PY'
+from pathlib import Path
+p = Path("meson.build")
+t = p.read_text()
+t2 = t.replace("'-Werror=gnu-empty-initializer', ", "").replace(", '-Werror=gnu-empty-initializer'", "")
+if t2 != t:
+    p.write_text(t2)
+    print("stripped -Werror=gnu-empty-initializer from meson.build trial lists")
+PY
 }
 
 write_cross_files() {
@@ -303,6 +314,7 @@ configure_and_build() {
     -Dglvnd=disabled \
     -Dzstd=enabled \
     -Dexpat=disabled \
+    -Dxlib-lease=disabled \
     || {
       tail -160 "$builddir/meson-logs/meson-log.txt" || true
       exit 1
