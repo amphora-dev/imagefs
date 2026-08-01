@@ -80,6 +80,8 @@ bash ci/wrapper/build-tzst.sh
 
 取舍依据（为什么是这些包、为什么不是那些）见 [`docs/analysis/PACKAGE-SELECTION.md`](docs/analysis/PACKAGE-SELECTION.md)；可执行版本是 [`ci/verify/wine-deps.sh`](ci/verify/wine-deps.sh)。
 
+写/改配方前先读 [`docs/analysis/ELF-PITFALLS.md`](docs/analysis/ELF-PITFALLS.md)：patchelf、符号版本、soname 软链这三类问题 `readelf` 都看不出来，只有真机 `dlopen` 会炸。配方风格与做法对照见 [`docs/analysis/MICEWINE-COMPARISON.md`](docs/analysis/MICEWINE-COMPARISON.md)（参照实现 [`KreitinnSoftware/MiceWine-Packages`](https://github.com/KreitinnSoftware/MiceWine-Packages)）。
+
 ## 关键设计
 
 - **Bionic libc**: 链接 `libc.so`，interpreter = `/system/bin/linker64`

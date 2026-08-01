@@ -30,6 +30,11 @@ Bionic 补丁技巧和链接 flag 值得借鉴——但目标不同，不能照�
 - **`XTHREADLIB=-lpthread` → `-pthread`**：Bionic 的 pthread 内建于 libc（`libx11.sh` 的 sed）。
 - **libXcursor SONAME 去版本号**：Android linker 忽略版本号，但 NEEDED 写的是文件名。
 - **`libxshmfence --disable-futex`**：Bionic 没有 `<linux/futex.h>`，两边一致。
+- **配方尽量朴素**：MiceWine 的包多数只有 `PKG_VER` / `SRC_URL` / `CONFIGURE_ARGS` /
+  `DEPENDENCIES` 四行。我们的 libpng 曾经额外做了一步 `patchelf --set-soname`，结果
+  在设备上把 `.dynstr` 映射搞错、连累 freetype 加载失败、Wine 整个没字体（详见
+  [ELF-PITFALLS.md](ELF-PITFALLS.md) §1）。**开始给某个包加"额外处理"之前，先看
+  MiceWine 有没有这么做**——它没做而我们做了，通常是我们在自找麻烦。
 
 ## 我们刻意不同的地方
 
