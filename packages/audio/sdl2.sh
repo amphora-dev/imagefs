@@ -9,11 +9,12 @@ PKG_NAME="SDL2-$VER"
 SRC_URL="https://github.com/libsdl-org/SDL/releases/download/release-$VER/SDL2-$VER.tar.gz"
 
 cd "$SRC_DIR"
-[ -d "$PKG_NAME" ] || { curl -sL "$SRC_URL" -o sdl2.tar.gz && tar --no-same-owner -xf sdl2.tar.gz; }
+fetch_source "$PKG_NAME" sdl2.tar.gz "$SRC_URL" \
+    "https://www.libsdl.org/release/SDL2-$VER.tar.gz"
 cd "$PKG_NAME" && mkdir -p build_dir && cd build_dir
 
 # 创建 cmake toolchain file 以正确处理交叉编译
-TCFILE="/tmp/imagefs-build/sdl2-toolchain.cmake"
+TCFILE="$BUILD_DIR/sdl2-toolchain.cmake"
 cat > "$TCFILE" << EOF
 set(CMAKE_C_COMPILER $CC)
 set(CMAKE_CXX_COMPILER $CXX)

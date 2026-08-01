@@ -34,7 +34,7 @@ else
     section "下载 Android NDK $NDK_VERSION（未检测到 ANDROID_NDK_*）"
     NDK_DIR="$CACHE_DIR/android-ndk-$NDK_VERSION"
     mkdir -p "$CACHE_DIR"
-    curl -L -o "$CACHE_DIR/$NDK_FILENAME" "$NDK_URL"
+    curl -fsSL --retry 3 --retry-delay 2 -o "$CACHE_DIR/$NDK_FILENAME" "$NDK_URL"
     log "解压 NDK..."
     unzip -q "$CACHE_DIR/$NDK_FILENAME" -d "$CACHE_DIR"
     mv "$CACHE_DIR/android-ndk-$NDK_VERSION" "$NDK_DIR" 2>/dev/null || true

@@ -8,7 +8,8 @@ PKG_NAME="zlib-$VER"
 SRC_URL="https://github.com/madler/zlib/releases/download/v$VER/zlib-$VER.tar.gz"
 
 cd "$SRC_DIR"
-[ -d "$PKG_NAME" ] || { curl -sL "$SRC_URL" -o zlib.tar.gz && tar xzf zlib.tar.gz; }
+fetch_source "$PKG_NAME" zlib.tar.gz "$SRC_URL" \
+    "https://zlib.net/zlib-$VER.tar.gz"
 cd "$PKG_NAME"
 
 # 手动编译 (与 MiceWine 一致: 不用 configure, 直接 -fPIC)

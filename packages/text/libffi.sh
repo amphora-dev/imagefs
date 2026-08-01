@@ -8,7 +8,8 @@ PKG_NAME="libffi-$VER"
 SRC_URL="https://github.com/libffi/libffi/releases/download/v$VER/libffi-$VER.tar.gz"
 
 cd "$SRC_DIR"
-[ -d "$PKG_NAME" ] || { curl -sL "$SRC_URL" -o libffi.tar.gz && tar xzf libffi.tar.gz; }
+fetch_source "$PKG_NAME" libffi.tar.gz "$SRC_URL" \
+    "https://sourceware.org/pub/libffi/libffi-$VER.tar.gz"
 cd "$PKG_NAME" && mkdir -p build_dir && cd build_dir
 
 ../configure --host=${ARCH}-linux-android --prefix=$PREFIX --libdir=$PREFIX/lib \

@@ -8,7 +8,8 @@ PKG_NAME="libiconv-$VER"
 SRC_URL="https://ftp.gnu.org/pub/gnu/libiconv/libiconv-$VER.tar.gz"
 
 cd "$SRC_DIR"
-[ -d "$PKG_NAME" ] || { curl -sL "$SRC_URL" -o libiconv.tar.gz && tar xzf libiconv.tar.gz; }
+fetch_source "$PKG_NAME" libiconv.tar.gz "$SRC_URL" \
+    "https://ftpmirror.gnu.org/libiconv/libiconv-$VER.tar.gz"
 cd "$PKG_NAME" && mkdir -p build_dir && cd build_dir
 
 # libiconv 只构建静态库 (Bionic 自带 iconv, 但 glib 需要 libiconv.a)
