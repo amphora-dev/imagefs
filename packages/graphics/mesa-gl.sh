@@ -104,17 +104,13 @@ cpp_ld = '$TC/bin/ld.lld'
 pkg-config = 'pkg-config'
 
 [built-in options]
-# 保留 NDK 默认的 -femulated-tls。曾经这里关掉过它 (改用真 ELF TLS), 动机是让
-# glapi 的 thread_local 符号名与 dri.sym.in 对上, 少背一个补丁 —— 那是错的:
-# glapi 把派发指针声明成 __THREAD_INITIAL_EXEC, 而 initial-exec 模型的 TLS 在被
-# dlopen 的 solib 里只能从 bionic 那点 surplus 静态 TLS 里分配。libgallium 恰好
-# 就是 dlopen 进来的 (Wine 打开 libEGL, 由它带出), 于是没抢到 surplus 的线程拿到
-# 的是垃圾偏移, GET_DISPATCH() 一解引用就 SIGSEGV —— 表现为 DirectDraw 第一帧
-# 正常、切到 wined3d 命令流线程后立刻崩。emulated TLS 走 __emutls_get_address
-# (pthread_key), 与线程指针寄存器无关, dlopen 场景下才是可靠的那个。
-# 符号名的对齐改由 vendor/mesa-gl-patches/0002 负责。
-c_args = ['-I$PREFIX/include', '-Wno-error', '-D__USE_GNU', '-D__TERMUX__']
-cpp_args = ['-I$PREFIX/include', '-Wno-error', '-D__USE_GNU', '-D__TERMUX__']
+# Keep every GL frontend and the DRI megadriver on native ELF TLS. With the
+# NDK's emulated TLS default, libgallium exports __emutls_v.* while libEGL and
+# libGL retain dynamic references to the plain _mesa_glapi_tls_* symbols; both
+# then fail dlopen before OpenGL starts. Rootfs v35 and the device-verified
+# DirectDraw fix use this native-TLS profile.
+c_args = ['-I$PREFIX/include', '-Wno-error', '-D__USE_GNU', '-D__TERMUX__', '-fno-emulated-tls']
+cpp_args = ['-I$PREFIX/include', '-Wno-error', '-D__USE_GNU', '-D__TERMUX__', '-fno-emulated-tls']
 # --undefined-version: libGL 的 version script 会导出 _mesa_glapi_tls_Dispatch,
 # 但 Bionic 上 Mesa 走 __thread 而非 TLS dispatch, 该符号不存在 → lld 默认报错。
 c_link_args = ['-L$PREFIX/lib', '-landroid-shmem', '-lc++_shared', '-Wl,-rpath,/usr/lib', '-Wl,--as-needed', '-Wl,--undefined-version']
