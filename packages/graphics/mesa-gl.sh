@@ -65,12 +65,16 @@ CXX="$TC/bin/${ARCH}-linux-android${MESA_GL_API}-clang++"
 mkdir -p "$WORK"
 
 cd "$SRC_DIR"
+# Patch replacements and deletions must start from the release tarball. Keeping
+# a previously patched source tree made removed patches survive into later
+# rootfs releases and made an updated patch impossible to apply idempotently.
+rm -rf "$PKG_NAME"
 fetch_source "$PKG_NAME" mesa-gl.tar.xz "$SRC_URL" "$ALT_URL"
 cd "$PKG_NAME"
 
 # ---- patches ----
 # 0003 与 wrapper 共用 (__TERMUX__ 时不认 DETECT_OS_ANDROID);
-# mesa-gl-patches/* 是 GL 侧独有的。源码目录会被缓存复用, 故补丁需幂等。
+# mesa-gl-patches/* 是 GL 侧独有的。
 # shellcheck disable=SC1091
 source "$REPO_ROOT/lib/util.sh"
 
@@ -104,17 +108,13 @@ cpp_ld = '$TC/bin/ld.lld'
 pkg-config = 'pkg-config'
 
 [built-in options]
-# Keep every GL frontend and the DRI megadriver on native ELF TLS. With the
-# NDK's emulated TLS default, libgallium exports __emutls_v.* while libEGL and
-# libGL retain dynamic references to the plain _mesa_glapi_tls_* symbols; both
-# then fail dlopen before OpenGL starts. Rootfs v35 and the device-verified
-# DirectDraw fix use this native-TLS profile.
-c_args = ['-I$PREFIX/include', '-Wno-error', '-D__USE_GNU', '-D__TERMUX__', '-fno-emulated-tls']
-cpp_args = ['-I$PREFIX/include', '-Wno-error', '-D__USE_GNU', '-D__TERMUX__', '-fno-emulated-tls']
-# --undefined-version: libGL 的 version script 会导出 _mesa_glapi_tls_Dispatch,
-# 但 Bionic 上 Mesa 走 __thread 而非 TLS dispatch, 该符号不存在 → lld 默认报错。
-c_link_args = ['-L$PREFIX/lib', '-landroid-shmem', '-lc++_shared', '-Wl,-rpath,/usr/lib', '-Wl,--as-needed', '-Wl,--undefined-version']
-cpp_link_args = ['-L$PREFIX/lib', '-landroid-shmem', '-lc++_shared', '-Wl,-rpath,/usr/lib', '-Wl,--as-needed', '-Wl,--undefined-version']
+# Keep the NDK's emulated TLS ABI. MiceWine's lld-undefined-version patch
+# replaces (rather than appends to) dri.sym.in's plain TLS names with the
+# __emutls_v.* names emitted by clang, keeping the three GL libraries aligned.
+c_args = ['-I$PREFIX/include', '-Wno-error', '-D__USE_GNU', '-D__TERMUX__']
+cpp_args = ['-I$PREFIX/include', '-Wno-error', '-D__USE_GNU', '-D__TERMUX__']
+c_link_args = ['-L$PREFIX/lib', '-landroid-shmem', '-lc++_shared', '-Wl,-rpath,/usr/lib', '-Wl,--as-needed']
+cpp_link_args = ['-L$PREFIX/lib', '-landroid-shmem', '-lc++_shared', '-Wl,-rpath,/usr/lib', '-Wl,--as-needed']
 
 [properties]
 pkg_config_libdir = '$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig'
