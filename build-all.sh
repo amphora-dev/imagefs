@@ -18,58 +18,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/config.sh"
 source "$SCRIPT_DIR/lib/pkg.sh"
 
-# ---- 包列表 (默认全集；实际构建顺序由 depends.conf topo 决定) ----
-# 不构建: box64 (WCP)、curl、多余 X 扩展、pulseaudio 栈、ffmpeg、libglvnd…
-ALL_PACKAGES=(
-    zlib
-    zstd
-    libffi
-    libexpat
-    libpng
-    brotli
-
-    pcre2
-    freetype
-    libiconv
-
-    fontconfig
-    glib
-
-    android-sysvshm
-    libandroid-shmem
-    libcxx-shared
-
-    xorgproto
-    libxcb
-    xtrans
-    libx11
-    libxext
-    libxfixes
-    libxrender
-    libxcursor
-    libxi
-    libxshmfence
-    libdrm
-    vulkan-headers
-    vulkan-loader
-    mesa-gl
-
-    openssl
-    gmp
-    nettle
-    gnutls
-
-    alsa-lib
-    alsa-android-aserver
-
-    sdl2
-
-    gstreamer
-    gst-plugins-base
-
-    android-spawn
-    android-sysv-semaphore
-)
+# ---- 包列表 (唯一真源; 实际构建顺序由 depends.conf topo 决定) ----
+source "$SCRIPT_DIR/packages/packages.conf"
 
 pkg_load_depends
 

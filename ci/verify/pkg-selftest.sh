@@ -10,14 +10,9 @@ source "$SCRIPT_DIR/config.sh"
 # shellcheck source=/dev/null
 source "$SCRIPT_DIR/lib/pkg.sh"
 
-ALL_PACKAGES=(
-    zlib zstd libffi libexpat libpng brotli pcre2 freetype libiconv
-    fontconfig glib android-sysvshm libandroid-shmem libcxx-shared
-    xorgproto libxcb xtrans libx11 libxext libxfixes libxrender libxcursor
-    libxi libxshmfence libdrm vulkan-headers vulkan-loader
-    openssl gmp nettle gnutls alsa-lib alsa-android-aserver sdl2
-    gstreamer gst-plugins-base android-spawn android-sysv-semaphore
-)
+# The real package set, not a copy of it (the copy had drifted: no mesa-gl).
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/packages/packages.conf"
 
 pkg_load_depends
 
@@ -41,6 +36,12 @@ done
 # Full graph sorts to same cardinality as ALL_PACKAGES
 mapfile -t full < <(pkg_topo_sort "${ALL_PACKAGES[@]}")
 [ "${#full[@]}" -eq "${#ALL_PACKAGES[@]}" ] || fail "full topo size ${#full[@]} != ${#ALL_PACKAGES[@]}"
+
+# Every selected package must have a recipe. build-all.sh only finds this out at
+# build time, after the packages before it have already been compiled.
+for name in "${ALL_PACKAGES[@]}"; do
+    pkg_recipe_path "$name" >/dev/null || fail "ALL_PACKAGES lists missing package script: $name"
+done
 
 # Every package in depends.conf must exist as packages/*/<name>.sh
 while IFS= read -r line; do
