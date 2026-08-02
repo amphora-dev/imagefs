@@ -1,0 +1,21 @@
+diff --git a/src/gallium/targets/dri/dri.sym.in b/src/gallium/targets/dri/dri.sym.in
+--- a/src/gallium/targets/dri/dri.sym.in	2026-08-02 13:38:37.371891522 +0000
++++ b/src/gallium/targets/dri/dri.sym.in	2026-08-02 13:38:37.383891461 +0000
+@@ -8,6 +8,17 @@
+                 _mesa_glapi_set_dispatch;
+                 _mesa_glapi_tls_Context;
+                 _mesa_glapi_tls_Dispatch;
++                # The NDK compiles thread_local through emulated TLS, which
++                # renames these two to __emutls_v.*; without them here the
++                # originals resolve to nothing and libGL/libEGL fail to link.
++                # Do not switch emulated TLS off to avoid this: glapi declares
++                # the dispatch pointer __THREAD_INITIAL_EXEC, and initial-exec
++                # TLS in a dlopen'd solib only comes out of bionic's small
++                # surplus static TLS. libgallium arrives through dlopen, so a
++                # real ELF TLS build hands threads that miss the surplus a
++                # bogus offset and the first GET_DISPATCH() deref segfaults.
++                __emutls_v._mesa_glapi_tls_Context;
++                __emutls_v._mesa_glapi_tls_Dispatch;
+ 
+ 		ddebug_screen_create;
+ 		noop_screen_create;

@@ -55,8 +55,8 @@ CROSS="$WORK/cross-termux-aarch64.ini"
 NATIVE="$WORK/native.ini"
 TC="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64"
 
-# 本包单独抬到 API 30, 不用全局的 ANDROID_API=26 —— 见下面 -fno-emulated-tls,
-# 真正的 ELF TLS 要 bionic >= API 29。ci/wrapper/build-tzst.sh 也用 API 30。
+# 本包单独抬到 API 30, 不用全局的 ANDROID_API=26。ci/wrapper/build-tzst.sh 同样
+# 用 API 30, 两边的 Mesa 源码树保持同一个 bionic 画像。
 MESA_GL_API="${MESA_GL_API:-30}"
 CC="$TC/bin/${ARCH}-linux-android${MESA_GL_API}-clang"
 CXX="$TC/bin/${ARCH}-linux-android${MESA_GL_API}-clang++"
@@ -104,16 +104,17 @@ cpp_ld = '$TC/bin/ld.lld'
 pkg-config = 'pkg-config'
 
 [built-in options]
-# -fno-emulated-tls: NDK 的 clang 对 Android 目标默认 -femulated-tls (与 API
-# 无关, r26 在 API 30 上也如此), 于是 glapi 的 thread_local 变量在目标文件里叫
-# __emutls_v._mesa_glapi_tls_Dispatch。megadriver 的版本脚本 dri.sym.in 导出的
-# 却是不带前缀的 _mesa_glapi_tls_Dispatch, 加了前缀的那个落进 `local: *`,
-# libGL/libEGL 链接时就报 "undefined symbol: __emutls_v._mesa_glapi_tls_Dispatch"。
-# MiceWine 的做法是打补丁把 dri.sym.in 里的名字改成 __emutls_v.* ; 关掉 emutls
-# 走真正的 ELF TLS 同样能让名字对上, 且不用背下游补丁。ELF TLS 需要 API >= 29,
-# 所以本包编译目标抬到 MESA_GL_API=30。
-c_args = ['-I$PREFIX/include', '-Wno-error', '-D__USE_GNU', '-D__TERMUX__', '-fno-emulated-tls']
-cpp_args = ['-I$PREFIX/include', '-Wno-error', '-D__USE_GNU', '-D__TERMUX__', '-fno-emulated-tls']
+# 保留 NDK 默认的 -femulated-tls。曾经这里关掉过它 (改用真 ELF TLS), 动机是让
+# glapi 的 thread_local 符号名与 dri.sym.in 对上, 少背一个补丁 —— 那是错的:
+# glapi 把派发指针声明成 __THREAD_INITIAL_EXEC, 而 initial-exec 模型的 TLS 在被
+# dlopen 的 solib 里只能从 bionic 那点 surplus 静态 TLS 里分配。libgallium 恰好
+# 就是 dlopen 进来的 (Wine 打开 libEGL, 由它带出), 于是没抢到 surplus 的线程拿到
+# 的是垃圾偏移, GET_DISPATCH() 一解引用就 SIGSEGV —— 表现为 DirectDraw 第一帧
+# 正常、切到 wined3d 命令流线程后立刻崩。emulated TLS 走 __emutls_get_address
+# (pthread_key), 与线程指针寄存器无关, dlopen 场景下才是可靠的那个。
+# 符号名的对齐改由 vendor/mesa-gl-patches/0002 负责。
+c_args = ['-I$PREFIX/include', '-Wno-error', '-D__USE_GNU', '-D__TERMUX__']
+cpp_args = ['-I$PREFIX/include', '-Wno-error', '-D__USE_GNU', '-D__TERMUX__']
 # --undefined-version: libGL 的 version script 会导出 _mesa_glapi_tls_Dispatch,
 # 但 Bionic 上 Mesa 走 __thread 而非 TLS dispatch, 该符号不存在 → lld 默认报错。
 c_link_args = ['-L$PREFIX/lib', '-landroid-shmem', '-lc++_shared', '-Wl,-rpath,/usr/lib', '-Wl,--as-needed', '-Wl,--undefined-version']
