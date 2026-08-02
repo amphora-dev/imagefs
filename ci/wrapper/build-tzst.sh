@@ -79,8 +79,8 @@ WRAPPER_STAGING_PKGS=(
 )
 
 source "$REPO_ROOT/lib/ndk.sh"
-
-need() { command -v "$1" >/dev/null 2>&1 || { echo "FAIL: missing $1" >&2; exit 1; }; }
+# shellcheck disable=SC1091
+source "$REPO_ROOT/lib/util.sh"
 
 check_deps() {
   for b in git meson ninja cmake python3 pkg-config zstd patchelf flex bison; do
@@ -171,16 +171,18 @@ apply_patches() {
   cd "$MESA_SRC"
   local patch
   shopt -s nullglob
+  local status
   for patch in "$REPO_ROOT"/vendor/wrapper-patches/*.patch; do
-    echo "Applying $patch"
-    if git apply --check "$patch" 2>/dev/null; then
-      git apply "$patch"
-    elif patch -p1 --forward --batch --dry-run <"$patch" >/dev/null 2>&1; then
-      patch -p1 --forward --batch <"$patch"
-    else
-      echo "FAIL: patch did not apply: $patch" >&2
-      exit 1
-    fi
+    status=0
+    apply_patch "$patch" || status=$?
+    case $status in
+      0) echo "Applied $patch" ;;
+      1) echo "Already present: $patch" ;;
+      *)
+        echo "FAIL: patch did not apply: $patch" >&2
+        exit 1
+        ;;
+    esac
   done
   shopt -u nullglob
   # Drop -Werror=gnu-empty-initializer from trial flag lists without deleting

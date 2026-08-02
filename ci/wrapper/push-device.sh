@@ -53,7 +53,9 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-need() { command -v "$1" >/dev/null 2>&1 || { echo "FAIL: missing $1" >&2; exit 1; }; }
+REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+# shellcheck disable=SC1091
+source "$REPO_ROOT/lib/util.sh"
 need "$ADB"
 "$ADB" get-state >/dev/null
 

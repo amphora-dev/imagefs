@@ -22,6 +22,7 @@ on:
       - "ci/gate/box64-build.sh"
       - "ci/upstream.sh"
       - "lib/ndk.sh"
+      - "lib/util.sh"
       - "vendor/box64-patches/**"
       - ".github/workflows/build-box64.yml"
 

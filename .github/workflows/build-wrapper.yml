@@ -27,6 +27,7 @@ on:
       - "ci/upstream.sh"
       - "lib/ndk.sh"
       - "lib/pkg.sh"
+      - "lib/util.sh"
       - "vendor/wrapper-patches/**"
       - "packages/x11/**"
       - "packages/graphics/libdrm.sh"

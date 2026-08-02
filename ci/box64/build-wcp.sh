@@ -40,6 +40,8 @@ SRC_DIR="$BUILD_DIR/src"
 CMAKE_BUILD="$BUILD_DIR/cmake-build"
 
 source "$REPO_ROOT/lib/ndk.sh"
+# shellcheck disable=SC1091
+source "$REPO_ROOT/lib/util.sh"
 ndk_require
 
 TC="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64"
@@ -84,17 +86,18 @@ echo "Building Box64 ${FULL_VERSION} (commit ${COMMIT_FULL})"
 if [ "$APPLY_PIPETTO_PATCH" = "1" ]; then
     PATCH="$REPO_ROOT/vendor/box64-patches/pipetto-controller-fix.patch"
     if [ -f "$PATCH" ]; then
-        echo "Applying $PATCH"
         # Mailbox series from WinNative; upstream moves fast — fall back cleanly.
-        if git apply --check "$PATCH" 2>/dev/null; then
-            git apply "$PATCH"
-        elif patch -p1 --forward --batch --dry-run < "$PATCH" >/dev/null 2>&1; then
-            patch -p1 --forward --batch < "$PATCH"
-        else
-            echo "WARN: pipetto patch did not apply cleanly; continuing without it" >&2
-            git checkout -- .
-            git clean -fd
-        fi
+        PATCH_STATUS=0
+        apply_patch "$PATCH" || PATCH_STATUS=$?
+        case $PATCH_STATUS in
+            0) echo "Applied $PATCH" ;;
+            1) echo "Already present: $PATCH" ;;
+            *)
+                echo "WARN: pipetto patch did not apply cleanly; continuing without it" >&2
+                git checkout -- .
+                git clean -fd
+                ;;
+        esac
     else
         echo "WARN: patch missing at $PATCH; skipping" >&2
     fi

@@ -46,24 +46,25 @@ cd "$PKG_NAME"
 # ---- patches ----
 # 0003 与 wrapper 共用 (__TERMUX__ 时不认 DETECT_OS_ANDROID);
 # mesa-gl-patches/* 是 GL 侧独有的。源码目录会被缓存复用, 故补丁需幂等。
-apply_patch() {
-    local p="$1"
-    [ -f "$p" ] || { error "  缺少补丁: $p"; exit 1; }
-    if patch -p1 --forward --batch --dry-run < "$p" >/dev/null 2>&1; then
-        patch -p1 --forward --batch < "$p"
-        log "  已应用 $(basename "$p")"
-    elif patch -p1 --reverse --batch --dry-run < "$p" >/dev/null 2>&1; then
-        log "  补丁已在源码中: $(basename "$p")"
-    else
-        error "  补丁无法应用: $p"
-        exit 1
-    fi
+# shellcheck disable=SC1091
+source "$REPO_ROOT/lib/util.sh"
+
+require_patch() {
+    local p="$1" status=0
+    # `|| status=$?` rather than a bare call: under `set -e` a non-zero simple
+    # command aborts the script before `case $?` ever runs.
+    apply_patch "$p" || status=$?
+    case $status in
+        0) log "  已应用 $(basename "$p")" ;;
+        1) log "  补丁已在源码中: $(basename "$p")" ;;
+        *) error "  补丁无法应用: $p"; exit 1 ;;
+    esac
 }
 
-apply_patch "$REPO_ROOT/vendor/wrapper-patches/0003-termux-not-detect-os-android.patch"
+require_patch "$REPO_ROOT/vendor/wrapper-patches/0003-termux-not-detect-os-android.patch"
 for p in "$REPO_ROOT"/vendor/mesa-gl-patches/*.patch; do
     [ -e "$p" ] || continue
-    apply_patch "$p"
+    require_patch "$p"
 done
 
 # ---- 交叉编译 cross-file (Termux 画像, 不用 graph 的 system=android) ----
