@@ -1,27 +1,45 @@
 #!/usr/bin/env bash
 # =============================================================================
-# mesa-gl — Mesa 桌面 OpenGL (gallium xlib GLX + zink), 产出 libGL.so.1
+# mesa-gl — Mesa 桌面 OpenGL (DRI 前端: EGL + GLX), 产出 libEGL/libGL + megadriver
 # =============================================================================
 # 取代 WinNative graphics_driver/extra_libs.tzst 里的预编译 libGL/libglapi:
 # imagefs 自建后 extra_libs 整包废止 (Turnip / vkBasalt / bcn_layer 均不需要 --
 # 默认走 wrapper ICD, 完整 Turnip 是可选 WN-Turnip zip)。
 #
-# Wine opengl32 / ddraw → WineD3D → 本 libGL (GALLIUM_DRIVER=zink) → Vulkan
-# (imagefs 的 libvulkan.so + wrapper ICD)。Amphora 侧 env 见
-# XServerWineSessionPreparer: GALLIUM_DRIVER=zink / LIBGL_KOPPER_DISABLE=true。
+# Wine (>=10.17, 含 Proton 11) opengl32 → win32u dlopen libEGL.so.1 →
+# 本 Mesa 的 EGL x11 平台 → zink → Vulkan (imagefs libvulkan.so + wrapper ICD),
+# 呈现走 DRI3 + Present, 即 DXVK 已在用的那条 AHB 通路。
+#
+# 为什么不是 -Dglx=xlib (2026-08 改): xlib GLX 是 Mesa 的遗留兼容前端, 结构上
+# 走不通我们的场景 --
+#   - targets/libgl-xlib 的 meson 依赖不含 driver_zink, zink 根本编不进去;
+#     即使补上, zink 的呈现完全绑定 kopper displaytarget, 而那只有 DRI 前端会
+#     提供 loader_private, 所以 xlib 下 zink 能渲染但永远呈现不出来。WinNative
+#     是靠 Pipetto zink-mesa-xlib fork 把 zink_flush_frontbuffer 改成整帧读回
+#     CPU 再 XPutImage 才绕过去的, 代价是每帧一次 GPU→CPU 同步。
+#   - 更致命的是 fakeglx 本身: glXCreateWindow 直接 `return win` (源码注释
+#     "A hack for now"), GLXWindow 与 X Window 同 ID; glXMakeContextCurrent 只按
+#     drawable 查 XMesaFindBuffer, 不比对 context 的 visual。于是同一窗口换
+#     fbconfig 必然命中旧 buffer → _mesa_make_current 的 check_compatible 在
+#     depthBits/stencilBits 上失配 → "MakeCurrent: incompatible visuals" →
+#     此后所有 GL 调用 "called without a rendering context"。这在 X server 侧
+#     无法修复。
+# DRI 前端两者皆无: targets/dri 本来就列了 driver_zink, kopper 是原生呈现路径,
+# 且 Mesa 的 EGL x11 平台从不查询 GLX 扩展 (src/egl 全树只有一行注释掉的 glx),
+# 所以内置 Java X server 不需要实现 GLX 扩展。DRI3/Present 不可用时 Mesa 会自动
+# 退到 swrast (core X + MIT-SHM), 仍然可用。
 #
 # 链接画像必须与 Termux/官方 libGL 一致 (与 ci/wrapper/build-tzst.sh 同源教训):
 #   - meson host system=linux + -D__TERMUX__ + patch 0003 → DETECT_OS_ANDROID
 #     关闭, 于是不会 DT_NEEDED liblog/libcutils/libsync 这些 android-stub;
 #     那些名字一旦进 imagefs/usr/lib 就会遮蔽 /system 的真实实现。
+#     system=linux 同时让 with_dri_platform=drm, platform_x11_dri3.c 才会编。
 #   - XShm 走 libandroid-shmem (Bionic 无 SysV shm 实现, NDK 只给了头文件)。
 #   - 不开 -Dandroid-stub (25.3 起它要求 platforms=android); 改用
 #     vendor/mesa-gl-patches/0001 让 vk_android_native_buffer.h 在 __TERMUX__
 #     下走通用 buffer_handle_t, 从而完全不碰 AOSP 的 cutils 头。
-#   - gallium 驱动只要 zink + softpipe: xlib GLX 强制要一个软件光栅化器
-#     (meson.build "xlib based GLX requires softpipe or llvmpipe"), 取不依赖
-#     LLVM 的 softpipe; sw_helper 的探测顺序里 zink 排在软件驱动之前, 加上
-#     Amphora 显式下发 GALLIUM_DRIVER=zink, 实际永远走 zink。
+#   - gallium 驱动 zink + softpipe: zink 是加速路径, softpipe 是 Mesa 在
+#     DRI3 不可用时自动回退的软件光栅化器 (不依赖 LLVM)。
 # =============================================================================
 set -euo pipefail
 source "$(dirname "$0")/../config.sh"
@@ -125,18 +143,18 @@ meson setup "$BUILD" \
     -Dbuildtype=release \
     -Db_ndebug=true \
     -Dplatforms=x11 \
-    -Dglx=xlib \
+    -Dglx=dri \
+    -Degl=enabled \
     -Dopengl=true \
     -Dgles1=disabled \
     -Dgles2=disabled \
-    -Degl=disabled \
     -Dgbm=disabled \
     -Dgallium-drivers=zink,softpipe \
     -Dvulkan-drivers= \
     -Dllvm=disabled \
     -Dshared-llvm=disabled \
     -Dglvnd=disabled \
-    -Dxmlconfig=disabled \
+    -Dxmlconfig=enabled \
     -Dzstd=enabled \
     -Dvideo-codecs= \
     -Dandroid-libbacktrace=disabled \
@@ -149,20 +167,56 @@ ninja -C "$BUILD" -j"$JOBS"
 ninja -C "$BUILD" install
 
 # ---- 产物校验 + soname 补齐 ----
+# DRI 前端的产物分三块: libEGL (Wine >=10.17 dlopen 的那个)、libGL (遗留 GLX
+# 消费者)、以及承载全部 gallium 驱动的 megadriver libgallium-<ver>.so。
 GL_REAL="$(ls -1 "$PREFIX/lib"/libGL.so.1.* 2>/dev/null | head -1 || true)"
 [ -n "$GL_REAL" ] || { error "  未生成 libGL.so.1.*"; exit 1; }
 "$STRIP" --strip-unneeded "$GL_REAL" 2>/dev/null || true
 ensure_soname_link "libGL.so.1" "$(basename "$GL_REAL")"
 
-# android-stub 一旦被 DT_NEEDED 就会在 imagefs 里遮蔽 /system 的真实实现。
-NEEDED="$(readelf -dW "$GL_REAL" | awk -F'[][]' '/NEEDED/{print $2}')"
-for stub in liblog.so libcutils.so libsync.so libhardware.so libnativewindow.so; do
-    if echo "$NEEDED" | grep -qx "$stub"; then
-        error "  libGL DT_NEEDED 含 android-stub $stub (Termux 画像失效)"
-        exit 1
-    fi
-done
-echo "$NEEDED" | grep -qx 'libX11.so' || warn "  libGL 未 NEEDED libX11.so: $(echo "$NEEDED" | tr '\n' ' ')"
+EGL_REAL="$(ls -1 "$PREFIX/lib"/libEGL.so.1.* 2>/dev/null | head -1 || true)"
+[ -n "$EGL_REAL" ] || { error "  未生成 libEGL.so.1.* (Wine >=10.17 靠它做 GL)"; exit 1; }
+"$STRIP" --strip-unneeded "$EGL_REAL" 2>/dev/null || true
+ensure_soname_link "libEGL.so.1" "$(basename "$EGL_REAL")"
 
-log "  mesa-gl $VER: $(ls "$PREFIX/lib"/libGL.so* 2>/dev/null | xargs -n1 basename | tr '\n' ' ')"
-log "  NEEDED: $(echo "$NEEDED" | tr '\n' ' ')"
+MEGADRIVER="$(ls -1 "$PREFIX/lib"/libgallium*.so 2>/dev/null | head -1 || true)"
+[ -n "$MEGADRIVER" ] || { error "  未生成 libgallium*.so megadriver"; exit 1; }
+"$STRIP" --strip-unneeded "$MEGADRIVER" 2>/dev/null || true
+
+# android-stub 一旦被 DT_NEEDED 就会在 imagefs 里遮蔽 /system 的真实实现。
+for so in "$GL_REAL" "$EGL_REAL" "$MEGADRIVER"; do
+    so_needed="$(readelf -dW "$so" | awk -F'[][]' '/NEEDED/{print $2}')"
+    for stub in liblog.so libcutils.so libsync.so libhardware.so libnativewindow.so; do
+        if echo "$so_needed" | grep -qx "$stub"; then
+            error "  $(basename "$so") DT_NEEDED 含 android-stub $stub (Termux 画像失效)"
+            exit 1
+        fi
+    done
+done
+
+# Mesa 的 install_megadrivers.py 用硬链接把 megadriver 摊成 dri/<driver>_dri.so。
+# 硬链接过 tar 再落到 Android 私有目录不总是可靠, 且白白多占几十 MB; 统一换成
+# 相对软链, loader 按驱动名找到的仍是同一个文件。
+if [ -d "$PREFIX/lib/dri" ]; then
+    for drv in "$PREFIX/lib/dri"/*_dri.so; do
+        [ -e "$drv" ] || continue
+        [ -L "$drv" ] && continue
+        rm -f "$drv"
+        ln -s "../$(basename "$MEGADRIVER")" "$drv"
+    done
+fi
+
+# zink 是加速路径。DRI 前端下它由 targets/dri 链进 megadriver (不像 xlib 前端
+# 那样根本没有 driver_zink), 缺了就只剩 softpipe, 必须硬断言而不是 warn。
+if ! grep -q 'zink_kopper_present_queue' "$MEGADRIVER"; then
+    error "  megadriver 未链接 zink, GL 只会退到软件光栅化"
+    exit 1
+fi
+
+# Amphora 只在看到该标记时才下发 GALLIUM_DRIVER=zink
+# (XServerWineSessionPreparer.applyGalliumDriver)。
+: > "$PREFIX/lib/.libgl-zink"
+
+log "  mesa-gl $VER: $(ls "$PREFIX/lib"/lib{GL,EGL,gallium}*.so* 2>/dev/null | xargs -n1 basename | tr '\n' ' ')"
+log "  dri/: $(ls "$PREFIX/lib/dri" 2>/dev/null | tr '\n' ' ')"
+log "  libEGL NEEDED: $(readelf -dW "$EGL_REAL" | awk -F'[][]' '/NEEDED/{print $2}' | tr '\n' ' ')"

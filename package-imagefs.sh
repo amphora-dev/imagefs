@@ -59,13 +59,14 @@ prune_runtime_rootfs() {
         "$root/usr/share/gir-1.0" \
         "$root/usr/lib/girepository-1.0"
 
-    # libGL.so / libGL.so.1 / libGL.so.1.5.0 是 mesa-gl 的实体与软链，必须留下。
+    # mesa-gl 的实体与软链必须留下：libGL.so*（遗留 GLX 消费者）、libEGL.so*
+    # （Wine >=10.17 / Proton 11 的 win32u dlopen 的就是它）、以及承载 zink 的
+    # megadriver libgallium-*.so 与 usr/lib/dri/。删的只是 glvnd 分发层。
     rm -f \
         "$root/usr/lib"/libGLdispatch.so* \
         "$root/usr/lib"/libGLESv1_CM.so* \
         "$root/usr/lib"/libGLX.so* \
         "$root/usr/lib"/libOpenGL.so* \
-        "$root/usr/lib"/libEGL.so \
         "$root/usr/lib"/libGLESv2.so
 
     # App 可能调用：fc-cache / glib-compile-schemas / gio-querymodules
@@ -90,9 +91,27 @@ prune_runtime_rootfs() {
         error "prune failed: glvnd libGLdispatch still present"
         bad=1
     fi
-    # Wine opengl32/ddraw → WineD3D dlopen 的是 libGL.so.1；软链断了等于没 GL。
-    if [ ! -e "$root/usr/lib/libGL.so.1" ]; then
-        error "missing usr/lib/libGL.so.1 (mesa-gl 未构建?)"
+    # Wine >=10.17 的 win32u dlopen libEGL.so.1；旧版 opengl32/ddraw 走 libGL.so.1。
+    # 两条软链任一断掉都等于没 GL。
+    for gl_soname in libGL.so.1 libEGL.so.1; do
+        if [ ! -e "$root/usr/lib/$gl_soname" ]; then
+            error "missing usr/lib/$gl_soname (mesa-gl 未构建?)"
+            bad=1
+        fi
+    done
+    # gallium 驱动全在 megadriver 里，dri/ 是 loader 按驱动名查找的入口。
+    if ! ls "$root/usr/lib"/libgallium*.so >/dev/null 2>&1; then
+        error "missing usr/lib/libgallium*.so (mesa-gl megadriver 未构建?)"
+        bad=1
+    fi
+    if [ ! -e "$root/usr/lib/dri/zink_dri.so" ]; then
+        error "missing usr/lib/dri/zink_dri.so (zink 未进 megadriver?)"
+        bad=1
+    fi
+    # Amphora 靠该标记决定是否下发 GALLIUM_DRIVER=zink；zink 取不到时 Mesa 直接
+    # 返回 NULL 而不回退 softpipe，标记与实体不一致会让 GL 栈整体失效。
+    if [ ! -e "$root/usr/lib/.libgl-zink" ]; then
+        error "missing usr/lib/.libgl-zink (mesa-gl 的 zink 标记丢了?)"
         bad=1
     fi
     # extra_libs.tzst 已废止：Turnip / vkBasalt / bcn_layer 不得混进 imagefs。

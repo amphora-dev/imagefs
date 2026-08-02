@@ -35,22 +35,24 @@ required=(
   "libgio-2.0.so:多个 unix 模块"
   # 图形栈的 NEEDED。这几项缺了不是降级, 是 Vulkan/OpenGL 驱动直接加载失败,
   # 表现为黑屏而非报错, 所以必须断言。
-  # 自建 Mesa GL (packages/graphics/mesa-gl.sh): Wine opengl32/ddraw → WineD3D
-  # → zink 的唯一入口, 缺了 OpenGL/DX7 直接黑屏。
-  "libGL.so.1:Wine opengl32/ddraw → WineD3D → zink"
-  "libzstd.so.1:libGL.so.1 + Turnip (Mesa shader cache)"
-  "libandroid-shmem.so:libGL.so.1 — XShm (Bionic 无 SysV shm)"
+  # 自建 Mesa GL (packages/graphics/mesa-gl.sh): Wine opengl32 → WineD3D → zink
+  # 的入口, 缺了 OpenGL/DX7 直接黑屏。Wine >=10.17 走 libEGL, 更早走 libGL。
+  "libEGL.so.1:Wine >=10.17 win32u → EGL x11 → zink"
+  "libGL.so.1:旧 Wine opengl32/ddraw → GLX → zink"
+  "libzstd.so.1:Mesa GL + Turnip (Mesa shader cache)"
+  "libandroid-shmem.so:Mesa GL — XShm (Bionic 无 SysV shm)"
   "libandroid-sysvshm.so:libvulkan_wrapper.so + Turnip + GPLC 的 LD_PRELOAD"
   "libc++_shared.so:libvulkan_wrapper.so — Guest LD_LIBRARY_PATH 不含 nativeLibraryDir"
   "libdrm.so:libvulkan_wrapper.so + Turnip + libGL.so.1"
-  "libX11-xcb.so:libvulkan_wrapper.so + Turnip"
-  "libxcb.so:libvulkan_wrapper.so + Turnip"
-  "libxcb-dri3.so:libvulkan_wrapper.so + Turnip"
-  "libxcb-present.so:libvulkan_wrapper.so + Turnip"
-  "libxcb-sync.so:libvulkan_wrapper.so + Turnip"
-  "libxcb-randr.so:libvulkan_wrapper.so + Turnip"
-  "libxcb-shm.so:libvulkan_wrapper.so + Turnip"
-  "libxshmfence.so:Turnip — 看着像可省, 实际是 NEEDED"
+  "libX11-xcb.so:libvulkan_wrapper.so + Turnip + Mesa EGL x11"
+  "libxcb.so:libvulkan_wrapper.so + Turnip + Mesa EGL x11"
+  "libxcb-dri3.so:libvulkan_wrapper.so + Turnip + Mesa EGL DRI3 呈现"
+  "libxcb-present.so:libvulkan_wrapper.so + Turnip + Mesa EGL DRI3 呈现"
+  "libxcb-sync.so:libvulkan_wrapper.so + Turnip + Mesa EGL fence"
+  "libxcb-randr.so:libvulkan_wrapper.so + Turnip + Mesa EGL x11"
+  "libxcb-shm.so:libvulkan_wrapper.so + Turnip + Mesa EGL swrast 回退"
+  "libxcb-xfixes.so:Mesa EGL — x11_dri3_open 会无条件解引用 xfixes 应答"
+  "libxshmfence.so:Turnip + Mesa DRI3 loader — 看着像可省, 实际是 NEEDED"
   "libexpat.so.1:Turnip + fontconfig"
   "libz.so:libGL.so.1 (NEEDED 无版本号)"
   "libz.so.1:Turnip"
@@ -107,6 +109,26 @@ if [ -n "${IMAGEFS_RUNTIME_STAGE:-}" ]; then
     echo "  OK      libGL.so.1 (mesa-gl)"
   else
     echo "  MISSING libGL.so.1 — Wine OpenGL/DX7 会黑屏" >&2
+    fail=1
+  fi
+  # Wine >=10.17 (Proton 11) 的 win32u dlopen 的是 libEGL.so.1，不是 libGL。
+  if [ -e "$PRUNE_ROOT/usr/lib/libEGL.so.1" ]; then
+    echo "  OK      libEGL.so.1 (mesa-gl, Wine >=10.17 GL 路径)"
+  else
+    echo "  MISSING libEGL.so.1 — Proton 11 会退回 GLX 并因缺 GLX 扩展而关掉 OpenGL" >&2
+    fail=1
+  fi
+  # zink 在 DRI 前端里位于 megadriver，不在 libGL 内。
+  megadriver="$(ls "$PRUNE_ROOT/usr/lib"/libgallium*.so 2>/dev/null | head -1)"
+  if [ -n "$megadriver" ] && grep -q 'zink_kopper_present_queue' "$megadriver"; then
+    if [ -e "$PRUNE_ROOT/usr/lib/.libgl-zink" ]; then
+      echo "  OK      .libgl-zink 与 megadriver 内的 zink 一致"
+    else
+      echo "  MISSING usr/lib/.libgl-zink — Amphora 会退回软件光栅化" >&2
+      fail=1
+    fi
+  else
+    echo "  MISSING megadriver 里没有 zink — GL 只剩 softpipe" >&2
     fail=1
   fi
   # extra_libs.tzst 已废止, 它的其余内容不该被顺手搬进 imagefs。
