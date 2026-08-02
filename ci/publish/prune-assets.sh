@@ -47,6 +47,8 @@ is_kept() {
 
 mapfile -t ASSETS < <(gh release view "$TAG" --repo "$REPO" --json assets --jq '.assets[].name')
 for name in "${ASSETS[@]}"; do
+  # $MATCH is unquoted on purpose: --match is a glob (e.g. 'wrapper-*').
+  # shellcheck disable=SC2254
   case "$name" in
     $MATCH) ;;
     *) continue ;;

@@ -77,5 +77,5 @@ mkdir -p "$PREFIX/lib/gstreamer-1.0"
 
 log "staging sysroot 布局创建完成: $STAGING_DIR"
 log "  HOST_DIR=$HOST_DIR  TARGET_DIR=$TARGET_DIR"
-log "  merged-usr: $(ls -la "$STAGING_DIR" | grep '\->' | wc -l) 个软链"
+log "  merged-usr: $(find "$STAGING_DIR" -maxdepth 1 -type l | wc -l) 个软链"
 log "  Bionic libc: $(ls -la "$PREFIX/lib/libc.so" 2>/dev/null | awk '{print $NF}')"

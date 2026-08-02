@@ -1,0 +1,53 @@
+# Cheap checks on every push/PR. The three build workflows are gated by narrow
+# path filters (a full imagefs graph build is expensive), which left every shared
+# script under ci/ with no automatic verification at all. This runs in seconds and
+# covers all of them.
+name: lint
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  shell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: shellcheck
+        run: |
+          shellcheck --version
+          # Severity floor is `warning`: `note` is dominated by SC2086 on our own
+          # $PREFIX globs, where word splitting is intended. See .shellcheckrc for
+          # the two rule-level disables and why.
+          mapfile -t scripts < <(find . -name '*.sh' -not -path './.git/*' | sort)
+          printf 'checking %d scripts\n' "${#scripts[@]}"
+          shellcheck -S warning -f gcc "${scripts[@]}"
+
+      - name: bash -n
+        run: |
+          # shellcheck's parser is not bash's; syntax-check with the real thing too.
+          find . -name '*.sh' -not -path './.git/*' -print0 |
+            xargs -0 -n1 bash -n
+
+      - name: executable bit on entrypoints
+        run: |
+          # Recipes are invoked as `bash <script>` so the bit is cosmetic there, but
+          # anything documented as `./script` must actually be runnable.
+          status=0
+          for f in build-all.sh create-rootfs.sh package-imagefs.sh setup-env.sh config.sh; do
+            [ -x "$f" ] || { echo "not executable: $f" >&2; status=1; }
+          done
+          exit "$status"
+
+  packages:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # DEPENDS expansion, topo order, stamp stability, and that every package in
+      # packages.conf / depends.conf actually has a recipe -- which build-all.sh
+      # otherwise only discovers at build time, after compiling everything before it.
+      - name: DEPENDS / topo / stamp selftest
+        run: bash ci/verify/pkg-selftest.sh

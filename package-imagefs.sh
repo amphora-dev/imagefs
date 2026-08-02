@@ -19,7 +19,9 @@ OUTPUT_DIR="${OUTPUT_DIR:-/workspace/winlator-imagefs-build/output}"
 mkdir -p "$OUTPUT_DIR"
 
 prune_runtime_rootfs() {
-    local root="$1"
+    # ${1:?} not just $1: every path below is "$root/...", so an empty root would
+    # turn `rm -rf "$root/usr/local"` into `rm -rf /usr/local`.
+    local root="${1:?prune_runtime_rootfs: root required}"
     section "裁剪运行时无关文件 → target"
 
     local before after
@@ -34,7 +36,7 @@ prune_runtime_rootfs() {
         "$root/usr/share/cmake" \
         "$root/usr/share/aclocal" \
         "$root/usr/share/vala" \
-        "$root/usr/local"
+        "${root:?}/usr/local"
 
     find "$root/usr/lib" -type d -name include -prune -exec rm -rf {} + 2>/dev/null || true
     find "$root/usr/lib" \( -name '*.a' -o -name '*.la' \) -delete 2>/dev/null || true
@@ -107,7 +109,7 @@ prune_runtime_rootfs() {
 
     after=$(du -sm "$root" 2>/dev/null | awk '{print $1}')
     log "裁剪: ${before}MB → ${after}MB (target)"
-    log "  保留 bin: $(find "$root/usr/bin" -type f 2>/dev/null | xargs -r -n1 basename | tr '\n' ' ')"
+    log "  保留 bin: $(find "$root/usr/bin" -type f -exec basename {} \; 2>/dev/null | tr '\n' ' ')"
     log "  .so 文件: $(find "$root/usr/lib" -name '*.so*' -type f 2>/dev/null | wc -l)"
 }
 

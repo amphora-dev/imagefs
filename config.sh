@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # =============================================================================
 # config.sh — winlator bionic imagefs 构建系统全局配置
 # =============================================================================
@@ -84,7 +85,13 @@ ensure_soname_link() {
     # 没给候选或候选都不在: 退回按前缀找同名实体 (libavutil.so.60 -> libavutil.so*)
     local base="${want%%.so*}.so"
     local real
-    real=$(ls -1 "$PREFIX/lib/$base"* 2>/dev/null | grep -v "$want\$" | head -1 || true)
+    local candidate
+    for candidate in "$PREFIX/lib/$base"*; do
+        [ -e "$candidate" ] || continue
+        [ "$(basename "$candidate")" = "$want" ] && continue
+        real="$candidate"
+        break
+    done
     if [ -n "$real" ]; then
         ln -sf "$(basename "$real")" "$dst"
         log "  软链: $want -> $(basename "$real")"
