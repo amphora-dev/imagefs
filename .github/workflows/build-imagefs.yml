@@ -18,6 +18,8 @@ on:
       - "vendor/winlator-bionic/**"
       - "vendor/mesa-gl-patches/**"
       - "*.sh"
+      - "ci/verify/**"
+      - "ci/gate/imagefs-publish.sh"
       - ".github/workflows/build-imagefs.yml"
   pull_request:
     branches: [main]
@@ -27,6 +29,8 @@ on:
       - "vendor/winlator-bionic/**"
       - "vendor/mesa-gl-patches/**"
       - "*.sh"
+      - "ci/verify/**"
+      - "ci/gate/imagefs-publish.sh"
       - ".github/workflows/build-imagefs.yml"
 
 permissions:
