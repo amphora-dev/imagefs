@@ -156,8 +156,8 @@ imagefs 只提供**用户态支撑库**（多媒体、字体、Vulkan loader、p
 可自行验证：
 ```bash
 cd /workspace/winlator-imagefs-analysis
-readelf -p .interp evidence/repro_ztest_aarch64_bionic      # /system/bin/linker64
-readelf -d    evidence/repro_ztest_aarch64_bionic | grep NEEDED  # libc.so / libdl.so
+readelf -p .interp ../evidence/repro_ztest_aarch64_bionic      # /system/bin/linker64
+readelf -d    ../evidence/repro_ztest_aarch64_bionic | grep NEEDED  # libc.so / libdl.so
 tar -tJf imagefs_repro.txz | head                           # bin/etc/lib... 软链结构
 ```
 
@@ -578,7 +578,7 @@ MiceWine-Packages 的发现把复刻可行性从"有骨架可借鉴"提升到"**
 
 **产物**：`imagefs_bionic_v2.txz` (1.0MB)，含 4 库 + 头文件 + pkgconfig + merged-usr 布局 + Bionic libc 软链。
 
-可复跑脚本：[`build_imagefs_bionic.sh`](./build_imagefs_bionic.sh) · meson cross-file：[`android-aarch64-bionic.ini`](./android-aarch64-bionic.ini)
+当前构建入口：[`build-all.sh`](../../build-all.sh)（包取舍见 [PACKAGE-SELECTION.md](PACKAGE-SELECTION.md)） · meson cross-file 参考：[`android-aarch64-bionic.ini`](../meson/android-aarch64-bionic.ini)，实际 cross-file 由 [`setup-env.sh`](../../setup-env.sh) 按解析到的 NDK 生成
 
 ---
 

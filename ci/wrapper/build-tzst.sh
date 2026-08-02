@@ -18,11 +18,6 @@
 #     keep C++ exceptions enabled in the cross file — -fno-exceptions produced
 #     a broken hook vintage and guest adrenotools_open_libvulkan failures)
 #
-# Link profile must match Termux/official wrapper ICDs:
-#   - -D__TERMUX__ + patch 0003 → DETECT_OS_ANDROID off (no stub DT_NEEDED)
-#   - pack vendor/adrenotools-prebuilt (not NDK-cross subproject hooks)
-#   - never pack android-stub libcutils/liblog/libsync into usr/lib
-#
 # Output (under $OUTPUT_DIR):
 #   wrapper-<mesa_shortsha>.tzst
 #   wrapper-<mesa_shortsha>.tzst.sha256sum

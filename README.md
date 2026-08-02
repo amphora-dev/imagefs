@@ -18,6 +18,8 @@ bash ci/verify/pkg-selftest.sh   # 不编包，只测 DEPENDS / topo / stamp
 
 依赖：cmake / meson / autotools / patchelf / ccache / NDK。CI 在 `ubuntu-latest` 上直接装这些工具运行，不再包一层 Docker。
 
+静态检查（每次 push/PR 都跑，秒级）：`shellcheck -S warning` 覆盖全部 `*.sh`、`bash -n`、`pkg-selftest`、以及「`ALL_PACKAGES` 里每个包都有配方」。规则豁免与理由见 [`.shellcheckrc`](.shellcheckrc)，流水线见 [`lint.yml`](.github/workflows/lint.yml)。本地：`shellcheck -S warning $(find . -name '*.sh' -not -path './.git/*')`。
+
 `android-sysvshm` / `alsa-android-aserver` 源码在 [`vendor/winlator-bionic/`](vendor/winlator-bionic/)。
 
 ## 目录结构
@@ -52,7 +54,7 @@ lib/ndk.sh                              # NDK 发现（图构建与 L1 leaf 共�
 |----------|------|------|
 | [`build-imagefs.yml`](.github/workflows/build-imagefs.yml) | 改 packages/lib/vendor/root `*.sh`；或手动 | `amphora` → pin `rootfs` |
 | [`build-box64.yml`](.github/workflows/build-box64.yml) | 改 `ci/box64` / patches；或手动 | `box64` → pin `box64` |
-| [`build-wrapper.yml`](.github/workflows/build-wrapper.yml) | 改 `ci/wrapper` / X11 staging / patches；或手动 | `wrapper` → pin `turnip` |
+| [`build-wrapper.yml`](.github/workflows/build-wrapper.yml) | 改 `ci/wrapper` / X11 staging / patches；或手动 | `wrapper` → pin `runtimeAssets[graphics_driver/wrapper.tzst]` |
 
 ```text
 https://github.com/amphora-dev/imagefs/releases/download/amphora/imagefs.txz
@@ -71,7 +73,7 @@ bash ci/wrapper/build-tzst.sh
 
 - `imagefs.txz` — 运行时 rootfs（已裁剪 headers / 静态库 / man / glvnd / 多余 bin）；**不含** box64 / wrapper
 - `Box64-*.wcp` — 独立模拟器包（xz tar + `profile.json`），由 Amphora `ContentsManager` 装到 `${bindir}/box64`
-- `wrapper-*.tzst` — Pipetto `libvulkan_wrapper.so` + adrenotools/ICD（zstd tar），pin 为 manifest `turnip`
+- `wrapper-*.tzst` — Pipetto `libvulkan_wrapper.so` + 自建 adrenotools/hooks + ICD（zstd tar），pin 为 manifest 的 `runtimeAssets[graphics_driver/wrapper.tzst]`
 - 音频：ALSA + android_aserver（无 pulseaudio）
 
 ## 包列表
