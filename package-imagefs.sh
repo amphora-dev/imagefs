@@ -95,6 +95,12 @@ prune_runtime_rootfs() {
         error "missing usr/lib/libGL.so.1 (mesa-gl 未构建?)"
         bad=1
     fi
+    # Amphora 靠该标记决定是否下发 GALLIUM_DRIVER=zink；zink 取不到时 Mesa 直接
+    # 返回 NULL 而不回退 softpipe，标记与实体不一致会让 GL 栈整体失效。
+    if [ ! -e "$root/usr/lib/.libgl-zink" ]; then
+        error "missing usr/lib/.libgl-zink (mesa-gl 的 zink 标记丢了?)"
+        bad=1
+    fi
     # extra_libs.tzst 已废止：Turnip / vkBasalt / bcn_layer 不得混进 imagefs。
     # 默认 Vulkan 走 wrapper ICD（独立 wrapper.tzst），完整 Turnip 是可选 WCP/zip。
     for unwanted in libvulkan_freedreno.so libvkbasalt.so libbcn_layer.so; do

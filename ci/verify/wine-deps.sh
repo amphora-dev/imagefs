@@ -109,6 +109,19 @@ if [ -n "${IMAGEFS_RUNTIME_STAGE:-}" ]; then
     echo "  MISSING libGL.so.1 — Wine OpenGL/DX7 会黑屏" >&2
     fail=1
   fi
+  # Amphora 只在看到该标记时才下发 GALLIUM_DRIVER=zink。Mesa 对显式指定却取不到
+  # 的 GALLIUM_DRIVER 是直接返回 NULL (不回退 softpipe), 标记撒谎 = GL 栈全灭。
+  if [ -e "$PRUNE_ROOT/usr/lib/.libgl-zink" ]; then
+    if grep -q 'zink_kopper_present_queue' "$PRUNE_ROOT/usr/lib/libGL.so.1"; then
+      echo "  OK      .libgl-zink 与 libGL 内的 zink 一致"
+    else
+      echo "  MISMATCH .libgl-zink 存在但 libGL 没链接 zink" >&2
+      fail=1
+    fi
+  else
+    echo "  MISSING usr/lib/.libgl-zink — Amphora 会退回软件光栅化" >&2
+    fail=1
+  fi
   # extra_libs.tzst 已废止, 它的其余内容不该被顺手搬进 imagefs。
   for stray in libvulkan_freedreno.so libvkbasalt.so libbcn_layer.so; do
     if [ -e "$PRUNE_ROOT/usr/lib/$stray" ]; then

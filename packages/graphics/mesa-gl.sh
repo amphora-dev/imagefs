@@ -20,8 +20,14 @@
 #     下走通用 buffer_handle_t, 从而完全不碰 AOSP 的 cutils 头。
 #   - gallium 驱动只要 zink + softpipe: xlib GLX 强制要一个软件光栅化器
 #     (meson.build "xlib based GLX requires softpipe or llvmpipe"), 取不依赖
-#     LLVM 的 softpipe; sw_helper 的探测顺序里 zink 排在软件驱动之前, 加上
-#     Amphora 显式下发 GALLIUM_DRIVER=zink, 实际永远走 zink。
+#     LLVM 的 softpipe。
+#   - zink 必须靠 patch 0002 显式加进 libgl-xlib 目标: 该目标的 meson 依赖里
+#     只有 driver_swrast/virgl/asahi, 不打补丁则 GALLIUM_ZINK 根本没定义,
+#     sw_helper 里没有 zink 分支。而 sw_screen_create_vk 对显式指定却取不到的
+#     GALLIUM_DRIVER 是直接返回 NULL (不再回退 softpipe), 于是 Amphora 下发的
+#     GALLIUM_DRIVER=zink 会让整条 GL 栈失效 -- DirectDraw/DX7/OpenGL 全灭。
+#     WinNative 的 extra_libs libGL 同时含 xlib_displaytarget_* 与 zink_kopper_*,
+#     正是这一组合。
 # =============================================================================
 set -euo pipefail
 source "$(dirname "$0")/../config.sh"
@@ -164,5 +170,17 @@ for stub in liblog.so libcutils.so libsync.so libhardware.so libnativewindow.so;
 done
 echo "$NEEDED" | grep -qx 'libX11.so' || warn "  libGL 未 NEEDED libX11.so: $(echo "$NEEDED" | tr '\n' ' ')"
 
+# zink 是否真的进了 libGL。GALLIUM_DRIVER=zink 取不到时 Mesa 直接返回 NULL 而不
+# 回退 softpipe, 所以这里必须是硬断言, 不能只 warn。
+if ! grep -q 'zink_kopper_present_queue' "$GL_REAL"; then
+    error "  libGL 未链接 zink (patch 0002 失效?), GALLIUM_DRIVER=zink 会让 GL 栈整体失效"
+    exit 1
+fi
+
+# Amphora 只在看到该标记时才下发 GALLIUM_DRIVER=zink
+# (XServerWineSessionPreparer.applyGalliumDriver)。
+: > "$PREFIX/lib/.libgl-zink"
+
 log "  mesa-gl $VER: $(ls "$PREFIX/lib"/libGL.so* 2>/dev/null | xargs -n1 basename | tr '\n' ' ')"
 log "  NEEDED: $(echo "$NEEDED" | tr '\n' ' ')"
+log "  zink: 已链接 (.libgl-zink 已写入)"
