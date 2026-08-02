@@ -120,7 +120,7 @@ if [ -n "${IMAGEFS_RUNTIME_STAGE:-}" ]; then
   fi
   # zink 在 DRI 前端里位于 megadriver，不在 libGL 内。
   megadriver="$(ls "$PRUNE_ROOT/usr/lib"/libgallium*.so 2>/dev/null | head -1)"
-  if [ -n "$megadriver" ] && grep -q 'zink_kopper_present_queue' "$megadriver"; then
+  if [ -n "$megadriver" ] && grep -q 'ZINK:' "$megadriver"; then
     if [ -e "$PRUNE_ROOT/usr/lib/.libgl-zink" ]; then
       echo "  OK      .libgl-zink 与 megadriver 内的 zink 一致"
     else

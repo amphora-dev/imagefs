@@ -99,13 +99,9 @@ prune_runtime_rootfs() {
             bad=1
         fi
     done
-    # gallium 驱动全在 megadriver 里，dri/ 是 loader 按驱动名查找的入口。
+    # gallium 驱动全在 megadriver 里；libGL / libEGL 都 DT_NEEDED 它。
     if ! ls "$root/usr/lib"/libgallium*.so >/dev/null 2>&1; then
         error "missing usr/lib/libgallium*.so (mesa-gl megadriver 未构建?)"
-        bad=1
-    fi
-    if [ ! -e "$root/usr/lib/dri/zink_dri.so" ]; then
-        error "missing usr/lib/dri/zink_dri.so (zink 未进 megadriver?)"
         bad=1
     fi
     # Amphora 靠该标记决定是否下发 GALLIUM_DRIVER=zink；zink 取不到时 Mesa 直接

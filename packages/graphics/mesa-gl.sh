@@ -55,6 +55,13 @@ CROSS="$WORK/cross-termux-aarch64.ini"
 NATIVE="$WORK/native.ini"
 TC="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64"
 
+# 本包单独抬到 API 30, 不用全局的 ANDROID_API=26 —— 见下面 -fno-emulated-tls,
+# 真正的 ELF TLS 要 bionic >= API 29。ci/wrapper/build-tzst.sh 也用 API 30。
+MESA_GL_API="${MESA_GL_API:-30}"
+CC="$TC/bin/${ARCH}-linux-android${MESA_GL_API}-clang"
+CXX="$TC/bin/${ARCH}-linux-android${MESA_GL_API}-clang++"
+[ -x "$CC" ] || { error "  缺少 $CC (MESA_GL_API=$MESA_GL_API)"; exit 1; }
+
 mkdir -p "$WORK"
 
 cd "$SRC_DIR"
@@ -97,8 +104,16 @@ cpp_ld = '$TC/bin/ld.lld'
 pkg-config = 'pkg-config'
 
 [built-in options]
-c_args = ['-I$PREFIX/include', '-Wno-error', '-D__USE_GNU', '-D__TERMUX__']
-cpp_args = ['-I$PREFIX/include', '-Wno-error', '-D__USE_GNU', '-D__TERMUX__']
+# -fno-emulated-tls: NDK 的 clang 对 Android 目标默认 -femulated-tls (与 API
+# 无关, r26 在 API 30 上也如此), 于是 glapi 的 thread_local 变量在目标文件里叫
+# __emutls_v._mesa_glapi_tls_Dispatch。megadriver 的版本脚本 dri.sym.in 导出的
+# 却是不带前缀的 _mesa_glapi_tls_Dispatch, 加了前缀的那个落进 `local: *`,
+# libGL/libEGL 链接时就报 "undefined symbol: __emutls_v._mesa_glapi_tls_Dispatch"。
+# MiceWine 的做法是打补丁把 dri.sym.in 里的名字改成 __emutls_v.* ; 关掉 emutls
+# 走真正的 ELF TLS 同样能让名字对上, 且不用背下游补丁。ELF TLS 需要 API >= 29,
+# 所以本包编译目标抬到 MESA_GL_API=30。
+c_args = ['-I$PREFIX/include', '-Wno-error', '-D__USE_GNU', '-D__TERMUX__', '-fno-emulated-tls']
+cpp_args = ['-I$PREFIX/include', '-Wno-error', '-D__USE_GNU', '-D__TERMUX__', '-fno-emulated-tls']
 # --undefined-version: libGL 的 version script 会导出 _mesa_glapi_tls_Dispatch,
 # 但 Bionic 上 Mesa 走 __thread 而非 TLS dispatch, 该符号不存在 → lld 默认报错。
 c_link_args = ['-L$PREFIX/lib', '-landroid-shmem', '-lc++_shared', '-Wl,-rpath,/usr/lib', '-Wl,--as-needed', '-Wl,--undefined-version']
@@ -183,6 +198,17 @@ MEGADRIVER="$(ls -1 "$PREFIX/lib"/libgallium*.so 2>/dev/null | head -1 || true)"
 [ -n "$MEGADRIVER" ] || { error "  未生成 libgallium*.so megadriver"; exit 1; }
 "$STRIP" --strip-unneeded "$MEGADRIVER" 2>/dev/null || true
 
+# 旧的 xlib GLX 构建产的是 libGL.so.1.5.0, DRI 前端产的是 libGL.so.1.2.0。
+# staging 是增量复用的, 残留的旧实体会让 soname 软链指向错的那个。
+for stale in "$PREFIX/lib"/libGL.so.1.* "$PREFIX/lib"/libEGL.so.1.*; do
+    [ -e "$stale" ] || continue
+    case "$stale" in
+        "$GL_REAL"|"$EGL_REAL") continue ;;
+    esac
+    log "  清理旧构建残留: $(basename "$stale")"
+    rm -f "$stale"
+done
+
 # android-stub 一旦被 DT_NEEDED 就会在 imagefs 里遮蔽 /system 的真实实现。
 for so in "$GL_REAL" "$EGL_REAL" "$MEGADRIVER"; do
     so_needed="$(readelf -dW "$so" | awk -F'[][]' '/NEEDED/{print $2}')"
@@ -194,21 +220,12 @@ for so in "$GL_REAL" "$EGL_REAL" "$MEGADRIVER"; do
     done
 done
 
-# Mesa 的 install_megadrivers.py 用硬链接把 megadriver 摊成 dri/<driver>_dri.so。
-# 硬链接过 tar 再落到 Android 私有目录不总是可靠, 且白白多占几十 MB; 统一换成
-# 相对软链, loader 按驱动名找到的仍是同一个文件。
-if [ -d "$PREFIX/lib/dri" ]; then
-    for drv in "$PREFIX/lib/dri"/*_dri.so; do
-        [ -e "$drv" ] || continue
-        [ -L "$drv" ] && continue
-        rm -f "$drv"
-        ln -s "../$(basename "$MEGADRIVER")" "$drv"
-    done
-fi
-
 # zink 是加速路径。DRI 前端下它由 targets/dri 链进 megadriver (不像 xlib 前端
 # 那样根本没有 driver_zink), 缺了就只剩 softpipe, 必须硬断言而不是 warn。
-if ! grep -q 'zink_kopper_present_queue' "$MEGADRIVER"; then
+# 只能按 .rodata 里的字符串判: zink 的函数都不导出, --strip-unneeded 之后符号表
+# 里查不到。libGL/libEGL 都 DT_NEEDED 这个 megadriver, 25.3 没有 dri/*_dri.so 那
+# 一层 (那是 dril 桩, 只在 with_gbm 时给 X server 用)。
+if ! grep -q 'ZINK:' "$MEGADRIVER"; then
     error "  megadriver 未链接 zink, GL 只会退到软件光栅化"
     exit 1
 fi
@@ -218,5 +235,4 @@ fi
 : > "$PREFIX/lib/.libgl-zink"
 
 log "  mesa-gl $VER: $(ls "$PREFIX/lib"/lib{GL,EGL,gallium}*.so* 2>/dev/null | xargs -n1 basename | tr '\n' ' ')"
-log "  dri/: $(ls "$PREFIX/lib/dri" 2>/dev/null | tr '\n' ' ')"
 log "  libEGL NEEDED: $(readelf -dW "$EGL_REAL" | awk -F'[][]' '/NEEDED/{print $2}' | tr '\n' ' ')"
