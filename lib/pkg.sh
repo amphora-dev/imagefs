@@ -143,7 +143,8 @@ pkg_env_fingerprint() {
         "${STAGING_DIR:-}" "${HOST_DIR:-}" "${TARGET_DIR:-}"
 }
 
-# Content stamp for a package: recipe + depends.conf line + dep stamps + env.
+# Content stamp for a package: recipe + its vendored patches + depends.conf line
+# + dep stamps + env.
 pkg_content_stamp() {
     local package="$1"
     local script conf
@@ -154,6 +155,17 @@ pkg_content_stamp() {
         echo "depends=$(pkg_deps_of "$package")"
         if [ -n "$script" ] && [ -f "$script" ]; then
             sha256sum "$script"
+            # The patches a recipe applies are part of its inputs, but they live
+            # outside it, so hashing only the recipe let a patch edit land with
+            # the stamp unchanged — the package then reported "已构建, 跳过"
+            # forever and shipped a stale build. Costly to debug: the source
+            # change is right there in git, and the artifact silently is not.
+            local dir
+            for dir in $(grep -oE 'vendor/[A-Za-z0-9_-]+' "$script" 2>/dev/null | sort -u); do
+                [ -d "$SCRIPT_DIR/$dir" ] || continue
+                find "$SCRIPT_DIR/$dir" -type f -print0 2>/dev/null |
+                    LC_ALL=C sort -z | xargs -0 -r sha256sum 2>/dev/null
+            done
         else
             echo "missing-script"
         fi
