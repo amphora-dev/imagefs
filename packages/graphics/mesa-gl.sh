@@ -234,5 +234,18 @@ fi
 # (XServerWineSessionPreparer.applyGalliumDriver)。
 : > "$PREFIX/lib/.libgl-zink"
 
+# create-rootfs.sh 把 libEGL.so 指向 /system/lib64/libEGL.so; meson install 会拿
+# 自己的开发软链 (libEGL.so -> libEGL.so.1) 覆盖掉它。两者不是一回事:
+#
+#   libEGL.so.1  = Mesa 的桌面 EGL, Wine win32u 按这个带版本名 dlopen;
+#   libEGL.so    = Android 系统 EGL 的 soname, /system 的组件按这个名字链接。
+#
+# guest 的 LD_LIBRARY_PATH 里 imagefs/usr/lib 排在 /system/lib64 前面, 所以留着
+# 开发软链就等于用 Mesa EGL 顶掉系统 EGL。之后任何拖进 libgui.so 之类系统库的
+# dlopen 都会挂: 它们要 eglDestroySyncKHR / eglDupNativeFenceFDANDROID, 而 Mesa
+# 只导出 EGL 1.5 核心符号, 也永远不会有那个 ANDROID 扩展。表现是 Wine 侧
+# "egl_init Failed to load libEGL.so.1", 整条 GL 路径退回已经废弃的 GLX。
+ln -sf /system/lib64/libEGL.so "$PREFIX/lib/libEGL.so"
+
 log "  mesa-gl $VER: $(ls "$PREFIX/lib"/lib{GL,EGL,gallium}*.so* 2>/dev/null | xargs -n1 basename | tr '\n' ' ')"
 log "  libEGL NEEDED: $(readelf -dW "$EGL_REAL" | awk -F'[][]' '/NEEDED/{print $2}' | tr '\n' ' ')"

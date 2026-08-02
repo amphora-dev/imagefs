@@ -118,6 +118,17 @@ if [ -n "${IMAGEFS_RUNTIME_STAGE:-}" ]; then
     echo "  MISSING libEGL.so.1 — Proton 11 会退回 GLX 并因缺 GLX 扩展而关掉 OpenGL" >&2
     fail=1
   fi
+  # 不带版本号的 libEGL.so 必须留给 Android 系统 EGL。guest 的 LD_LIBRARY_PATH
+  # 把 imagefs/usr/lib 排在 /system/lib64 前面, meson install 留下的开发软链
+  # (libEGL.so -> libEGL.so.1) 会让 /system 的组件 (libgui.so 等) 解析到 Mesa EGL,
+  # 而 Mesa 没有 eglDestroySyncKHR / eglDupNativeFenceFDANDROID, dlopen 整个失败。
+  egl_dev_link="$(readlink "$PRUNE_ROOT/usr/lib/libEGL.so" || true)"
+  if [ "$egl_dev_link" = "/system/lib64/libEGL.so" ]; then
+    echo "  OK      libEGL.so → 系统 EGL (未被 Mesa 开发软链顶掉)"
+  else
+    echo "  BAD     libEGL.so → '$egl_dev_link'，应指向 /system/lib64/libEGL.so" >&2
+    fail=1
+  fi
   # zink 在 DRI 前端里位于 megadriver，不在 libGL 内。
   megadriver="$(ls "$PRUNE_ROOT/usr/lib"/libgallium*.so 2>/dev/null | head -1)"
   if [ -n "$megadriver" ] && grep -q 'ZINK:' "$megadriver"; then
