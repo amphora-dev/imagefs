@@ -58,6 +58,34 @@ warn()   { echo -e "${YELLOW}[$(date +%H:%M:%S)] WARN:${NC} $*"; }
 error()  { echo -e "${RED}[$(date +%H:%M:%S)] ERROR:${NC} $*" >&2; }
 section(){ echo -e "\n${CYAN}══════════════════════════════════════════════════════════${NC}"; echo -e "${CYAN}  $*${NC}"; echo -e "${CYAN}══════════════════════════════════════════════════════════${NC}\n"; }
 
+# ---- Android 系统库指针 ----
+# link_android_system_libs <lib 目录>
+#
+# 这批文件名归宿主 Android 所有。imagefs/usr/lib 里放的只是指向 /system/lib64 的
+# 指针, 实体在系统那边。guest 的 LD_LIBRARY_PATH 是 imagefs/usr/lib:/system/lib64,
+# imagefs 在前, 所以谁在这些名字上落一个自己的文件, 谁就顶掉了整个系统实现。
+#
+# 只在 create-rootfs.sh 建一次是不够的: 那只是 staging 的初始布局, 之后每个包的
+# install 还会往同一个目录写。meson/autotools 装共享库时会顺带建不带版本号的开发
+# 软链 (libEGL.so -> libEGL.so.1), 正好落在这些名字上 —— mesa-gl 打开 EGL 前端后
+# 就这样把系统 EGL 顶掉了, 之后任何拉进 libgui.so 的 dlopen 都因为 Mesa 没有
+# eglDestroySyncKHR / eglDupNativeFenceFDANDROID 而整个失败。
+#
+# 与其让每个包记得给这些名字让路, 不如在 staging→target 时按同一份清单复核一遍:
+# 开发软链留在 staging 供交叉编译 -lEGL 用, 装进 imagefs 的永远是系统指针。
+link_android_system_libs() {
+    local libdir="${1:?link_android_system_libs: lib 目录必填}"
+    local name
+    for name in libc.so libdl.so libm.so liblog.so libEGL.so libGLESv2.so \
+        libandroid.so libOpenSLES.so; do
+        ln -sf "/system/lib64/$name" "$libdir/$name"
+    done
+    # Bionic 把 pthread/rt 并进了 libc, 但别人的 DT_NEEDED 里还写着这些名字。
+    for name in libpthread.so libpthread.so.0 librt.so librt.so.1; do
+        ln -sf /system/lib64/libc.so "$libdir/$name"
+    done
+}
+
 # ---- soname 软链补齐 ----
 # ensure_soname_link <期望文件名> [实体候选 ...]
 #

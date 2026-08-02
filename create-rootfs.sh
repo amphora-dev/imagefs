@@ -33,21 +33,9 @@ ln -sf usr/tmp   tmp
 mkdir -p "$ROOTFS"/{home,opt,storage,proc,sys,dev}
 mkdir -p "$ROOTFS/home/xuser"
 
-# ---- Bionic 核心: 复用宿主 Android /system/lib64 (ln -sf 幂等) ----
-ln -sf /system/lib64/libc.so    "$PREFIX/lib/libc.so"
-ln -sf /system/lib64/libdl.so   "$PREFIX/lib/libdl.so"
-ln -sf /system/lib64/libm.so    "$PREFIX/lib/libm.so"
-ln -sf /system/lib64/liblog.so  "$PREFIX/lib/liblog.so"
-ln -sf /system/lib64/libEGL.so  "$PREFIX/lib/libEGL.so"
-ln -sf /system/lib64/libGLESv2.so "$PREFIX/lib/libGLESv2.so"
-ln -sf /system/lib64/libandroid.so "$PREFIX/lib/libandroid.so"
-ln -sf /system/lib64/libOpenSLES.so "$PREFIX/lib/libOpenSLES.so"
-
-# ---- Bionic 兼容: pthread/rt 内置于 libc (ln -sf 幂等) ----
-ln -sf /system/lib64/libc.so  "$PREFIX/lib/libpthread.so"
-ln -sf /system/lib64/libc.so  "$PREFIX/lib/libpthread.so.0"
-ln -sf /system/lib64/libc.so  "$PREFIX/lib/librt.so"
-ln -sf /system/lib64/libc.so  "$PREFIX/lib/librt.so.1"
+# ---- Bionic 核心 + 兼容名: 复用宿主 Android /system/lib64 (ln -sf 幂等) ----
+# 同一份清单在 package-imagefs.sh 的 staging→target 里复核, 见 config.sh。
+link_android_system_libs "$PREFIX/lib"
 
 # ---- tmp 子目录 ----
 mkdir -p "$PREFIX/tmp/.X11-unix" "$PREFIX/tmp/.sound" "$PREFIX/tmp/.sysvshm"

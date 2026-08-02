@@ -66,8 +66,12 @@ prune_runtime_rootfs() {
         "$root/usr/lib"/libGLdispatch.so* \
         "$root/usr/lib"/libGLESv1_CM.so* \
         "$root/usr/lib"/libGLX.so* \
-        "$root/usr/lib"/libOpenGL.so* \
-        "$root/usr/lib"/libGLESv2.so
+        "$root/usr/lib"/libOpenGL.so*
+
+    # 包的 install 会用不带版本号的开发软链盖掉这些名字（libEGL.so -> libEGL.so.1）。
+    # 开发软链只对 staging 的交叉编译有意义，装进 imagefs 就是拿我们的库顶掉系统
+    # 实现。按 create-rootfs.sh 的同一份清单复核，见 config.sh。
+    link_android_system_libs "$root/usr/lib"
 
     # App 可能调用：fc-cache / glib-compile-schemas / gio-querymodules
     if [ -d "$root/usr/bin" ]; then
