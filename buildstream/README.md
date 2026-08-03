@@ -87,12 +87,25 @@ element in 5 seconds, checks out to 204 KB, preserves the `LIBFFI_*_8.0` symbol
 versions and completes a warm host-SDK + sysroot + package build in 356 ms.
 The host overlay key is
 `d324eb868c2ebef39a121e245701137c8c8ea594eec7621374af647265ed18a4`;
-libffi's key is
-`756d22b212c8f1e9dde134f198f046b400cd00c4e2ce6b67fe70047e94e8e3cd`.
+libffi's current key is
+`adb9fa9436dc63c8f53783e6cb352fb0f89581fba554c33d4c0999bad7a17ccb`.
 
-Common Android flags, target pkg-config isolation and libtool archive cleanup
-are project defaults for every `autotools` element. Package elements only
-declare sources, build dependencies and exceptional configure switches.
+Common Android flags and target pkg-config isolation are project defaults for
+every `autotools` element. Package elements only declare sources, build
+dependencies, exceptional configure switches and output-specific cleanup.
+
+The official plugin's optional `.la` cleanup uses Bash-only `read -d` while the
+sandbox command shell is POSIX `dash`; it can silently leave archives behind.
+Library elements therefore perform a small portable `find -delete` cleanup and
+CI asserts that static libiconv contains no `.la` metadata.
+
+| Autotools element | Key | Checkout | Cold build |
+|---|---|---:|---:|
+| `libiconv` | `56a0825aea30e5944c83e5e88364bd93006e40677673f8e119c51b8113a8f41f` | 2.1 MB | 12 s |
+| `xorgproto` | `dc537e71667ab0c741b18300f08e0d7a40df99656a5c87c7b570080ca511fc42` | 4.5 MB | 3 s |
+| `xtrans` | `afb7ac2fc176cdeddc4d8ae99b729ee1b3a206c45d9c07fee2006afad9c7882e` | 272 KB | 2 s |
+
+Together with libffi, all four resolve from a warm local CAS in 335 ms.
 
 ## Measured result
 
