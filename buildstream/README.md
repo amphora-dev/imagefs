@@ -60,10 +60,14 @@ verified content from CAS.
 
 ## Host SDK and target sysroot
 
-Autotools packages use Docker Official Images'
-`buildpack-deps:bookworm`, pinned to its linux/amd64 OCI manifest digest, as a
-build-only host rootfs. The official BuildStream `autotools` plugin supplies the
-standard configure/make/install command model.
+Autotools packages combine Ubuntu Base with a 2 MB overlay assembled from 14
+versioned Ubuntu archive `.deb` files. Each package is SHA-256 pinned and staged
+with BuildStream's existing `deb` source plugin; maintainer scripts are not
+executed. The overlay adds M4, Autoconf, Automake, Libtool, GNU Make, pkgconf and
+file(1), while reusing the base's glibc/coreutils/perl-base. This avoids both a
+95-element freedesktop-sdk closure and a custom published host image. The
+official BuildStream `autotools` element supplies the configure/make/install
+command model.
 
 Host tools remain at sandbox `/`. Android package dependencies are relocated
 with BuildStream's dependency `config.location` to `/opt/android-sysroot`;
