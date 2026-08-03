@@ -12,6 +12,7 @@ content-addressed artifact without restoring `staging`, `src` or stamp files.
   artifacts
 - NDK libc++ runtime plus Winlator shm/spawn/semaphore compatibility artifacts
 - Termux `libandroid-shmem` runtime and Vulkan headers/registry artifacts
+- libffi as the first standard Autotools cross-compiled artifact
 - GitHub Actions: persists BuildStream's content-addressed store
 
 The package outputs contain only their own:
@@ -56,6 +57,19 @@ GitHub runners often have an NDK preinstalled, but bind-mounting it would make
 host contents invisible to the BuildStream cache key. A pinned NDK artifact is
 intentional: the first fetch is larger, while later runners restore the same
 verified content from CAS.
+
+## Host SDK and target sysroot
+
+Autotools packages use Docker Official Images'
+`buildpack-deps:bookworm`, pinned to its linux/amd64 OCI manifest digest, as a
+build-only host rootfs. The official BuildStream `autotools` plugin supplies the
+standard configure/make/install command model.
+
+Host tools remain at sandbox `/`. Android package dependencies are relocated
+with BuildStream's dependency `config.location` to `/opt/android-sysroot`;
+`PKG_CONFIG_SYSROOT_DIR` and `PKG_CONFIG_LIBDIR` point only there. The
+`tests/autotools-sysroot-smoke.bst` element asserts Autoconf/Automake/Libtool are
+available while target zlib is visible only through that sysroot.
 
 ## Measured result
 
@@ -104,7 +118,7 @@ pulling the NDK into its build dependencies.
 
 ## Deliberate limits
 
-- Eight leaf packages are migrated; production `build-all.sh` is unchanged.
+- Nine leaf packages are migrated; production `build-all.sh` is unchanged.
 - NDK's zip does not preserve executable modes or symlinks through the community
   source plugin, so the toolchain element restores both before publishing its
   artifact. This matters for LLVM multicall tools such as `llvm-strip`.

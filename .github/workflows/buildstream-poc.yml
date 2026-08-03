@@ -49,7 +49,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/.cache/imagefs-buildstream/tools
-        key: buildstream-tools-v1-${{ runner.os }}-bst-2.7.0-plugins-2.3.1-buildbox-1.4.15
+        key: buildstream-tools-v2-${{ runner.os }}-bst-2.7.0-core-plugins-2.7.0-community-2.3.1-requests-2.34.2-buildbox-1.4.15
 
     - name: Install pinned BuildStream tools
       run: bash ci/setup/install-buildstream.sh
@@ -65,6 +65,8 @@ jobs:
           android/android-sysv-semaphore.bst
           android/libandroid-shmem.bst
           graphics/vulkan-headers.bst
+          text/libffi.bst
+          tests/autotools-sysroot-smoke.bst
         )
         buildstream/bst build "${elements[@]}"
         for element in "${elements[@]}"; do
@@ -91,6 +93,9 @@ jobs:
         buildstream/bst artifact checkout graphics/vulkan-headers.bst \
           --deps none \
           --directory artifacts/buildstream-vulkan-headers
+        buildstream/bst artifact checkout text/libffi.bst \
+          --deps none \
+          --directory artifacts/buildstream-libffi
 
         test -L artifacts/buildstream-zlib/usr/lib/libz.so
         test -L artifacts/buildstream-zlib/usr/lib/libz.so.1
@@ -141,6 +146,15 @@ jobs:
         test -f artifacts/buildstream-vulkan-headers/usr/include/vulkan/vulkan.h
         test -f artifacts/buildstream-vulkan-headers/usr/include/vk_video/vulkan_video_codecs_common.h
         test -f artifacts/buildstream-vulkan-headers/usr/share/vulkan/registry/vk.xml
+
+        ffi=artifacts/buildstream-libffi/usr/lib/libffi.so.8.1.4
+        test -f "$ffi"
+        readelf -dW "$ffi" | grep -q 'SONAME.*libffi.so.8'
+        for symbol in ffi_call ffi_prep_cif ffi_prep_closure_loc; do
+          readelf -Ws "$ffi" | grep -q "GLOBAL.* $symbol"
+        done
+        test ! -e artifacts/buildstream-libffi/bin/bash
+        test ! -e artifacts/buildstream-libffi/opt/android-ndk
 
     - uses: actions/upload-artifact@v4
       with:
