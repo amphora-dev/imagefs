@@ -23,6 +23,15 @@ $CC -fPIC -O2 -shared \
 
 $STRIP "$PREFIX/lib/asound_module_pcm_android_aserver.so" 2>/dev/null || true
 
+# Stock alsa-lib loads $ALSA_PLUGIN_DIR/libasound_module_pcm_<name>.so.
+# Amphora/WinNative set ALSA_PLUGIN_DIR=usr/lib/alsa-lib; also keep the
+# Winlator-style unprefixed name for any patched consumers.
+mkdir -p "$PREFIX/lib/alsa-lib"
+ln -sfn ../asound_module_pcm_android_aserver.so \
+    "$PREFIX/lib/alsa-lib/libasound_module_pcm_android_aserver.so"
+ln -sfn ../asound_module_pcm_android_aserver.so \
+    "$PREFIX/lib/alsa-lib/asound_module_pcm_android_aserver.so"
+
 mkdir -p "$ROOTFS/etc/alsa/conf.d"
 cp -f "$VENDOR/android_aserver.conf" "$ROOTFS/etc/alsa/conf.d/"
 cp -f "$VENDOR/alsa.conf" "$ROOTFS/etc/alsa/"
