@@ -58,6 +58,11 @@ s1="$(pkg_content_stamp zlib)"
 s2="$(pkg_content_stamp zlib)"
 [ "$s1" = "$s2" ] || fail "stamp not stable"
 
+# Package-local Mesa toolchain overrides are build inputs too.
+mesa_default="$(pkg_content_stamp mesa-gl)"
+mesa_api26="$(MESA_GL_API=26 pkg_content_stamp mesa-gl)"
+[ "$mesa_default" != "$mesa_api26" ] || fail "mesa-gl stamp ignores MESA_GL_API"
+
 # A requested clean rebuild must not leave stamps that make build-all skip
 # packages after create-rootfs removed their installed files.
 mkdir -p "$STAGING_DIR/stale" "$TARGET_DIR/stale" "$HOST_DIR/stale" \

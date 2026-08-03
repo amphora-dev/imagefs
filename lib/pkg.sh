@@ -135,6 +135,10 @@ pkg_topo_sort() {
 # Toolchain / layout fingerprint — changing these invalidates all stamps.
 pkg_env_fingerprint() {
     printf 'arch=%s api=%s ndk=%s\n' "$ARCH" "$ANDROID_API" "${NDK_VERSION:-}"
+    # mesa-gl intentionally has a package-local API/toolchain profile. An env
+    # override must invalidate its old stamp instead of silently reusing it.
+    printf 'mesa_gl_api=%s mesa_gl_ver=%s\n' \
+        "${MESA_GL_API:-default}" "${MESA_GL_VER:-default}"
     printf 'cflags=%s\n' "${CFLAGS:-}"
     printf 'cxxflags=%s\n' "${CXXFLAGS:-}"
     printf 'ldflags=%s\n' "${LDFLAGS:-}"
