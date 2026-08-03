@@ -11,6 +11,7 @@ content-addressed artifact without restoring `staging`, `src` or stamp files.
 - zlib 1.3.1 and zstd 1.5.6: independent `aarch64-linux-android26`
   artifacts
 - NDK libc++ runtime plus Winlator shm/spawn/semaphore compatibility artifacts
+- Termux `libandroid-shmem` runtime and Vulkan headers/registry artifacts
 - GitHub Actions: persists BuildStream's content-addressed store
 
 The package outputs contain only their own:
@@ -91,10 +92,15 @@ package artifacts in 9 seconds, and uploaded them as separate directory trees.
 
 ## Deliberate limits
 
-- Only six leaf packages are migrated; production `build-all.sh` is unchanged.
+- Eight leaf packages are migrated; production `build-all.sh` is unchanged.
 - NDK's zip does not preserve executable modes or symlinks through the community
   source plugin, so the toolchain element restores both before publishing its
   artifact. This matters for LLVM multicall tools such as `llvm-strip`.
 - zstd is linked from its upstream library source set without CMake. This keeps
   host tools declared (shell/coreutils + NDK only) and preserves SONAME at link
   time, but differs from the production CMake recipe.
+- Vulkan CMake package metadata is not generated yet; headers and the registry
+  used by current downstream recipes are present.
+- libpng remains on the production path until autotools/libtool are available
+  as declared sandbox tools; its `PNG16_0` symbol versioning is too sensitive
+  to replace with an approximate manual build.

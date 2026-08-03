@@ -63,6 +63,8 @@ jobs:
           android/android-sysvshm.bst
           android/android-spawn.bst
           android/android-sysv-semaphore.bst
+          android/libandroid-shmem.bst
+          graphics/vulkan-headers.bst
         )
         buildstream/bst build "${elements[@]}"
         for element in "${elements[@]}"; do
@@ -81,11 +83,14 @@ jobs:
         buildstream/bst artifact checkout compress/zstd.bst \
           --deps none \
           --directory artifacts/buildstream-zstd
-        for element in libcxx-shared android-sysvshm android-spawn android-sysv-semaphore; do
+        for element in libcxx-shared android-sysvshm android-spawn android-sysv-semaphore libandroid-shmem; do
           buildstream/bst artifact checkout "android/$element.bst" \
             --deps none \
             --directory "artifacts/buildstream-$element"
         done
+        buildstream/bst artifact checkout graphics/vulkan-headers.bst \
+          --deps none \
+          --directory artifacts/buildstream-vulkan-headers
 
         test -L artifacts/buildstream-zlib/usr/lib/libz.so
         test -L artifacts/buildstream-zlib/usr/lib/libz.so.1
@@ -125,6 +130,17 @@ jobs:
         for symbol in semget semop semctl semtimedop; do
           readelf -Ws "$semaphore" | grep -q "GLOBAL.* $symbol$"
         done
+
+        shmem=artifacts/buildstream-libandroid-shmem/usr/lib/libandroid-shmem.so
+        readelf -dW "$shmem" | grep -q 'SONAME.*libandroid-shmem.so'
+        for symbol in libandroid_shmget libandroid_shmat libandroid_shmdt libandroid_shmctl; do
+          readelf -Ws "$shmem" | grep -q "GLOBAL.* $symbol$"
+        done
+        test ! -e artifacts/buildstream-libandroid-shmem/usr/include/sys/shm.h
+
+        test -f artifacts/buildstream-vulkan-headers/usr/include/vulkan/vulkan.h
+        test -f artifacts/buildstream-vulkan-headers/usr/include/vk_video/vulkan_video_codecs_common.h
+        test -f artifacts/buildstream-vulkan-headers/usr/share/vulkan/registry/vk.xml
 
     - uses: actions/upload-artifact@v4
       with:
