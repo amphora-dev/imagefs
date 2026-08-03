@@ -46,6 +46,15 @@ reuse source and artifact objects from `~/.cache/buildstream`; if the zlib
 element, source, NDK or base runtime changes, BuildStream computes a different
 artifact key instead of mutating an old sysroot.
 
+## Measured result
+
+The validated artifact key is
+`217d52ed32239ecfa4ea54c28bce3d145d306809b2727887d0df437d86da52a3`.
+On the local trial, a second `bst build` completed from CAS in 334 ms. The
+checked-out package is 240 KB, reports `Machine: AArch64` and
+`SONAME: libz.so.1`, and contains neither `/opt/android-ndk` nor Ubuntu's
+`/bin/sh`.
+
 ## Deliberate limits
 
 - Only zlib is migrated; the production `build-all.sh` path is unchanged.
