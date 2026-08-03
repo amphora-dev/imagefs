@@ -37,6 +37,7 @@ Then build and inspect:
 buildstream/bst build compress/zlib.bst
 buildstream/bst show compress/zlib.bst --format '%{state} %{full-key}'
 buildstream/bst artifact checkout compress/zlib.bst \
+  --deps none \
   --directory /tmp/buildstream-zlib
 ```
 

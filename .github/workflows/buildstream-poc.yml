@@ -40,13 +40,16 @@ jobs:
     - name: Build isolated zlib artifact
       run: |
         buildstream/bst build compress/zlib.bst
-        buildstream/bst show compress/zlib.bst --format '%{state} %{full-key}'
-        test "$(buildstream/bst show compress/zlib.bst --format '%{state}')" = cached
+        buildstream/bst show --deps none compress/zlib.bst \
+          --format '%{state} %{full-key}'
+        test "$(buildstream/bst show --deps none compress/zlib.bst \
+          --format '%{state}')" = cached
 
     - name: Verify artifact
       run: |
         rm -rf artifacts/buildstream-zlib
         buildstream/bst artifact checkout compress/zlib.bst \
+          --deps none \
           --directory artifacts/buildstream-zlib
         test -L artifacts/buildstream-zlib/usr/lib/libz.so
         test -L artifacts/buildstream-zlib/usr/lib/libz.so.1

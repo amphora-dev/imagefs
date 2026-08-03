@@ -7,8 +7,10 @@ description: |
   BuildStream can cache and reuse the package as an isolated artifact.
 
 depends:
-- base/ubuntu.bst
-- toolchain/android-ndk-r29.bst
+- filename: base/ubuntu.bst
+  type: build
+- filename: toolchain/android-ndk-r29.bst
+  type: build
 
 sources:
 - kind: tar

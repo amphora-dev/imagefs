@@ -8,7 +8,8 @@ description: |
   an immutable input shared by all Android package artifacts.
 
 depends:
-- base/ubuntu.bst
+- filename: base/ubuntu.bst
+  type: build
 
 sources:
 - kind: zip
