@@ -1,0 +1,62 @@
+name: buildstream-poc
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+    - "buildstream/**"
+    - "ci/setup/install-buildstream.sh"
+    - ".github/workflows/buildstream-poc.yml"
+  pull_request:
+    branches: [main]
+    paths:
+    - "buildstream/**"
+    - "ci/setup/install-buildstream.sh"
+    - ".github/workflows/buildstream-poc.yml"
+
+jobs:
+  zlib-artifact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install sandbox dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y bubblewrap fuse3 lzip patch python3-venv xz-utils
+
+    - name: Restore BuildStream CAS
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/buildstream
+        key: buildstream-zlib-v1-${{ runner.os }}-${{ hashFiles('buildstream/**') }}
+        restore-keys: |
+          buildstream-zlib-v1-${{ runner.os }}-
+
+    - name: Install pinned BuildStream tools
+      run: bash ci/setup/install-buildstream.sh
+
+    - name: Build isolated zlib artifact
+      run: |
+        buildstream/bst build compress/zlib.bst
+        buildstream/bst show compress/zlib.bst --format '%{state} %{full-key}'
+        test "$(buildstream/bst show compress/zlib.bst --format '%{state}')" = cached
+
+    - name: Verify artifact
+      run: |
+        rm -rf artifacts/buildstream-zlib
+        buildstream/bst artifact checkout compress/zlib.bst \
+          --directory artifacts/buildstream-zlib
+        test -L artifacts/buildstream-zlib/usr/lib/libz.so
+        test -L artifacts/buildstream-zlib/usr/lib/libz.so.1
+        test -f artifacts/buildstream-zlib/usr/include/zlib.h
+        readelf -dW artifacts/buildstream-zlib/usr/lib/libz.so.1.3.1 |
+          grep -q 'SONAME.*libz.so.1'
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: buildstream-zlib
+        path: artifacts/buildstream-zlib
+        if-no-files-found: error
+        retention-days: 7

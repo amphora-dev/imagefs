@@ -18,6 +18,9 @@ bash ci/verify/pkg-selftest.sh   # 不编包，只测 DEPENDS / topo / stamp
 
 依赖：cmake / meson / autotools / patchelf / ccache / NDK。CI 在 `ubuntu-latest` 上直接装这些工具运行，不再包一层 Docker。
 
+实验性按包 artifact 构建见 [`buildstream/README.md`](buildstream/README.md)；
+当前只迁移 zlib 做缓存/隔离验证，不替换生产 `build-all.sh`。
+
 静态检查（每次 push/PR 都跑，秒级）：`shellcheck -S warning` 覆盖全部 `*.sh`、`bash -n`、`pkg-selftest`、以及「`ALL_PACKAGES` 里每个包都有配方」。规则豁免与理由见 [`.shellcheckrc`](.shellcheckrc)，流水线见 [`lint.yml`](.github/workflows/lint.yml)。本地：`shellcheck -S warning $(find . -name '*.sh' -not -path './.git/*')`。
 
 `android-sysvshm` / `alsa-android-aserver` 源码在 [`vendor/winlator-bionic/`](vendor/winlator-bionic/)。

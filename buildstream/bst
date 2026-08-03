@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
+TOOLS_ROOT="${BST_TOOLS_ROOT:-$HOME/.cache/imagefs-buildstream/tools}"
+BST="$TOOLS_ROOT/venv/bin/bst"
+export PATH="$TOOLS_ROOT/venv/bin:$TOOLS_ROOT/bin:$PATH"
+
+if [ ! -x "$BST" ]; then
+    echo "BuildStream tools are missing; run ci/setup/install-buildstream.sh first" >&2
+    exit 1
+fi
+
+exec "$BST" -C "$PROJECT_DIR" "$@"
