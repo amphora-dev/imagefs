@@ -3,7 +3,7 @@
 # Build Pipetto Mesa vulkan wrapper and pack wrapper-*.tzst (L1 leaf).
 #
 # Independent of imagefs.txz packaging — Amphora pins it via
-# content_manifest.components.turnip (assetPath graphics_driver/wrapper.tzst).
+# content_manifest.runtimeAssets[] (assetPath graphics_driver/wrapper.tzst).
 #
 # Sysroot: build a staging subset of the imagefs package graph
 # ($BUILD_DIR/staging) so headers + aarch64 X11/drm/sysvshm match Amphora

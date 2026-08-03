@@ -1,4 +1,4 @@
-# Build wrapper-*.tzst → Release tag `wrapper` → content_manifest.turnip
+# Build wrapper-*.tzst → Release tag `wrapper` → runtimeAssets[wrapper.tzst]
 # Contracts: ci/README.md
 # No schedule — run manually or when wrapper / staging X11 inputs change.
 name: build-wrapper

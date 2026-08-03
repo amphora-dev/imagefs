@@ -23,8 +23,8 @@
 set -euo pipefail
 
 if [ -z "${GH_TOKEN:-}" ]; then
-  echo "WARN: GH_TOKEN not set; skip content_manifest pin update" >&2
-  exit 0
+  echo "FAIL: GH_TOKEN not set; refusing to publish without updating content_manifest" >&2
+  exit 1
 fi
 
 : "${SHA256:?SHA256 required}"
@@ -43,6 +43,8 @@ BOT_NAME="${BOT_NAME:-imagefs-bot}"
 BOT_EMAIL="${BOT_EMAIL:-41898282+github-actions[bot]@users.noreply.github.com}"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
+PIN_SKIP="$WORK/pin-skip"
+export PIN_SKIP
 
 git clone --depth 1 \
   "https://x-access-token:${GH_TOKEN}@github.com/amphora-dev/content_manifest.git" \
@@ -70,7 +72,7 @@ with open(path, encoding="utf-8") as f:
 
 def skip(message):
     print(message)
-    open("/tmp/content-manifest-pin-skip", "w").write("1")
+    open(os.environ["PIN_SKIP"], "w").write("1")
     raise SystemExit(0)
 
 
@@ -139,11 +141,12 @@ with open(path, "w", encoding="utf-8") as f:
     f.write("\n")
 PY
 
-if [ -f /tmp/content-manifest-pin-skip ]; then
+if [ -f "$PIN_SKIP" ]; then
   exit 0
 fi
 
 cd "$WORK/content_manifest"
+python3 validate_manifest.py content_manifest.json
 git config user.name "$BOT_NAME"
 git config user.email "$BOT_EMAIL"
 git add content_manifest.json

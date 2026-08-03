@@ -7,7 +7,7 @@
 #   TARGET_DIR   — 运行时 rootfs（删构建期产物后打进 imagefs.txz）
 #
 # Box64 由 Amphora 的 Box64.wcp 安装，不进本包。
-# Mesa libGL.so.1（packages/graphics/mesa-gl.sh 自建，zink+xlib GLX）进包；
+# Mesa libGL.so.1（packages/graphics/mesa-gl.sh 自建，zink + DRI EGL/GLX）进包；
 # glvnd 的 libGLdispatch/libGLX/libOpenGL 不进包（我们不用 glvnd 分发层）。
 # =============================================================================
 set -euo pipefail
