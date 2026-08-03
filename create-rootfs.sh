@@ -9,10 +9,19 @@ section "创建 staging sysroot 布局 (merged-usr)"
 
 # ---- 清理策略 ----
 # 默认增量 (保留已安装产物, 配合 build-all.sh 的 content stamp)。
-# REBUILD_ROOTFS=1 时全清重建 staging (用于干净构建或缓存损坏时)。
+# REBUILD_ROOTFS=1 必须同时清掉共享 sysroot、host 工具、workdir 和成功 stamp。
+# 只删 staging 会让 build-all 继续命中旧 stamp，最终得到一个近乎空的 rootfs。
 if [ "${REBUILD_ROOTFS:-0}" = "1" ]; then
-    log "REBUILD_ROOTFS=1: 全清重建 STAGING_DIR"
-    rm -rf "$STAGING_DIR"
+    log "REBUILD_ROOTFS=1: 清理所有非下载/ccache 构建状态"
+    for path in "$STAGING_DIR" "$TARGET_DIR" "$HOST_DIR" "$WORK_DIR" "$BUILT_DIR"; do
+        case "$path" in
+            "$BUILD_DIR"/*) rm -rf "$path" ;;
+            *)
+                error "拒绝清理 BUILD_DIR 外的路径: $path"
+                exit 1
+                ;;
+        esac
+    done
 fi
 mkdir -p "$STAGING_DIR" "$HOST_DIR" "$TARGET_DIR"
 

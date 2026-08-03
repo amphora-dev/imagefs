@@ -37,11 +37,13 @@ permissions:
   contents: write
 
 env:
-  # Paths must match cache steps + package-imagefs/verify defaults in CI.
+  # CI always assembles a clean source tree and sysroot. Only content-addressed
+  # compiler objects survive between runs.
   BUILD_DIR: /tmp/imagefs-build
   OUTPUT_DIR: /tmp/imagefs-output
   CCACHE_DIR: /tmp/imagefs-build/cache/ccache
   CCACHE_MAXSIZE: 5G
+  REBUILD_ROOTFS: 1
 
 jobs:
   build:
@@ -52,18 +54,6 @@ jobs:
       - uses: ./.github/actions/setup-ndk-build
         with:
           deps: graph
-
-      - uses: actions/cache@v4
-        with:
-          path: |
-            /tmp/imagefs-build/cache/*.tar*
-            /tmp/imagefs-build/src
-            /tmp/imagefs-build/built-pkgs
-            /tmp/imagefs-build/staging
-            /tmp/imagefs-build/host
-          key: imagefs-pkgs-${{ runner.os }}-${{ hashFiles('packages/**', 'vendor/winlator-bionic/**', 'vendor/mesa-gl-patches/**', 'lib/**', 'build-all.sh', 'config.sh', 'create-rootfs.sh', 'package-imagefs.sh', 'setup-env.sh') }}
-          restore-keys: |
-            imagefs-pkgs-${{ runner.os }}-
 
       - uses: actions/cache/restore@v4
         with:

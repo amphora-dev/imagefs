@@ -58,4 +58,17 @@ s1="$(pkg_content_stamp zlib)"
 s2="$(pkg_content_stamp zlib)"
 [ "$s1" = "$s2" ] || fail "stamp not stable"
 
+# A requested clean rebuild must not leave stamps that make build-all skip
+# packages after create-rootfs removed their installed files.
+mkdir -p "$STAGING_DIR/stale" "$TARGET_DIR/stale" "$HOST_DIR/stale" \
+    "$WORK_DIR/stale" "$BUILT_DIR"
+printf 'stale\n' > "$BUILT_DIR/zlib.done"
+REBUILD_ROOTFS=1 BUILD_DIR="$BUILD_DIR" \
+    bash "$SCRIPT_DIR/create-rootfs.sh" >/dev/null
+for stale in \
+    "$STAGING_DIR/stale" "$TARGET_DIR/stale" "$HOST_DIR/stale" \
+    "$WORK_DIR/stale" "$BUILT_DIR/zlib.done"; do
+    [ ! -e "$stale" ] || fail "clean rebuild left stale state: $stale"
+done
+
 echo "OK: pkg selftest passed (${#full[@]} packages, glib deps topo ok)"
