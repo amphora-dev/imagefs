@@ -8,15 +8,16 @@ content-addressed artifact without restoring `staging`, `src` or stamp files.
 
 - Ubuntu Base 24.04.4: glibc sandbox runtime, pinned by SHA-256
 - Android NDK r29: toolchain artifact, pinned by SHA-256
-- zlib 1.3.1: independent `aarch64-linux-android26` artifact
+- zlib 1.3.1 and zstd 1.5.6: independent `aarch64-linux-android26`
+  artifacts
 - GitHub Actions: persists BuildStream's content-addressed store
 
-The zlib output contains only:
+The package outputs contain only their own:
 
 ```text
-/usr/lib/libz.so*
-/usr/include/{zlib.h,zconf.h}
-/usr/lib/pkgconfig/zlib.pc
+/usr/lib/lib{z,zstd}.so*
+/usr/include/{zlib,zstd,zdict,...}.h
+/usr/lib/pkgconfig/{zlib,libzstd}.pc
 ```
 
 The Ubuntu build runtime and NDK are build dependencies and are not copied into
@@ -34,8 +35,8 @@ bash ci/setup/install-buildstream.sh
 Then build and inspect:
 
 ```bash
-buildstream/bst build compress/zlib.bst
-buildstream/bst show compress/zlib.bst --format '%{state} %{full-key}'
+buildstream/bst build compress/zlib.bst compress/zstd.bst
+buildstream/bst show compress/zstd.bst --format '%{state} %{full-key}'
 buildstream/bst artifact checkout compress/zlib.bst \
   --deps none \
   --directory /tmp/buildstream-zlib
@@ -62,10 +63,10 @@ cross-run package artifact reuse, not just a warm directory on one machine.
 
 ## Deliberate limits
 
-- Only zlib is migrated; the production `build-all.sh` path is unchanged.
+- Only zlib/zstd are migrated; the production `build-all.sh` path is unchanged.
 - NDK's zip does not preserve executable modes or symlinks through the community
   source plugin, so the toolchain element restores both before publishing its
   artifact. This matters for LLVM multicall tools such as `llvm-strip`.
-- zstd is the next useful trial, but requires a sandbox-provided CMake and Make.
-  This PoC first validates the harder foundation: glibc sandbox + NDK artifact +
-  Android ELF output + cache reuse.
+- zstd is linked from its upstream library source set without CMake. This keeps
+  host tools declared (shell/coreutils + NDK only) and preserves SONAME at link
+  time, but differs from the production CMake recipe.

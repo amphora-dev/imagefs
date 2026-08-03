@@ -15,7 +15,7 @@ on:
     - ".github/workflows/buildstream-poc.yml"
 
 jobs:
-  zlib-artifact:
+  compression-artifacts:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -52,29 +52,43 @@ jobs:
     - name: Install pinned BuildStream tools
       run: bash ci/setup/install-buildstream.sh
 
-    - name: Build isolated zlib artifact
+    - name: Build isolated compression artifacts
       run: |
-        buildstream/bst build compress/zlib.bst
-        buildstream/bst show --deps none compress/zlib.bst \
-          --format '%{state} %{full-key}'
-        test "$(buildstream/bst show --deps none compress/zlib.bst \
-          --format '%{state}')" = cached
+        buildstream/bst build compress/zlib.bst compress/zstd.bst
+        for element in compress/zlib.bst compress/zstd.bst; do
+          buildstream/bst show --deps none "$element" \
+            --format '%{state} %{full-key}'
+          test "$(buildstream/bst show --deps none "$element" \
+            --format '%{state}')" = cached
+        done
 
-    - name: Verify artifact
+    - name: Verify artifacts
       run: |
-        rm -rf artifacts/buildstream-zlib
+        rm -rf artifacts/buildstream-zlib artifacts/buildstream-zstd
         buildstream/bst artifact checkout compress/zlib.bst \
           --deps none \
           --directory artifacts/buildstream-zlib
+        buildstream/bst artifact checkout compress/zstd.bst \
+          --deps none \
+          --directory artifacts/buildstream-zstd
         test -L artifacts/buildstream-zlib/usr/lib/libz.so
         test -L artifacts/buildstream-zlib/usr/lib/libz.so.1
         test -f artifacts/buildstream-zlib/usr/include/zlib.h
         readelf -dW artifacts/buildstream-zlib/usr/lib/libz.so.1.3.1 |
           grep -q 'SONAME.*libz.so.1'
+        test -L artifacts/buildstream-zstd/usr/lib/libzstd.so
+        test -L artifacts/buildstream-zstd/usr/lib/libzstd.so.1
+        test -f artifacts/buildstream-zstd/usr/include/zstd.h
+        readelf -dW artifacts/buildstream-zstd/usr/lib/libzstd.so.1.5.6 |
+          grep -q 'SONAME.*libzstd.so.1'
+        test ! -e artifacts/buildstream-zlib/opt/android-ndk
+        test ! -e artifacts/buildstream-zstd/opt/android-ndk
 
     - uses: actions/upload-artifact@v4
       with:
-        name: buildstream-zlib
-        path: artifacts/buildstream-zlib
+        name: buildstream-compression-libs
+        path: |
+          artifacts/buildstream-zlib
+          artifacts/buildstream-zstd
         if-no-files-found: error
         retention-days: 7
