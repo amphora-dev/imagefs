@@ -77,5 +77,11 @@ for stale in \
     "$WORK_DIR/stale" "$BUILT_DIR/zlib.done"; do
     [ ! -e "$stale" ] || fail "clean rebuild left stale state: $stale"
 done
+for required in "$STAGING_DIR" "$TARGET_DIR" "$HOST_DIR" "$WORK_DIR" "$BUILT_DIR"; do
+    [ -d "$required" ] || fail "clean rebuild did not recreate state root: $required"
+done
+# Recipes can write directly below WORK_DIR immediately after create-rootfs.
+printf 'generated\n' > "$WORK_DIR/recipe-output.c" ||
+    fail "clean rebuild left WORK_DIR unusable"
 
 echo "OK: pkg selftest passed (${#full[@]} packages, glib deps topo ok)"

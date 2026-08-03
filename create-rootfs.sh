@@ -23,7 +23,10 @@ if [ "${REBUILD_ROOTFS:-0}" = "1" ]; then
         esac
     done
 fi
-mkdir -p "$STAGING_DIR" "$HOST_DIR" "$TARGET_DIR"
+# build-all creates these before calling us, but a clean rebuild removes them
+# above. Recreate every mutable build-state root before package recipes run;
+# android-sysvshm, Mesa and future recipes may write directly under WORK_DIR.
+mkdir -p "$STAGING_DIR" "$HOST_DIR" "$TARGET_DIR" "$WORK_DIR" "$BUILT_DIR"
 
 # ---- usr 子目录 ----
 mkdir -p "$PREFIX"/{bin,lib,etc,share,tmp,include,var/{cache,run}}
