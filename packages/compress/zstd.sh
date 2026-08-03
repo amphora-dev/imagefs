@@ -11,6 +11,7 @@ source "$(dirname "$0")/../config.sh"
 VER="1.5.6"
 PKG_NAME="zstd-$VER"
 SRC_URL="https://github.com/facebook/zstd/releases/download/v$VER/zstd-$VER.tar.gz"
+REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 
 cd "$SRC_DIR"
 fetch_source "$PKG_NAME" zstd.tar.gz "$SRC_URL"
@@ -18,9 +19,9 @@ cd "$PKG_NAME"
 
 # CMake's Android platform disables versioned SONAMEs globally. zstd already
 # declares SOVERSION=1; this patch lets that upstream metadata reach the linker.
-source "$SCRIPT_DIR/lib/util.sh"
+source "$REPO_ROOT/lib/util.sh"
 status=0
-apply_patch "$SCRIPT_DIR/vendor/zstd-patches/0001-android-versioned-soname.patch" || status=$?
+apply_patch "$REPO_ROOT/vendor/zstd-patches/0001-android-versioned-soname.patch" || status=$?
 case $status in
     0|1) ;;
     *) error "  zstd versioned-SONAME patch failed"; exit 1 ;;
