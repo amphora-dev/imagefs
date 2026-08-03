@@ -5,8 +5,9 @@
 
 ## 背景
 
-Wine 的 `opengl32` / `ddraw` → WineD3D 需要一份桌面 OpenGL。废止
-`extra_libs.tzst` 后这份 `libGL` 由 `packages/graphics/mesa-gl.sh` 自建。最初按
+Wine 的 `opengl32` EGL 后端需要一份桌面 OpenGL。DirectDraw 由 Amphora 强制
+选择 cnc-ddraw 或 DxWrapper Dd7to9，再进入 D3D9/DXVK，不回退 WineD3D。废止
+`extra_libs.tzst` 后 OpenGL 栈由 `packages/graphics/mesa-gl.sh` 自建。最初按
 WinNative 的形态选了 `-Dglx=xlib`，因为 xlib GLX 完全在客户端模拟 GLX，不需要
 X server 实现 GLX 扩展——而 Amphora 的内置 Java X server 只有 BigReq / DRI3 /
 MIT-SHM / Present / Sync / XInput2。
@@ -29,8 +30,7 @@ else if (i == 0 && drivers[i][0] != '\0') return NULL;   /* 不再回退 */
 
 于是 `GALLIUM_DRIVER=zink` 直接返回 NULL，连已编进去的 softpipe 都不尝试，
 表现为 `Mesa: warning: Failed to initialize display` 加 Wine 的
-`X11DRV_WineGL_InitOpenglInfo couldn't initialize OpenGL`，DirectDraw / DX7 /
-OpenGL 全灭。
+`X11DRV_WineGL_InitOpenglInfo couldn't initialize OpenGL`，OpenGL 初始化失败。
 
 补上 `driver_zink` 也只解决一半：zink 的呈现完全绑定 kopper。
 `zink_resource.c` 只在 `loader_private` 非空时创建 kopper displaytarget，而
@@ -97,8 +97,9 @@ if (!(funcs->egl_handle = dlopen( SONAME_LIBEGL, RTLD_NOW | RTLD_GLOBAL )))
 `GPUImage`（AHB 导入 Vulkan 纹理）已经跑通的那条通路。DRI3 不可用时 Mesa 会
 自动降级：先试 zink/kopper，再退 swrast（core X + MIT-SHM，两者我们都有）。
 
-`targets/dri` 上游本来就列了 `driver_zink`，kopper 是原生呈现路径，所以
-**不需要任何 zink 补丁**，Mesa 保持「上游发布 tarball + 两个 Termux 链接补丁」。
+`targets/dri` 上游本来就列了 `driver_zink`，kopper 是原生呈现路径。Amphora
+不再通过 WineD3D 把 DirectDraw front-buffer 操作送进该路径，因此删除本地
+readback/barrier 行为补丁；Mesa 保持「上游发布 tarball + Termux 链接补丁」。
 
 ## 依赖与前置条件
 
@@ -115,8 +116,8 @@ randr 子库）、`libxshmfence`、`libX11-xcb`、`libXfixes` 已经在建。
 | XFIXES ≥ 2 | **缺**。`x11_dri3_open` 解引用 `xcb_xfixes_query_version` 应答时没有 NULL 检查，扩展缺失会崩在那里而不是优雅失败 |
 | DRI3 `FenceFromFD` + Sync fence | **缺**。GL 的 DRI3 loader 用 `xcb_dri3_fence_from_fd` / `xcb_sync_trigger_fence`，而我们为了让 DXVK 不走 FenceFromFD 把 DRI3 停在 1.2 |
 
-最后两项只影响加速路径。缺它们时 Mesa 退到 swrast，OpenGL / DirectDraw 仍然
-可用（软件光栅化），且不再有 fakeglx 那一类 visual 失配问题。
+最后两项只影响加速路径。缺它们时 Mesa 退到 swrast，OpenGL 仍然可用
+（软件光栅化），且不再有 fakeglx 那一类 visual 失配问题。
 
 ## 落地顺序
 

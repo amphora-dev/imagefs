@@ -95,7 +95,7 @@ prune_runtime_rootfs() {
         error "prune failed: glvnd libGLdispatch still present"
         bad=1
     fi
-    # Wine >=10.17 的 win32u dlopen libEGL.so.1；旧版 opengl32/ddraw 走 libGL.so.1。
+    # Wine >=10.17 的 win32u dlopen libEGL.so.1；旧版 opengl32 走 libGL.so.1。
     # 两条软链任一断掉都等于没 GL。
     for gl_soname in libGL.so.1 libEGL.so.1; do
         if [ ! -e "$root/usr/lib/$gl_soname" ]; then

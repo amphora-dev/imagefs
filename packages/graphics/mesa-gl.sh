@@ -227,6 +227,29 @@ if ! grep -q 'ZINK:' "$MEGADRIVER"; then
     exit 1
 fi
 
+# The NDK defaults to emulated TLS even at API 30 for this system=linux cross
+# profile. All three DSOs must use one ABI: frontends import a native STT_TLS
+# dispatch pointer and libgallium defines it. A warm mixed cache used to build
+# each side with a different ABI and only failed later at dlopen on-device.
+for so in "$GL_REAL" "$EGL_REAL" "$MEGADRIVER"; do
+    if readelf -Ws "$so" | grep -qE '__emutls_(get_address|v\\.)'; then
+        error "  $(basename "$so") 含 emulated-TLS 符号 (期望统一 native TLS)"
+        exit 1
+    fi
+done
+for frontend in "$GL_REAL" "$EGL_REAL"; do
+    if ! readelf -Ws "$frontend" |
+        awk '$4 == "TLS" && $7 == "UND" && $8 == "_mesa_glapi_tls_Dispatch" { found=1 } END { exit !found }'; then
+        error "  $(basename "$frontend") 未以 native TLS 引用 _mesa_glapi_tls_Dispatch"
+        exit 1
+    fi
+done
+if ! readelf -Ws "$MEGADRIVER" |
+    awk '$4 == "TLS" && $7 != "UND" && $8 == "_mesa_glapi_tls_Dispatch" { found=1 } END { exit !found }'; then
+    error "  $(basename "$MEGADRIVER") 未定义 native TLS _mesa_glapi_tls_Dispatch"
+    exit 1
+fi
+
 # Amphora 只在看到该标记时才下发 GALLIUM_DRIVER=zink
 # (XServerWineSessionPreparer.applyGalliumDriver)。
 : > "$PREFIX/lib/.libgl-zink"
