@@ -62,6 +62,8 @@ s2="$(pkg_content_stamp zlib)"
 mesa_default="$(pkg_content_stamp mesa-gl)"
 mesa_api26="$(MESA_GL_API=26 pkg_content_stamp mesa-gl)"
 [ "$mesa_default" != "$mesa_api26" ] || fail "mesa-gl stamp ignores MESA_GL_API"
+zlib_api26="$(MESA_GL_API=26 pkg_content_stamp zlib)"
+[ "$s1" = "$zlib_api26" ] || fail "Mesa override invalidates unrelated package stamps"
 
 # A requested clean rebuild must not leave stamps that make build-all skip
 # packages after create-rootfs removed their installed files.
