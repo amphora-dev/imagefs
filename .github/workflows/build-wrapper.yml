@@ -16,7 +16,7 @@ on:
         type: boolean
         default: false
       skip_staging:
-        description: "Reuse cached staging only (dangerous if cache stale)"
+        description: "Reuse existing /tmp staging only (local/debug; GHA no longer restores staging)"
         type: boolean
         default: false
   push:
@@ -29,6 +29,7 @@ on:
       - "lib/pkg.sh"
       - "lib/util.sh"
       - "vendor/wrapper-patches/**"
+      - "vendor/zstd-patches/**"
       - "packages/x11/**"
       - "packages/graphics/libdrm.sh"
       - "packages/android/android-sysvshm.sh"
@@ -42,10 +43,14 @@ permissions:
   contents: write
 
 env:
+  # Same posture as build-imagefs: never restore staging/stamps/src between runs.
+  # restore-keys on those trees previously resurfaced dirty sysroots after recipe
+  # or patch edits (stamps skipped rebuilds into a half-cleared tree).
   BUILD_DIR: /tmp/imagefs-build
   OUTPUT_DIR: ${{ github.workspace }}/artifacts
   CCACHE_DIR: /tmp/imagefs-build/cache/ccache
   CCACHE_MAXSIZE: 5G
+  REBUILD_ROOTFS: 1
 
 jobs:
   build:
@@ -56,19 +61,6 @@ jobs:
       - uses: ./.github/actions/setup-ndk-build
         with:
           deps: wrapper
-
-      - uses: actions/cache@v4
-        with:
-          path: |
-            /tmp/imagefs-build/cache/*.tar*
-            /tmp/imagefs-build/src
-            /tmp/imagefs-build/built-pkgs
-            /tmp/imagefs-build/staging
-            /tmp/imagefs-build/host
-            /tmp/imagefs-build/wrapper-mesa
-          key: wrapper-pkgs-${{ runner.os }}-${{ hashFiles('packages/x11/**', 'packages/graphics/libdrm.sh', 'packages/android/android-sysvshm.sh', 'packages/android/libcxx-shared.sh', 'packages/compress/zlib.sh', 'packages/compress/zstd.sh', 'packages/depends.conf', 'lib/**', 'build-all.sh', 'config.sh', 'create-rootfs.sh', 'setup-env.sh', 'ci/wrapper/**', 'vendor/wrapper-patches/**') }}
-          restore-keys: |
-            wrapper-pkgs-${{ runner.os }}-
 
       - uses: actions/cache/restore@v4
         with:

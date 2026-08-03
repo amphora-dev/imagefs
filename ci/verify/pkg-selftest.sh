@@ -84,4 +84,20 @@ done
 printf 'generated\n' > "$WORK_DIR/recipe-output.c" ||
     fail "clean rebuild left WORK_DIR unusable"
 
+# Content stamps hash vendor/* trees named in the recipe. The imagefs workflow
+# must auto-trigger on those same trees — otherwise a patch-only push skips CI
+# while local incremental rebuilds correctly bust stamps.
+wf="$SCRIPT_DIR/.github/workflows/build-imagefs.yml"
+[ -f "$wf" ] || fail "missing $wf"
+declare -A seen_vendor=()
+for name in "${ALL_PACKAGES[@]}"; do
+    while IFS= read -r ref; do
+        [ -n "$ref" ] || continue
+        seen_vendor["$ref"]=1
+    done < <(pkg_vendor_refs "$name")
+done
+for ref in "${!seen_vendor[@]}"; do
+    grep -q "$ref/\*\*" "$wf" || fail "build-imagefs.yml paths miss $ref/** (referenced by recipes)"
+done
+
 echo "OK: pkg selftest passed (${#full[@]} packages, glib deps topo ok)"

@@ -223,3 +223,13 @@ pkg_prune_orphan_stamps() {
         rm -f "$marker"
     done
 }
+
+# Vendor trees referenced by a recipe (comments + apply_patch paths). Used by
+# CI path-trigger audits so a patch-only edit cannot skip the graph rebuild.
+pkg_vendor_refs() {
+    local package="$1"
+    local script
+    script="$(pkg_recipe_path "$package" 2>/dev/null || true)"
+    [ -n "$script" ] && [ -f "$script" ] || return 0
+    grep -oE 'vendor/[A-Za-z0-9_-]+' "$script" 2>/dev/null | sort -u
+}
