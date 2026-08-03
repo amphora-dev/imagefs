@@ -147,9 +147,10 @@ jobs:
         test -f artifacts/buildstream-vulkan-headers/usr/include/vk_video/vulkan_video_codecs_common.h
         test -f artifacts/buildstream-vulkan-headers/usr/share/vulkan/registry/vk.xml
 
-        ffi=artifacts/buildstream-libffi/usr/lib/libffi.so.8.1.4
+        ffi=artifacts/buildstream-libffi/usr/lib/libffi.so
         test -f "$ffi"
-        readelf -dW "$ffi" | grep -q 'SONAME.*libffi.so.8'
+        readelf -dW "$ffi" | grep -q 'SONAME.*libffi.so'
+        readelf -V "$ffi" | grep -q 'LIBFFI_BASE_8.0'
         for symbol in ffi_call ffi_prep_cif ffi_prep_closure_loc; do
           readelf -Ws "$ffi" | grep -q "GLOBAL.* $symbol"
         done

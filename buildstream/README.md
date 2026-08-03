@@ -60,8 +60,8 @@ verified content from CAS.
 
 ## Host SDK and target sysroot
 
-Autotools packages combine Ubuntu Base with a 2 MB overlay assembled from 14
-versioned Ubuntu archive `.deb` files. Each package is SHA-256 pinned and staged
+Autotools packages combine Ubuntu Base with a 2 MB download / 16 MB unpacked
+overlay assembled from 14 versioned Ubuntu archive `.deb` files. Each package is SHA-256 pinned and staged
 as an opaque core `remote` source, then extracted by Ubuntu Base's `dpkg-deb`;
 maintainer scripts are not executed. This handles modern zstd-compressed `.deb`
 payloads without a custom plugin. The overlay adds M4, Autoconf, Automake,
@@ -70,11 +70,20 @@ glibc/coreutils/perl-base. This avoids both a 95-element freedesktop-sdk closure
 and a custom published host image. The official BuildStream `autotools` element
 supplies the configure/make/install command model.
 
+We evaluated importing `buildpack-deps:bookworm` first, but the released
+BuildStream 2.7 docker source rejects the modern OCI index/manifest media types;
+upstream support is still an unmerged change. The small `.deb` overlay uses
+released core/community capabilities instead of vendoring that patch.
+
 Host tools remain at sandbox `/`. Android package dependencies are relocated
 with BuildStream's dependency `config.location` to `/opt/android-sysroot`;
 `PKG_CONFIG_SYSROOT_DIR` and `PKG_CONFIG_LIBDIR` point only there. The
 `tests/autotools-sysroot-smoke.bst` element asserts Autoconf/Automake/Libtool are
 available while target zlib is visible only through that sysroot.
+
+libffi 3.4.6 is the first consumer. It builds through the official `autotools`
+element in 5 seconds, checks out to 204 KB, preserves the `LIBFFI_*_8.0` symbol
+versions and completes a warm host-SDK + sysroot + package build in 356 ms.
 
 ## Measured result
 
