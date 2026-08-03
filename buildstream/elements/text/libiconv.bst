@@ -22,3 +22,8 @@ variables:
   conf-local: >-
     --enable-static
     --disable-shared
+
+config:
+  strip-commands:
+  - |
+    find "%{install-root}" -type f -name '*.la' -delete

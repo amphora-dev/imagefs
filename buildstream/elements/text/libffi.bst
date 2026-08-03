@@ -30,5 +30,6 @@ variables:
 config:
   strip-commands:
   - |
+    find "%{install-root}" -type f -name '*.la' -delete
     find "%{install-root}%{prefix}/lib" -type f -name 'libffi.so*' \
       -exec "$STRIP" {} +

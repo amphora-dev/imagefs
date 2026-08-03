@@ -171,6 +171,7 @@ jobs:
         test -f artifacts/buildstream-libiconv/usr/lib/libiconv.a
         test -f artifacts/buildstream-libiconv/usr/include/iconv.h
         test ! -e artifacts/buildstream-libiconv/usr/lib/libiconv.so
+        test -z "$(find artifacts/buildstream-libiconv -name '*.la' -print -quit)"
 
         test -f artifacts/buildstream-xorgproto/usr/include/X11/Xproto.h
         test -f artifacts/buildstream-xorgproto/usr/share/pkgconfig/xproto.pc
