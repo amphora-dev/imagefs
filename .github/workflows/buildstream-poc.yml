@@ -4,18 +4,20 @@ on:
   workflow_dispatch:
   push:
     paths:
+    - "project.conf"
     - "buildstream/**"
     - "ci/setup/install-buildstream.sh"
     - ".github/workflows/buildstream-poc.yml"
   pull_request:
     branches: [main]
     paths:
+    - "project.conf"
     - "buildstream/**"
     - "ci/setup/install-buildstream.sh"
     - ".github/workflows/buildstream-poc.yml"
 
 jobs:
-  compression-artifacts:
+  package-artifacts:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -39,7 +41,7 @@ jobs:
       with:
         path: ~/.cache/buildstream
         # Documentation/wrapper edits do not change package artifacts.
-        key: buildstream-zlib-v1-${{ runner.os }}-${{ hashFiles('buildstream/project.conf', 'buildstream/elements/**') }}
+        key: buildstream-zlib-v1-${{ runner.os }}-${{ hashFiles('project.conf', 'buildstream/elements/**') }}
         restore-keys: |
           buildstream-zlib-v1-${{ runner.os }}-
 
@@ -52,25 +54,39 @@ jobs:
     - name: Install pinned BuildStream tools
       run: bash ci/setup/install-buildstream.sh
 
-    - name: Build isolated compression artifacts
+    - name: Build isolated package artifacts
       run: |
-        buildstream/bst build compress/zlib.bst compress/zstd.bst
-        for element in compress/zlib.bst compress/zstd.bst; do
+        elements=(
+          compress/zlib.bst
+          compress/zstd.bst
+          android/libcxx-shared.bst
+          android/android-sysvshm.bst
+          android/android-spawn.bst
+          android/android-sysv-semaphore.bst
+        )
+        buildstream/bst build "${elements[@]}"
+        for element in "${elements[@]}"; do
           buildstream/bst show --deps none "$element" \
             --format '%{state} %{full-key}'
           test "$(buildstream/bst show --deps none "$element" \
             --format '%{state}')" = cached
         done
 
-    - name: Verify artifacts
+    - name: Checkout and verify artifacts
       run: |
-        rm -rf artifacts/buildstream-zlib artifacts/buildstream-zstd
+        rm -rf artifacts/buildstream-*
         buildstream/bst artifact checkout compress/zlib.bst \
           --deps none \
           --directory artifacts/buildstream-zlib
         buildstream/bst artifact checkout compress/zstd.bst \
           --deps none \
           --directory artifacts/buildstream-zstd
+        for element in libcxx-shared android-sysvshm android-spawn android-sysv-semaphore; do
+          buildstream/bst artifact checkout "android/$element.bst" \
+            --deps none \
+            --directory "artifacts/buildstream-$element"
+        done
+
         test -L artifacts/buildstream-zlib/usr/lib/libz.so
         test -L artifacts/buildstream-zlib/usr/lib/libz.so.1
         test -f artifacts/buildstream-zlib/usr/include/zlib.h
@@ -88,11 +104,31 @@ jobs:
         test ! -e artifacts/buildstream-zlib/opt/android-ndk
         test ! -e artifacts/buildstream-zstd/opt/android-ndk
 
+        test -f artifacts/buildstream-libcxx-shared/usr/lib/libc++_shared.so
+        readelf -dW artifacts/buildstream-libcxx-shared/usr/lib/libc++_shared.so |
+          grep -q 'SONAME.*libc++_shared.so'
+
+        sysv=artifacts/buildstream-android-sysvshm/usr/lib/libandroid-sysvshm.so
+        test -L artifacts/buildstream-android-sysvshm/usr/lib/libsysvshm.so
+        for symbol in shmget shmat shmdt shmctl \
+          libandroid_shmget libandroid_shmat libandroid_shmdt libandroid_shmctl; do
+          readelf -Ws "$sysv" | grep -q "GLOBAL.* $symbol$"
+        done
+
+        spawn=artifacts/buildstream-android-spawn/usr/lib/libandroid-spawn.so
+        for symbol in posix_spawn posix_spawnp glob globfree; do
+          readelf -Ws "$spawn" | grep -q "GLOBAL.* $symbol$"
+        done
+        test -f artifacts/buildstream-android-spawn/usr/include/spawn.h
+
+        semaphore=artifacts/buildstream-android-sysv-semaphore/usr/lib/libandroid-sysv-semaphore.so
+        for symbol in semget semop semctl semtimedop; do
+          readelf -Ws "$semaphore" | grep -q "GLOBAL.* $symbol$"
+        done
+
     - uses: actions/upload-artifact@v4
       with:
-        name: buildstream-compression-libs
-        path: |
-          artifacts/buildstream-zlib
-          artifacts/buildstream-zstd
+        name: buildstream-package-artifacts
+        path: artifacts/buildstream-*
         if-no-files-found: error
         retention-days: 7

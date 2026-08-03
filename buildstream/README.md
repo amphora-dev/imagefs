@@ -10,6 +10,7 @@ content-addressed artifact without restoring `staging`, `src` or stamp files.
 - Android NDK r29: toolchain artifact, pinned by SHA-256
 - zlib 1.3.1 and zstd 1.5.6: independent `aarch64-linux-android26`
   artifacts
+- NDK libc++ runtime plus Winlator shm/spawn/semaphore compatibility artifacts
 - GitHub Actions: persists BuildStream's content-addressed store
 
 The package outputs contain only their own:
@@ -21,7 +22,10 @@ The package outputs contain only their own:
 ```
 
 The Ubuntu build runtime and NDK are build dependencies and are not copied into
-the zlib artifact.
+package artifacts.
+
+The project is rooted at the repository `project.conf`, allowing `kind: local`
+sources to hash `vendor/` directly without copying them under `buildstream/`.
 
 ## Run locally
 
@@ -47,6 +51,11 @@ reuse source and artifact objects from `~/.cache/buildstream`; if the zlib
 element, source, NDK or base runtime changes, BuildStream computes a different
 artifact key instead of mutating an old sysroot.
 
+GitHub runners often have an NDK preinstalled, but bind-mounting it would make
+host contents invisible to the BuildStream cache key. A pinned NDK artifact is
+intentional: the first fetch is larger, while later runners restore the same
+verified content from CAS.
+
 ## Measured result
 
 The validated artifact key is
@@ -69,7 +78,7 @@ checked-out artifact is 816 KB. It has `SONAME: libzstd.so.1` and exports the
 
 ## Deliberate limits
 
-- Only zlib/zstd are migrated; the production `build-all.sh` path is unchanged.
+- Only six leaf packages are migrated; production `build-all.sh` is unchanged.
 - NDK's zip does not preserve executable modes or symlinks through the community
   source plugin, so the toolchain element restores both before publishing its
   artifact. This matters for LLVM multicall tools such as `llvm-strip`.
