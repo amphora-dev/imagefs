@@ -23,7 +23,7 @@ sources:
 variables:
   conf-root: "%{build-root}"
   command-subdir: _build
-  conf-local: |
+  conf-local: >-
     --host=aarch64-linux-android
     --enable-shared
     --disable-static
