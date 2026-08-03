@@ -84,6 +84,10 @@ available while target zlib is visible only through that sysroot.
 libffi 3.4.6 is the first consumer. It builds through the official `autotools`
 element in 5 seconds, checks out to 204 KB, preserves the `LIBFFI_*_8.0` symbol
 versions and completes a warm host-SDK + sysroot + package build in 356 ms.
+The host overlay key is
+`d324eb868c2ebef39a121e245701137c8c8ea594eec7621374af647265ed18a4`;
+libffi's key is
+`756d22b212c8f1e9dde134f198f046b400cd00c4e2ce6b67fe70047e94e8e3cd`.
 
 ## Measured result
 
