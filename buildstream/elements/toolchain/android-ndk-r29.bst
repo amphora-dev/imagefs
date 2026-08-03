@@ -19,7 +19,28 @@ sources:
 config:
   install-commands:
   - |
+    set -eu
     mkdir -p "%{install-root}%{ndk-root}"
     cp -a . "%{install-root}%{ndk-root}/"
-    find "%{install-root}%{ndk-toolchain}/bin" -type f -exec chmod 0755 {} +
+    bindir="%{install-root}%{ndk-toolchain}/bin"
+
+    # The zip source exposes Unix symlinks as tiny regular files containing the
+    # link target. Recreate them so multicall LLVM tools see the right argv[0]
+    # (llvm-strip -> llvm-objcopy is semantically different from invoking
+    # llvm-objcopy directly).
+    for candidate in "$bindir"/*; do
+      [ -f "$candidate" ] || continue
+      [ "$(wc -c < "$candidate")" -lt 128 ] || continue
+      target="$(cat "$candidate")"
+      case "$target" in
+        *[!A-Za-z0-9._+-]*|"") continue ;;
+      esac
+      [ -e "$bindir/$target" ] || continue
+      rm "$candidate"
+      ln -s "$target" "$candidate"
+    done
+
+    find "$bindir" -type f -exec chmod 0755 {} +
+    test -L "$bindir/clang"
+    test -L "$bindir/llvm-strip"
     test -x "%{install-root}%{ndk-toolchain}/bin/%{target-triple}-clang"

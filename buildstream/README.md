@@ -48,9 +48,9 @@ artifact key instead of mutating an old sysroot.
 ## Deliberate limits
 
 - Only zlib is migrated; the production `build-all.sh` path is unchanged.
-- NDK's zip does not preserve executable modes through the community source
-  plugin, so the toolchain element restores modes before publishing its
-  artifact.
+- NDK's zip does not preserve executable modes or symlinks through the community
+  source plugin, so the toolchain element restores both before publishing its
+  artifact. This matters for LLVM multicall tools such as `llvm-strip`.
 - zstd is the next useful trial, but requires a sandbox-provided CMake and Make.
   This PoC first validates the harder foundation: glibc sandbox + NDK artifact +
   Android ELF output + cache reuse.
