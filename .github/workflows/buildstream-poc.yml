@@ -24,7 +24,15 @@ jobs:
     - name: Install sandbox dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y bubblewrap fuse3 lzip patch python3-venv xz-utils
+        sudo apt-get install -y \
+          apparmor-profiles apparmor-utils bubblewrap fuse3 lzip patch \
+          python3-venv xz-utils
+        # Ubuntu 24.04 restricts unprivileged user namespaces. Load its narrow
+        # upstream bwrap profile instead of disabling AppArmor globally.
+        sudo install -m 0644 \
+          /usr/share/apparmor/extra-profiles/bwrap-userns-restrict \
+          /etc/apparmor.d/bwrap-userns-restrict
+        sudo apparmor_parser -r /etc/apparmor.d/bwrap-userns-restrict
 
     - name: Restore BuildStream CAS
       uses: actions/cache@v4
