@@ -155,9 +155,25 @@ ensure_mesa() {
   fi
   cd "$MESA_SRC"
   git fetch --tags --force origin
-  git checkout --force "$MESA_REF"
-  git pull --ff-only 2>/dev/null || true
-  git reset --hard HEAD
+  # Resolve against origin/ first. MESA_DEFAULT_REF is a branch (wrapper-25);
+  # in a reused clone `git checkout <branch>` lands on the stale local branch and
+  # the `git pull --ff-only || true` that used to follow swallowed the failure.
+  # ci/gate/wrapper-build.sh meanwhile reads the fresh upstream sha, so the gate
+  # asked for a build the tzst then labelled with the old commit — published and
+  # pinned as the new one, and never converging.
+  local target="" cand resolved
+  for cand in "refs/remotes/origin/$MESA_REF" "refs/tags/$MESA_REF" "$MESA_REF"; do
+    if resolved="$(git rev-parse --verify --quiet "${cand}^{commit}")"; then
+      target="$resolved"
+      break
+    fi
+  done
+  [ -n "$target" ] || {
+    echo "FAIL: cannot resolve MESA_REF=$MESA_REF in $MESA_REPO" >&2
+    exit 1
+  }
+  git checkout --force --detach "$target"
+  git reset --hard "$target"
   git clean -fdx
   COMMIT_FULL="$(git rev-parse HEAD)"
   COMMIT_SHORT="$(git rev-parse --short=9 HEAD)"
