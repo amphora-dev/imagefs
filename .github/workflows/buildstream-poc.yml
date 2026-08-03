@@ -81,6 +81,10 @@ jobs:
         test -f artifacts/buildstream-zstd/usr/include/zstd.h
         readelf -dW artifacts/buildstream-zstd/usr/lib/libzstd.so.1.5.6 |
           grep -q 'SONAME.*libzstd.so.1'
+        for symbol in ZSTD_compress ZSTD_decompress ZSTD_versionNumber; do
+          readelf -Ws artifacts/buildstream-zstd/usr/lib/libzstd.so.1.5.6 |
+            grep -q "GLOBAL.* $symbol$"
+        done
         test ! -e artifacts/buildstream-zlib/opt/android-ndk
         test ! -e artifacts/buildstream-zstd/opt/android-ndk
 

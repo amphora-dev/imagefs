@@ -61,6 +61,12 @@ source fetch and NDK artifact creation). A second runner restored the CAS in
 12 seconds and completed the same build step in 1 second. This demonstrates
 cross-run package artifact reuse, not just a warm directory on one machine.
 
+The zstd artifact key is
+`a0386aadf65f00b0c17c46f9235c08393a0242c77ba308adae7005de75f4ff23`.
+Its cold package compile took 9 seconds, a warm build took 333 ms, and the
+checked-out artifact is 816 KB. It has `SONAME: libzstd.so.1` and exports the
+`ZSTD_compress`, `ZSTD_decompress` and `ZSTD_versionNumber` ABI entry points.
+
 ## Deliberate limits
 
 - Only zlib/zstd are migrated; the production `build-all.sh` path is unchanged.
