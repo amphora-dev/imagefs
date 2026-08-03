@@ -2,8 +2,12 @@
 # Smoke-test Buildroot-lite package helpers (no NDK / no compile).
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
-# Minimal stubs so config.sh path migration does not touch real build dirs.
-export BUILD_DIR="${BUILD_DIR:-/tmp/imagefs-pkg-selftest}"
+# Always a scratch tree, never the ambient BUILD_DIR: the clean-rebuild case
+# below runs create-rootfs.sh with REBUILD_ROOTFS=1, which deletes staging /
+# host / workdir / stamps. CI exports BUILD_DIR=/tmp/imagefs-build and runs this
+# before the build, so honouring it would wipe the very tree under test.
+export BUILD_DIR="${PKG_SELFTEST_BUILD_DIR:-/tmp/imagefs-pkg-selftest}"
+rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
 # shellcheck source=/dev/null
 source "$SCRIPT_DIR/config.sh"
