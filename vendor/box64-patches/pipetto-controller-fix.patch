@@ -25,11 +25,11 @@ index a5fd235816..da6faef8e4 100644
  endif()
  if(TERMUX)
 diff --git a/src/library_list.h b/src/library_list.h
-index 44d865e945..9efd0691d8 100644
+index 1b735814a2..b186bce7f5 100644
 --- a/src/library_list.h
 +++ b/src/library_list.h
-@@ -375,6 +375,7 @@ GO("libgdk-x11-2.0.so", gdkx112)
- GO("libpangocairo-1.0.so", pangocairo)
+@@ -413,6 +413,7 @@ GO("liblapack.so.3", liblapack)
+ GO("liblapack.so", liblapack)
  #ifdef ANDROID
  GO("libandroid-shmem.so", androidshmem)
 +GO("libandroid-spawn.so", androidspawn)
@@ -77,15 +77,15 @@ Date: Sun, 9 Mar 2025 12:32:21 +0100
 Subject: [PATCH 2/7] [WRAPPED] Fix wrapped libgcrypt and libgmp for Android
 
 ---
- src/library_list.h          | 2 ++
+ src/library_list.h          | 1 +
  src/wrapped/wrappedgcrypt.c | 1 +
- 2 files changed, 3 insertions(+)
+ 2 files changed, 2 insertions(+)
 
 diff --git a/src/library_list.h b/src/library_list.h
-index 9efd0691d8..b815775acc 100644
+index b186bce7f5..95473ce36f 100644
 --- a/src/library_list.h
 +++ b/src/library_list.h
-@@ -120,6 +120,7 @@ GO("libcrypto.so.3", crypto3)
+@@ -124,6 +124,7 @@ GO("libcrypto.so.3", crypto3)
  GO("libssl.so.3", libssl3)
  GO("libcrypt.so.1", libcrypt)
  GO("libgcrypt.so.20", gcrypt)
@@ -93,14 +93,6 @@ index 9efd0691d8..b815775acc 100644
  GO("libutil.so.1", util)
  GO("libuuid.so.1", libuuid)
  GO("libresolv.so.2", libresolv)
-@@ -211,6 +212,7 @@ GO("libselinux.so.1", selinux)
- GO("libsecret-1.so.0", secret1)
- GO("libpci.so.3", libpci)
- GO("libgmp.so.10", gmp)
-+GO("libgmp.so", gmp)
- GO("libFAudio.so.0", faudio)
- GO("libgstallocators-1.0.so.0", gstallocators)
- GO("libgstapp-1.0.so.0", gstapp)
 diff --git a/src/wrapped/wrappedgcrypt.c b/src/wrapped/wrappedgcrypt.c
 index 827e3924a9..23206a8c74 100644
 --- a/src/wrapped/wrappedgcrypt.c
@@ -155,10 +147,10 @@ index 30195ee9bc..541c89df7a 100644
          snprintf(buff, buffsz, "%04d|%p: Calling %s(%" PRIu64 ", %" PRIp ", %" PRIu64 ", %" PRIp ")", tid, *(void**)(R_RSP), func, (uintptr_t)R_RDI, (void*)R_RSI, (uintptr_t)R_RDX, (void*)R_RCX);
      } else if (w == iFLppp) {
 diff --git a/src/library_list.h b/src/library_list.h
-index 418f634155..0b1afcf59e 100644
+index 95473ce36f..07977de8d7 100644
 --- a/src/library_list.h
 +++ b/src/library_list.h
-@@ -379,6 +379,7 @@ GO("libpangocairo-1.0.so", pangocairo)
+@@ -414,6 +414,7 @@ GO("liblapack.so", liblapack)
  #ifdef ANDROID
  GO("libandroid-shmem.so", androidshmem)
  GO("libandroid-spawn.so", androidspawn)

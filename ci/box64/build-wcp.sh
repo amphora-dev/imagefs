@@ -19,6 +19,7 @@
 #                          Bionic exposes at higher APIs. TERMUX=0. imagefs stays
 #                          on API 26; box64 only needs libc/libm/libdl at runtime.)
 #   APPLY_PIPETTO_PATCH    1=apply vendor/box64-patches/pipetto-controller-fix.patch
+#                           (default and required; 0 explicitly builds upstream)
 #   OUTPUT_DIR             default $PWD/artifacts
 #   BUILD_DIR              default /tmp/box64-wcp-build
 #   JOBS                   parallel make jobs (default nproc)
@@ -86,20 +87,23 @@ echo "Building Box64 ${FULL_VERSION} (commit ${COMMIT_FULL})"
 if [ "$APPLY_PIPETTO_PATCH" = "1" ]; then
     PATCH="$REPO_ROOT/vendor/box64-patches/pipetto-controller-fix.patch"
     if [ -f "$PATCH" ]; then
-        # Mailbox series from WinNative; upstream moves fast — fall back cleanly.
+        # Mailbox series from Pipetto/WinNative. These wrappers are runtime
+        # compatibility, not an optional optimization: silently publishing an
+        # unpatched WCP makes x86_64 Wine fail later on the device.
         PATCH_STATUS=0
         apply_patch "$PATCH" || PATCH_STATUS=$?
         case $PATCH_STATUS in
             0) echo "Applied $PATCH" ;;
             1) echo "Already present: $PATCH" ;;
             *)
-                echo "WARN: pipetto patch did not apply cleanly; continuing without it" >&2
-                git checkout -- .
-                git clean -fd
+                echo "FAIL: required Pipetto Android patch did not apply cleanly" >&2
+                echo "Rebase vendor/box64-patches/pipetto-controller-fix.patch for ${COMMIT_FULL}" >&2
+                exit 1
                 ;;
         esac
     else
-        echo "WARN: patch missing at $PATCH; skipping" >&2
+        echo "FAIL: required patch missing at $PATCH" >&2
+        exit 1
     fi
 fi
 

@@ -37,7 +37,13 @@ apply_patch() {
         patch "-p$strip" --forward --batch <"$patch_file" >/dev/null && return 0
     fi
 
-    # 反向能干净应用 == 内容已经在源码里了。
+    # 反向能干净应用 == 内容已经在源码里了。优先用 git apply：mailbox
+    # series 的后续 patch 会依赖前一段新增的上下文，patch(1) 按正序反向试跑
+    # 会误判这种“已完整应用”的 series。
+    if git rev-parse --is-inside-work-tree >/dev/null 2>&1 &&
+        git apply --reverse --check "-p$strip" "$patch_file" 2>/dev/null; then
+        return 1
+    fi
     if patch "-p$strip" --reverse --batch --dry-run <"$patch_file" >/dev/null 2>&1; then
         return 1
     fi
