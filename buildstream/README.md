@@ -76,6 +76,19 @@ Its cold package compile took 9 seconds, a warm build took 333 ms, and the
 checked-out artifact is 816 KB. It has `SONAME: libzstd.so.1` and exports the
 `ZSTD_compress`, `ZSTD_decompress` and `ZSTD_versionNumber` ABI entry points.
 
+The Android leaf artifacts built in parallel in under one second locally:
+
+| Element | Key | Checkout |
+|---|---|---:|
+| `libcxx-shared` | `33414228a3e01ff612ca089d0d9899f9f9770fa38b649ca43733e8afddec03bf` | 1.4 MB |
+| `android-sysvshm` | `570cfd4ef7165a56e709aa61f1930a67ef37fd6554449882747ef322e591d92e` | 20 KB |
+| `android-spawn` | `f11873124258c1ba8c4a5fb048708fa012ffd7429faca68ed12edf268d3a76e2` | 32 KB |
+| `android-sysv-semaphore` | `7049017a461af2b232426269904dc233aad0d12df2c2fd02fbd292160469d411` | 16 KB |
+
+Their exported ABI and SONAMEs are checked in CI. The first runner to add these
+four elements restored the existing toolchain CAS, built and verified all six
+package artifacts in 9 seconds, and uploaded them as separate directory trees.
+
 ## Deliberate limits
 
 - Only six leaf packages are migrated; production `build-all.sh` is unchanged.
