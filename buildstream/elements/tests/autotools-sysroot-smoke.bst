@@ -13,6 +13,11 @@ depends:
   config:
     location: /opt/android-sysroot
 
+environment:
+  PKG_CONFIG_PATH: ""
+  PKG_CONFIG_SYSROOT_DIR: /opt/android-sysroot
+  PKG_CONFIG_LIBDIR: "/opt/android-sysroot/usr/lib/pkgconfig:/opt/android-sysroot/usr/share/pkgconfig"
+
 config:
   build-commands:
   - |

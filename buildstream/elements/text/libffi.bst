@@ -30,9 +30,12 @@ variables:
   remove-libtool-libraries: "true"
 
 environment:
-  CFLAGS: "-fPIC -O2 -I%{target-sysroot}%{prefix}/include"
-  CPPFLAGS: "-I%{target-sysroot}%{prefix}/include"
-  LDFLAGS: "-L%{target-sysroot}%{prefix}/lib -Wl,-rpath,/usr/lib -Wl,--allow-shlib-undefined"
+  CFLAGS: "-fPIC -O2 -I/opt/android-sysroot%{prefix}/include"
+  CPPFLAGS: "-I/opt/android-sysroot%{prefix}/include"
+  LDFLAGS: "-L/opt/android-sysroot%{prefix}/lib -Wl,-rpath,/usr/lib -Wl,--allow-shlib-undefined"
+  PKG_CONFIG_PATH: ""
+  PKG_CONFIG_SYSROOT_DIR: /opt/android-sysroot
+  PKG_CONFIG_LIBDIR: "/opt/android-sysroot%{prefix}/lib/pkgconfig:/opt/android-sysroot%{prefix}/share/pkgconfig"
 
 config:
   strip-commands:
