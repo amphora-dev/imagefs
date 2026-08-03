@@ -63,6 +63,10 @@ config:
     for package in ./*.deb; do
       dpkg-deb --extract "$package" "%{install-root}"
     done
+    # Debian manages these through update-alternatives in maintainer scripts;
+    # this overlay intentionally does not execute package scripts.
+    ln -s automake-1.16 "%{install-root}/usr/bin/automake"
+    ln -s aclocal-1.16 "%{install-root}/usr/bin/aclocal"
     test -x "%{install-root}/usr/bin/autoconf"
     test -x "%{install-root}/usr/bin/automake"
     test -x "%{install-root}/usr/bin/libtoolize"
