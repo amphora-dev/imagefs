@@ -14,15 +14,25 @@ SRC_URL="https://github.com/facebook/zstd/releases/download/v$VER/zstd-$VER.tar.
 
 cd "$SRC_DIR"
 fetch_source "$PKG_NAME" zstd.tar.gz "$SRC_URL"
-cd "$PKG_NAME/build/cmake"
+cd "$PKG_NAME"
 
+# CMake's Android platform disables versioned SONAMEs globally. zstd already
+# declares SOVERSION=1; this patch lets that upstream metadata reach the linker.
+source "$SCRIPT_DIR/lib/util.sh"
+status=0
+apply_patch "$SCRIPT_DIR/vendor/zstd-patches/0001-android-versioned-soname.patch" || status=$?
+case $status in
+    0|1) ;;
+    *) error "  zstd versioned-SONAME patch failed"; exit 1 ;;
+esac
+
+cd build/cmake
 rm -rf build_dir && mkdir -p build_dir && cd build_dir
 
 cmake .. \
     -DCMAKE_TOOLCHAIN_FILE="$NDK_DIR/build/cmake/android.toolchain.cmake" \
     -DANDROID_ABI=arm64-v8a \
     -DANDROID_PLATFORM=android-$ANDROID_API \
-    -DCMAKE_SHARED_LINKER_FLAGS="-Wl,-soname,libzstd.so.1" \
     -DCMAKE_INSTALL_PREFIX=$PREFIX \
     -DCMAKE_INSTALL_LIBDIR=$PREFIX/lib \
     -DCMAKE_BUILD_TYPE=Release \
