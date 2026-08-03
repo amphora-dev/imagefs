@@ -55,6 +55,11 @@ checked-out package is 240 KB, reports `Machine: AArch64` and
 `SONAME: libz.so.1`, and contains neither `/opt/android-ndk` nor Ubuntu's
 `/bin/sh`.
 
+The first successful GitHub run spent 37 seconds in the build step (including
+source fetch and NDK artifact creation). A second runner restored the CAS in
+12 seconds and completed the same build step in 1 second. This demonstrates
+cross-run package artifact reuse, not just a warm directory on one machine.
+
 ## Deliberate limits
 
 - Only zlib is migrated; the production `build-all.sh` path is unchanged.

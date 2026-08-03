@@ -38,9 +38,16 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/.cache/buildstream
-        key: buildstream-zlib-v1-${{ runner.os }}-${{ hashFiles('buildstream/**') }}
+        # Documentation/wrapper edits do not change package artifacts.
+        key: buildstream-zlib-v1-${{ runner.os }}-${{ hashFiles('buildstream/project.conf', 'buildstream/elements/**') }}
         restore-keys: |
           buildstream-zlib-v1-${{ runner.os }}-
+
+    - name: Restore pinned BuildStream tools
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/imagefs-buildstream/tools
+        key: buildstream-tools-v1-${{ runner.os }}-bst-2.7.0-plugins-2.3.1-buildbox-1.4.15
 
     - name: Install pinned BuildStream tools
       run: bash ci/setup/install-buildstream.sh
