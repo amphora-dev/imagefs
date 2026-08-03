@@ -35,4 +35,11 @@ done
 
 $STRIP "$PREFIX/lib/libasound.so" 2>/dev/null || true
 
+# Android/NDK often collapses the upstream SONAME to unversioned libasound.so.
+# Box64's native wrapper and WinNative's audio_plugin both open libasound.so.2 —
+# keep a sibling symlink even when the ELF SONAME differs.
+if [ -e "$PREFIX/lib/libasound.so" ] && [ ! -e "$PREFIX/lib/libasound.so.2" ]; then
+    ln -sfn libasound.so "$PREFIX/lib/libasound.so.2"
+fi
+
 log "  alsa-lib $VER: $(ls $PREFIX/lib/libasound.so* 2>/dev/null | xargs -n1 basename | tr '\n' ' ')"
