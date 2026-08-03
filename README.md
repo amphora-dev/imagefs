@@ -44,6 +44,7 @@ lib/ndk.sh                              # NDK 发现（图构建与 L1 leaf 共�
 
 - 依赖：[`packages/depends.conf`](packages/depends.conf) + [`lib/pkg.sh`](lib/pkg.sh) 做传递展开与拓扑排序（配方在 [`packages/`](packages/README.md) 各子目录）
 - 增量：content stamp = 配方脚本 + depends 行 + 依赖 stamp + toolchain fingerprint（改依赖会失效下游）
+- CI 缓存：只持久化经 SHA-256 sidecar 复核的原始源码归档与 ccache；`src/staging/host/built-pkgs` 每次从干净状态重建
 - 包脚本仍写 `$PREFIX`（=`staging/usr`），无需逐包大改
 
 ## CI / Release

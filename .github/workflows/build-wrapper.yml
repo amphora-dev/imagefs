@@ -62,6 +62,15 @@ jobs:
         with:
           deps: wrapper
 
+      # Wrapper staging uses the normal package recipes. Cache only their
+      # validated source archives, never extracted source/sysroot/stamps.
+      - uses: actions/cache@v4
+        with:
+          path: /tmp/imagefs-build/cache/downloads
+          key: wrapper-sources-v1-${{ hashFiles('packages/**/*.sh', 'config.sh') }}
+          restore-keys: |
+            wrapper-sources-v1-
+
       - uses: actions/cache/restore@v4
         with:
           path: /tmp/imagefs-build/cache/ccache

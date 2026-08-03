@@ -104,4 +104,27 @@ for ref in "${!seen_vendor[@]}"; do
     grep -q "$ref/\*\*" "$wf" || fail "build-imagefs.yml paths miss $ref/** (referenced by recipes)"
 done
 
+# Source archives are cached independently from mutable src/staging trees. A
+# corrupt archive must fail its SHA-256 sidecar check and be fetched again.
+fixture="$BUILD_DIR/source-fixture"
+mkdir -p "$fixture/payload" "$SRC_DIR"
+printf 'known-good\n' > "$fixture/payload/data"
+tar -C "$fixture" -czf "$fixture/source.tar.gz" payload
+source_url="file://$fixture/source.tar.gz"
+(
+    cd "$SRC_DIR"
+    fetch_source payload fixture.tar.gz "$source_url"
+)
+[ "$(cat "$SRC_DIR/payload/data")" = "known-good" ] || fail "source cache initial extract is wrong"
+archive="$(source_cache_archive "$source_url")"
+[ -f "$archive" ] && [ -f "$archive.sha256" ] || fail "source archive was not cached with digest"
+rm -rf "$SRC_DIR/payload"
+printf 'corrupt\n' > "$archive"
+(
+    cd "$SRC_DIR"
+    fetch_source payload fixture.tar.gz "$source_url"
+)
+[ "$(cat "$SRC_DIR/payload/data")" = "known-good" ] ||
+    fail "corrupt source cache was not replaced"
+
 echo "OK: pkg selftest passed (${#full[@]} packages, glib deps topo ok)"

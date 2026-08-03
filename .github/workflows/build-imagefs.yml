@@ -59,6 +59,15 @@ jobs:
         with:
           deps: graph
 
+      # Immutable, URL-addressed source archives only. Extracted/patched source,
+      # staging and stamps are deliberately rebuilt from scratch.
+      - uses: actions/cache@v4
+        with:
+          path: /tmp/imagefs-build/cache/downloads
+          key: imagefs-sources-v1-${{ hashFiles('packages/**/*.sh', 'config.sh') }}
+          restore-keys: |
+            imagefs-sources-v1-
+
       - uses: actions/cache/restore@v4
         with:
           path: /tmp/imagefs-build/cache/ccache

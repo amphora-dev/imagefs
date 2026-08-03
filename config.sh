@@ -143,6 +143,13 @@ ensure_soname_link() {
 #      连锁带倒 14 个 X 包 + vulkan-loader + libglvnd。
 #
 # 因此: --fail 让 HTTP 错误立刻可见, 多候选逐个尝试, 并校验解压后的目录名。
+source_cache_archive() {
+    local url="$1"
+    local key
+    key="$(printf '%s' "$url" | sha256sum | awk '{print $1}')"
+    printf '%s/%s.archive\n' "${DOWNLOAD_CACHE_DIR:-$CACHE_DIR/downloads}" "$key"
+}
+
 fetch_source() {
     local expect_dir="$1" tarball="$2"
     shift 2
@@ -158,18 +165,54 @@ fetch_source() {
 
     local url
     for url in "$@"; do
-        log "  下载: $url"
-        if ! curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 20 -o "$tarball" "$url"; then
-            warn "  下载失败, 尝试下一个源"
-            rm -f "$tarball"
+        local archive digest_file expected actual tmp
+        archive="$(source_cache_archive "$url")"
+        digest_file="${archive}.sha256"
+        mkdir -p "$(dirname "$archive")"
+
+        if [ -f "$archive" ] && [ -f "$digest_file" ]; then
+            expected="$(tr -d '[:space:]' < "$digest_file")"
+            actual="$(sha256sum "$archive" | awk '{print $1}')"
+            if [[ "$expected" =~ ^[0-9a-f]{64}$ ]] && [ "$actual" = "$expected" ]; then
+                log "  源码归档缓存命中: $tarball ($actual)"
+            else
+                warn "  源码归档缓存校验失败，重新下载: $tarball"
+                rm -f "$archive" "$digest_file"
+            fi
+        elif [ -e "$archive" ] || [ -e "$digest_file" ]; then
+            warn "  源码归档缓存不完整，重新下载: $tarball"
+            rm -f "$archive" "$digest_file"
+        fi
+
+        if [ ! -f "$archive" ]; then
+            log "  下载: $url"
+            tmp="${archive}.tmp.$$"
+            rm -f "$tmp"
+            if ! curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 20 -o "$tmp" "$url"; then
+                warn "  下载失败, 尝试下一个源"
+                rm -f "$tmp"
+                continue
+            fi
+            # Reject HTTP error pages and truncated files before they enter the
+            # persistent cache. The sidecar detects later disk/cache corruption;
+            # URL-derived filenames keep different mirrors isolated.
+            if ! tar -tf "$tmp" >/dev/null 2>&1; then
+                warn "  下载内容不是有效归档, 尝试下一个源"
+                rm -f "$tmp"
+                continue
+            fi
+            actual="$(sha256sum "$tmp" | awk '{print $1}')"
+            mv "$tmp" "$archive"
+            printf '%s\n' "$actual" > "${digest_file}.tmp.$$"
+            mv "${digest_file}.tmp.$$" "$digest_file"
+            log "  已缓存源码归档: $tarball ($actual)"
+        fi
+
+        if ! tar --no-same-owner -xf "$archive"; then
+            warn "  缓存归档解压失败, 丢弃并尝试下一个源"
+            rm -f "$archive" "$digest_file"
             continue
         fi
-        if ! tar --no-same-owner -xf "$tarball"; then
-            warn "  解压失败 (下载内容可能不是归档), 尝试下一个源"
-            rm -f "$tarball"
-            continue
-        fi
-        rm -f "$tarball"
 
         if [ -d "$expect_dir" ]; then
             return 0
