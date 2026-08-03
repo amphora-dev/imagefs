@@ -66,6 +66,9 @@ jobs:
           android/libandroid-shmem.bst
           graphics/vulkan-headers.bst
           text/libffi.bst
+          text/libiconv.bst
+          x11/xorgproto.bst
+          x11/xtrans.bst
           tests/autotools-sysroot-smoke.bst
         )
         buildstream/bst build "${elements[@]}"
@@ -96,6 +99,14 @@ jobs:
         buildstream/bst artifact checkout text/libffi.bst \
           --deps none \
           --directory artifacts/buildstream-libffi
+        buildstream/bst artifact checkout text/libiconv.bst \
+          --deps none \
+          --directory artifacts/buildstream-libiconv
+        for element in xorgproto xtrans; do
+          buildstream/bst artifact checkout "x11/$element.bst" \
+            --deps none \
+            --directory "artifacts/buildstream-$element"
+        done
 
         test -L artifacts/buildstream-zlib/usr/lib/libz.so
         test -L artifacts/buildstream-zlib/usr/lib/libz.so.1
@@ -156,6 +167,15 @@ jobs:
         done
         test ! -e artifacts/buildstream-libffi/bin/bash
         test ! -e artifacts/buildstream-libffi/opt/android-ndk
+
+        test -f artifacts/buildstream-libiconv/usr/lib/libiconv.a
+        test -f artifacts/buildstream-libiconv/usr/include/iconv.h
+        test ! -e artifacts/buildstream-libiconv/usr/lib/libiconv.so
+
+        test -f artifacts/buildstream-xorgproto/usr/include/X11/Xproto.h
+        test -f artifacts/buildstream-xorgproto/usr/share/pkgconfig/xproto.pc
+        test -f artifacts/buildstream-xtrans/usr/include/X11/Xtrans/Xtrans.h
+        test -f artifacts/buildstream-xtrans/usr/share/pkgconfig/xtrans.pc
 
     - uses: actions/upload-artifact@v4
       with:

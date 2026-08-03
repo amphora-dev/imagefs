@@ -24,18 +24,8 @@ variables:
   conf-root: "%{build-root}"
   command-subdir: _build
   conf-local: >-
-    --host=aarch64-linux-android
     --enable-shared
     --disable-static
-  remove-libtool-libraries: "true"
-
-environment:
-  CFLAGS: "-fPIC -O2 -I/opt/android-sysroot%{prefix}/include"
-  CPPFLAGS: "-I/opt/android-sysroot%{prefix}/include"
-  LDFLAGS: "-L/opt/android-sysroot%{prefix}/lib -Wl,-rpath,/usr/lib -Wl,--allow-shlib-undefined"
-  PKG_CONFIG_PATH: ""
-  PKG_CONFIG_SYSROOT_DIR: /opt/android-sysroot
-  PKG_CONFIG_LIBDIR: "/opt/android-sysroot%{prefix}/lib/pkgconfig:/opt/android-sysroot%{prefix}/share/pkgconfig"
 
 config:
   strip-commands:

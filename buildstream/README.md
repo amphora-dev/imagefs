@@ -13,6 +13,7 @@ content-addressed artifact without restoring `staging`, `src` or stamp files.
 - NDK libc++ runtime plus Winlator shm/spawn/semaphore compatibility artifacts
 - Termux `libandroid-shmem` runtime and Vulkan headers/registry artifacts
 - libffi as the first standard Autotools cross-compiled artifact
+- xorgproto/xtrans target metadata and static GNU libiconv
 - GitHub Actions: persists BuildStream's content-addressed store
 
 The package outputs contain only their own:
@@ -89,6 +90,10 @@ The host overlay key is
 libffi's key is
 `756d22b212c8f1e9dde134f198f046b400cd00c4e2ce6b67fe70047e94e8e3cd`.
 
+Common Android flags, target pkg-config isolation and libtool archive cleanup
+are project defaults for every `autotools` element. Package elements only
+declare sources, build dependencies and exceptional configure switches.
+
 ## Measured result
 
 The validated artifact key is
@@ -136,7 +141,7 @@ pulling the NDK into its build dependencies.
 
 ## Deliberate limits
 
-- Nine leaf packages are migrated; production `build-all.sh` is unchanged.
+- Twelve leaf packages are migrated; production `build-all.sh` is unchanged.
 - NDK's zip does not preserve executable modes or symlinks through the community
   source plugin, so the toolchain element restores both before publishing its
   artifact. This matters for LLVM multicall tools such as `llvm-strip`.
