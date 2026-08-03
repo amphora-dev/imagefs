@@ -90,6 +90,18 @@ Their exported ABI and SONAMEs are checked in CI. The first runner to add these
 four elements restored the existing toolchain CAS, built and verified all six
 package artifacts in 9 seconds, and uploaded them as separate directory trees.
 
+Two more source artifacts are now covered:
+
+| Element | Key | Checkout |
+|---|---|---:|
+| `libandroid-shmem` | `7f8fc23bd7c3144acfcd189ce3ea711e406aa59fd752cd888f71e34f0bc424c6` | 28 KB |
+| `vulkan-headers` | `bb5165e5edf091ca2c00cb6bd8273cc43ebbb65186ef52c6726046d26fdf2083` | 32 MB |
+
+`libandroid-shmem` pins both the full upstream commit and GitHub archive
+SHA-256, exports the expected `libandroid_shm*` ABI, and deliberately omits the
+polluting `sys/shm.h`. Vulkan-Headers publishes its headers and registry without
+pulling the NDK into its build dependencies.
+
 ## Deliberate limits
 
 - Eight leaf packages are migrated; production `build-all.sh` is unchanged.
