@@ -62,12 +62,13 @@ verified content from CAS.
 
 Autotools packages combine Ubuntu Base with a 2 MB overlay assembled from 14
 versioned Ubuntu archive `.deb` files. Each package is SHA-256 pinned and staged
-with BuildStream's existing `deb` source plugin; maintainer scripts are not
-executed. The overlay adds M4, Autoconf, Automake, Libtool, GNU Make, pkgconf and
-file(1), while reusing the base's glibc/coreutils/perl-base. This avoids both a
-95-element freedesktop-sdk closure and a custom published host image. The
-official BuildStream `autotools` element supplies the configure/make/install
-command model.
+as an opaque core `remote` source, then extracted by Ubuntu Base's `dpkg-deb`;
+maintainer scripts are not executed. This handles modern zstd-compressed `.deb`
+payloads without a custom plugin. The overlay adds M4, Autoconf, Automake,
+Libtool, GNU Make, pkgconf and file(1), while reusing the base's
+glibc/coreutils/perl-base. This avoids both a 95-element freedesktop-sdk closure
+and a custom published host image. The official BuildStream `autotools` element
+supplies the configure/make/install command model.
 
 Host tools remain at sandbox `/`. Android package dependencies are relocated
 with BuildStream's dependency `config.location` to `/opt/android-sysroot`;

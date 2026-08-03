@@ -5,7 +5,6 @@ set -euo pipefail
 BST_VERSION="${BST_VERSION:-2.7.0}"
 BST_CORE_PLUGINS_VERSION="${BST_CORE_PLUGINS_VERSION:-2.7.0}"
 BST_PLUGINS_VERSION="${BST_PLUGINS_VERSION:-2.3.1}"
-ARPY_VERSION="${ARPY_VERSION:-2.3.0}"
 BUILDBOX_VERSION="${BUILDBOX_VERSION:-1.4.15}"
 BUILDBOX_SHA256="${BUILDBOX_SHA256:-07ce72be4a7a33534a1f31a7ebf28fb1d830686c6deff068ee6353e2fc811c0d}"
 TOOLS_ROOT="${BST_TOOLS_ROOT:-$HOME/.cache/imagefs-buildstream/tools}"
@@ -15,19 +14,18 @@ BIN="$TOOLS_ROOT/bin"
 mkdir -p "$TOOLS_ROOT" "$BIN"
 
 plugin_versions="$("$VENV/bin/python" -c \
-    'from importlib.metadata import version; print(version("buildstream-plugins"), version("buildstream-plugins-community"), version("arpy"))' \
+    'from importlib.metadata import version; print(version("buildstream-plugins"), version("buildstream-plugins-community"))' \
     2>/dev/null || true)"
 if [ ! -x "$VENV/bin/bst" ] ||
    [ "$("$VENV/bin/bst" --version 2>/dev/null || true)" != "$BST_VERSION" ] ||
-   [ "$plugin_versions" != "$BST_CORE_PLUGINS_VERSION $BST_PLUGINS_VERSION $ARPY_VERSION" ]; then
+   [ "$plugin_versions" != "$BST_CORE_PLUGINS_VERSION $BST_PLUGINS_VERSION" ]; then
     rm -rf "$VENV"
     python3 -m venv "$VENV"
     "$VENV/bin/pip" install --disable-pip-version-check --quiet --upgrade pip
     "$VENV/bin/pip" install --disable-pip-version-check --quiet \
         "BuildStream==$BST_VERSION" \
         "buildstream-plugins==$BST_CORE_PLUGINS_VERSION" \
-        "buildstream-plugins-community==$BST_PLUGINS_VERSION" \
-        "arpy==$ARPY_VERSION"
+        "buildstream-plugins-community==$BST_PLUGINS_VERSION"
 fi
 
 if [ ! -x "$BIN/buildbox-casd" ] ||
