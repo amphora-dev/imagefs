@@ -22,6 +22,7 @@ cmake .. \
     -DCMAKE_TOOLCHAIN_FILE="$NDK_DIR/build/cmake/android.toolchain.cmake" \
     -DANDROID_ABI=arm64-v8a \
     -DANDROID_PLATFORM=android-$ANDROID_API \
+    -DCMAKE_SHARED_LINKER_FLAGS="-Wl,-soname,libzstd.so.1" \
     -DCMAKE_INSTALL_PREFIX=$PREFIX \
     -DCMAKE_INSTALL_LIBDIR=$PREFIX/lib \
     -DCMAKE_BUILD_TYPE=Release \
@@ -36,13 +37,8 @@ make install
 
 $STRIP "$PREFIX/lib/libzstd.so" 2>/dev/null || true
 
-# Turnip / libGL NEEDED 写的是 libzstd.so.1。Android cmake 常把 SONAME 写成
-# 裸名 libzstd.so，只靠软链不够稳妥 —— 强制 SONAME 与 NEEDED 一致。
-if command -v patchelf >/dev/null 2>&1; then
-    patchelf --set-soname libzstd.so.1 "$PREFIX/lib/libzstd.so"
-elif [ -x "$TC/bin/llvm-patchelf" ]; then
-    "$TC/bin/llvm-patchelf" --set-soname libzstd.so.1 "$PREFIX/lib/libzstd.so"
-fi
+# Turnip / libGL NEEDED 写的是 libzstd.so.1。SONAME 必须在链接时写入；
+# 事后 patchelf 会重排 Android linker 实际读取的 ELF LOAD/.dynstr 布局。
 ensure_soname_link "libzstd.so.1" "libzstd.so"
 soname=$(readelf -dW "$PREFIX/lib/libzstd.so" 2>/dev/null | awk -F'[][]' '/SONAME/{print $2}')
 if [ "$soname" != "libzstd.so.1" ]; then
