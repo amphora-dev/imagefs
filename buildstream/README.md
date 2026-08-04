@@ -18,6 +18,7 @@ content-addressed artifact without restoring `staging`, `src` or stamp files.
 - portable GMP with separate host GCC and Android NDK compiler roles
 - CMake leaves: Brotli, Expat and PCRE2
 - Nettle/Hogweed over target GMP and minimal ALSA lib
+- Android audio-server ALSA PCM plugin and configuration
 - GitHub Actions: persists BuildStream's content-addressed store
 
 The package outputs contain only their own:
@@ -196,7 +197,7 @@ pulling the NDK into its build dependencies.
 
 ## Deliberate limits
 
-- Nineteen packages are migrated; production `build-all.sh` is unchanged.
+- Twenty packages are migrated; production `build-all.sh` is unchanged.
 - NDK's zip does not preserve executable modes or symlinks through the community
   source plugin, so the toolchain element restores both before publishing its
   artifact. This matters for LLVM multicall tools such as `llvm-strip`.
@@ -210,3 +211,5 @@ pulling the NDK into its build dependencies.
   segment alignment checks.
 - GMP build-time generators use the host SDK GCC while target objects use NDK
   Clang. NDK remains strictly on its supported Android target.
+- SDL2 remains deferred until its undeclared X11 header dependencies are
+  represented in the BuildStream graph.
