@@ -113,6 +113,9 @@ jobs:
 
     - name: Checkout and verify artifacts
       run: |
+        # grep -q intentionally closes large readelf/strings streams early.
+        # Do not turn the producer's expected SIGPIPE into exit 141.
+        set +o pipefail
         rm -rf artifacts/buildstream-*
         buildstream/bst artifact checkout compress/zlib.bst \
           --deps none \
