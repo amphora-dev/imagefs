@@ -214,6 +214,19 @@ GMP/Nettle/zlib/libc++ runtime dependencies. Its C++ DSO exposed another
 shared-staging omission: `libc++_shared.so` was previously present but absent
 from depends.conf. OpenSSL/GnuTLS warm together in 428 ms.
 
+The final media/graphics layer is:
+
+| Element | Key | Checkout | Cold package build |
+|---|---|---:|---:|
+| `gstreamer` | `be5ad64f85ebb12f3143d0706cee5e3b88e6bced71ed711eb8bb949c8d0df474` | 3.6 MB | ~20 s |
+| `gst-plugins-base` | `ae24a36f94fe3aafa98ac41fb4f2ea2b9f693b3e824ea6f48fc8e29b286f2feb` | 5.9 MB | ~20 s |
+| `mesa-gl` | `2c194a1d1ddd8fda0b4671c25ec9abb030f32852588b1c2b21843b2fc1594060` | 20 MB | 62 s |
+
+GStreamer supplies all Wine-required core/app/audio/video/tag/GL DSOs and warms
+in 439 ms. Mesa keeps its API30 Termux profile, pins both patch sets, verifies
+Zink, rejects Android stub NEEDED entries and enforces one native TLS ABI; its
+warm build takes 466 ms.
+
 The XCB/X11 layer splits the old multi-upstream libxcb recipe into separately
 cached inputs:
 
