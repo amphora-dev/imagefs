@@ -15,6 +15,7 @@ content-addressed artifact without restoring `staging`, `src` or stamp files.
 - libffi as the first standard Autotools cross-compiled artifact
 - xorgproto/xtrans target metadata and static GNU libiconv
 - libxshmfence consuming relocated xorgproto
+- portable GMP with separate host GCC and Android NDK compiler roles
 - GitHub Actions: persists BuildStream's content-addressed store
 
 The package outputs contain only their own:
@@ -166,7 +167,7 @@ pulling the NDK into its build dependencies.
 
 ## Deliberate limits
 
-- Thirteen packages are migrated; production `build-all.sh` is unchanged.
+- Fourteen packages are migrated; production `build-all.sh` is unchanged.
 - NDK's zip does not preserve executable modes or symlinks through the community
   source plugin, so the toolchain element restores both before publishing its
   artifact. This matters for LLVM multicall tools such as `llvm-strip`.
@@ -178,5 +179,5 @@ pulling the NDK into its build dependencies.
 - libpng is the next high-risk Autotools package; it remains on the production
   path until a BuildStream build passes dedicated `PNG16_0`, SONAME and LOAD
   segment alignment checks.
-- GMP remains deferred until a supported, pinned Linux host compiler artifact
-  is available. NDK Clang is kept strictly on its supported Android target.
+- GMP build-time generators use the host SDK GCC while target objects use NDK
+  Clang. NDK remains strictly on its supported Android target.

@@ -67,6 +67,7 @@ jobs:
           graphics/vulkan-headers.bst
           text/libffi.bst
           text/libiconv.bst
+          crypto/gmp.bst
           x11/xorgproto.bst
           x11/xtrans.bst
           x11/libxshmfence.bst
@@ -103,6 +104,9 @@ jobs:
         buildstream/bst artifact checkout text/libiconv.bst \
           --deps none \
           --directory artifacts/buildstream-libiconv
+        buildstream/bst artifact checkout crypto/gmp.bst \
+          --deps none \
+          --directory artifacts/buildstream-gmp
         for element in xorgproto xtrans libxshmfence; do
           buildstream/bst artifact checkout "x11/$element.bst" \
             --deps none \
@@ -173,6 +177,15 @@ jobs:
         test -f artifacts/buildstream-libiconv/usr/include/iconv.h
         test ! -e artifacts/buildstream-libiconv/usr/lib/libiconv.so
         test -z "$(find artifacts/buildstream-libiconv -name '*.la' -print -quit)"
+
+        gmp=artifacts/buildstream-gmp/usr/lib/libgmp.so
+        test -f "$gmp"
+        readelf -dW "$gmp" | grep -q 'SONAME.*libgmp.so'
+        for symbol in __gmpz_init __gmpz_mul __gmpz_clear; do
+          readelf -Ws "$gmp" | grep -q "GLOBAL.* $symbol"
+        done
+        test -z "$(find artifacts/buildstream-gmp -name '*.la' -print -quit)"
+        test ! -e artifacts/buildstream-gmp/usr/bin/gcc
 
         test -f artifacts/buildstream-xorgproto/usr/include/X11/Xproto.h
         test -f artifacts/buildstream-xorgproto/usr/share/pkgconfig/xproto.pc
