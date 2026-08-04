@@ -4,8 +4,6 @@ description: |
   Assert host Autotools and Android target artifacts occupy separate roots.
 
 depends:
-- filename: base/ubuntu.bst
-  type: build
 - filename: base/host-sdk-autotools.bst
   type: build
 - filename: compress/zlib.bst

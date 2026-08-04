@@ -62,28 +62,23 @@ verified content from CAS.
 
 ## Host SDK and target sysroot
 
-Autotools packages combine Ubuntu Base with a 2 MB download / 16 MB unpacked
-overlay assembled from 14 versioned Ubuntu archive `.deb` files. Each package is SHA-256 pinned and staged
-as an opaque core `remote` source, then extracted by Ubuntu Base's `dpkg-deb`;
-maintainer scripts are not executed. This handles modern zstd-compressed `.deb`
-payloads without a custom plugin. The overlay adds M4, Autoconf, Automake,
-Libtool, GNU Make, pkgconf and file(1), while reusing the base's
-glibc/coreutils/perl-base. This avoids both a 95-element freedesktop-sdk closure
-and a custom published host image. The official BuildStream `autotools` element
-supplies the configure/make/install command model.
+Autotools/CMake/Meson packages use one complete host rootfs from the fixed
+`buildstream-host-sdk` Release. It contains GCC/G++, Autotools, CMake,
+Meson/Ninja, Perl/Python/Mako and graph support tools. BuildStream imports the
+single tar source pinned by SHA-256; the earlier 14-`.deb` bootstrap has been
+removed.
 
 We evaluated importing `buildpack-deps:bookworm` first, but the released
 BuildStream 2.7 docker source rejects the modern OCI index/manifest media types;
-upstream support is still an unmerged change. The small `.deb` overlay uses
-released core/community capabilities instead of vendoring that patch.
+upstream support is still an unmerged change. The generated host SDK tar uses
+released core capabilities instead of vendoring that patch or maintaining a
+converted registry image.
 
-`ci/buildstream/build-host-sdk.sh` is the replacement path as the tool set
-grows. It starts from the same SHA-pinned Ubuntu Base, uses apt in a separate
+`ci/buildstream/build-host-sdk.sh` starts from the SHA-pinned Ubuntu Base, uses
+apt in a separate
 networked bubblewrap generation step, records the complete dpkg manifest and
 exports a deterministic `imagefs-host-sdk-noble-amd64.tar.xz`. The fixed
-`buildstream-host-sdk` Release is published only from `main`; after its first
-publish, package elements can import one tar+SHA and the 14-source bootstrap
-overlay can be removed.
+`buildstream-host-sdk` Release is published only from `main`.
 
 The generator is reproducible across the local Cloud VM and GitHub runner:
 both produced a 131 MB archive with SHA-256
@@ -98,12 +93,8 @@ with BuildStream's dependency `config.location` to `/opt/android-sysroot`;
 available while target zlib is visible only through that sysroot.
 
 libffi 3.4.6 is the first consumer. It builds through the official `autotools`
-element in 5 seconds, checks out to 204 KB, preserves the `LIBFFI_*_8.0` symbol
-versions and completes a warm host-SDK + sysroot + package build in 356 ms.
-The host overlay key is
-`d324eb868c2ebef39a121e245701137c8c8ea594eec7621374af647265ed18a4`;
-libffi's current key is
-`adb9fa9436dc63c8f53783e6cb352fb0f89581fba554c33d4c0999bad7a17ccb`.
+element, checks out to about 200 KB and preserves the `LIBFFI_*_8.0` symbol
+versions.
 
 Common Android flags and target pkg-config isolation are project defaults for
 every `autotools` element. Package elements only declare sources, build
@@ -114,20 +105,19 @@ sandbox command shell is POSIX `dash`; it can silently leave archives behind.
 Library elements therefore perform a small portable `find -delete` cleanup and
 CI asserts that static libiconv contains no `.la` metadata.
 
-| Autotools element | Key | Checkout | Cold build |
-|---|---|---:|---:|
-| `libiconv` | `56a0825aea30e5944c83e5e88364bd93006e40677673f8e119c51b8113a8f41f` | 2.1 MB | 12 s |
-| `xorgproto` | `dc537e71667ab0c741b18300f08e0d7a40df99656a5c87c7b570080ca511fc42` | 4.5 MB | 3 s |
-| `xtrans` | `afb7ac2fc176cdeddc4d8ae99b729ee1b3a206c45d9c07fee2006afad9c7882e` | 272 KB | 2 s |
+| Autotools element | Checkout | Bootstrap cold build |
+|---|---:|---:|
+| `libiconv` | 2.1 MB | 12 s |
+| `xorgproto` | 4.5 MB | 3 s |
+| `xtrans` | 272 KB | 2 s |
 
 Together with libffi, all four resolve from a warm local CAS in 335 ms.
 
 `libxshmfence` is the first non-test package that stages another target
-artifact (`xorgproto`) at `/opt/android-sysroot`. Its key is
-`825809a5509d77e855638e55c62c336be730b5ebcbc12c5ae4707db1ecdaf623`;
-the 40 KB checkout contains only its header, pkg-config file and AArch64 DSO,
-not xorgproto's headers. The pollfd backend, unversioned Android SONAME and
-`xshmfence_*` ABI match the production recipe.
+artifact (`xorgproto`) at `/opt/android-sysroot`. The 40 KB checkout contains
+only its header, pkg-config file and AArch64 DSO, not xorgproto's headers. The
+pollfd backend, unversioned Android SONAME and `xshmfence_*` ABI match the
+production recipe.
 
 ## Measured result
 

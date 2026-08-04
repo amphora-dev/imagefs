@@ -5,8 +5,6 @@ description: |
   sysroot.
 
 depends:
-- filename: base/ubuntu.bst
-  type: build
 - filename: base/host-sdk-autotools.bst
   type: build
 - filename: toolchain/android-ndk-r29.bst

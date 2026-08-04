@@ -4,8 +4,6 @@ description: |
   xtrans 1.5.2 transport headers and pkg-config metadata.
 
 depends:
-- filename: base/ubuntu.bst
-  type: build
 - filename: base/host-sdk-autotools.bst
   type: build
 - filename: toolchain/android-ndk-r29.bst

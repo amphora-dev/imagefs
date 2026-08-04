@@ -7,8 +7,6 @@ description: |
   dependency can be consumed without mixing target headers into host /usr.
 
 depends:
-- filename: base/ubuntu.bst
-  type: build
 - filename: base/host-sdk-autotools.bst
   type: build
 - filename: toolchain/android-ndk-r29.bst
