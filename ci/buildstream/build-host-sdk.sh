@@ -54,6 +54,7 @@ bwrap \
     --tmpfs /tmp \
     --ro-bind /etc/resolv.conf /etc/resolv.conf \
     --setenv HOME /root \
+    --setenv LC_ALL C.UTF-8 \
     --setenv DEBIAN_FRONTEND noninteractive \
     /bin/bash -euxo pipefail -c '
         cat > /usr/sbin/policy-rc.d <<EOF
@@ -61,8 +62,9 @@ bwrap \
 exit 101
 EOF
         chmod 0755 /usr/sbin/policy-rc.d
-        apt-get update
-        apt-get install -y --no-install-recommends "$@"
+        apt-get -o APT::Sandbox::User=root update
+        apt-get -o APT::Sandbox::User=root \
+            install -y --no-install-recommends "$@"
         rm -f /usr/sbin/policy-rc.d
         apt-get clean
         rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*.deb
