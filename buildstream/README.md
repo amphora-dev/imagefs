@@ -27,6 +27,7 @@ imagefs/package.bst
 
 l1/box64-wcp.bst
 l1/wrapper-tzst.bst
+l1/proton-wine-wcp.bst
 ```
 
 `imagefs/runtime.bst` 完成 merged-usr composition 与裁剪；
@@ -35,6 +36,10 @@ l1/wrapper-tzst.bst
 Box64 是独立 CMake/WCP artifact。wrapper 元素将固定 Mesa 与
 libadrenotools source、目标依赖和 NDK 放入同一 sandbox，再调用
 `ci/wrapper/build-tzst.sh` 完成 ABI 校验与 TZST 打包。
+
+Proton Wine 是独立 x86_64 L1 artifact：Unix ELF 使用 NDK r29/API35，
+x86_64/i386 PE 使用 LLVM-MinGW；固定 Termux x86_64 sysroot 与 prefixPack
+均作为 SHA-pinned source 参与 artifact key。
 
 ## Commands
 
@@ -45,6 +50,7 @@ buildstream/bst show imagefs/package.bst
 buildstream/bst build imagefs/package.bst
 buildstream/bst build l1/box64-wcp.bst
 buildstream/bst build l1/wrapper-tzst.bst
+buildstream/bst build l1/proton-wine-wcp.bst
 ```
 
 源码、patch、element、junction ref 和依赖 artifact 都参与 key 计算。不得在

@@ -1,0 +1,147 @@
+name: build-proton-wine
+
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Build even if this Proton commit was already published"
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    paths:
+    - "buildstream/elements/l1/proton-wine-wcp.bst"
+    - "buildstream/elements/wine/**"
+    - "buildstream/elements/buildstream-sdk.bst"
+    - "ci/wine/**"
+    - "ci/gate/wine-build.sh"
+    - "ci/verify/proton-wcp.sh"
+    - "ci/setup/install-buildstream.sh"
+    - "project.conf"
+    - ".github/workflows/build-proton-wine.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+    - name: Free disk space
+      run: |
+        sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost \
+          "$AGENT_TOOLSDIRECTORY"
+        df -h
+
+    - uses: actions/checkout@v4
+
+    - name: Install BuildStream sandbox dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          apparmor-profiles apparmor-utils bubblewrap fuse3 lzip patch \
+          python3-venv xz-utils
+        sudo install -m 0644 \
+          /usr/share/apparmor/extra-profiles/bwrap-userns-restrict \
+          /etc/apparmor.d/bwrap-userns-restrict
+        sudo apparmor_parser -r /etc/apparmor.d/bwrap-userns-restrict
+
+    - uses: actions/cache@v4
+      with:
+        path: ~/.cache/buildstream
+        key: buildstream-proton-wine-v1-${{ runner.os }}-${{ hashFiles('project.conf', 'buildstream/elements/buildstream-sdk.bst', 'buildstream/elements/l1/proton-wine-wcp.bst', 'buildstream/elements/wine/**', 'ci/wine/**') }}
+        restore-keys: |
+          buildstream-proton-wine-v1-${{ runner.os }}-
+
+    - uses: actions/cache@v4
+      with:
+        path: ~/.cache/imagefs-buildstream/tools
+        key: buildstream-tools-v3-${{ runner.os }}-bst-2.7.0-core-plugins-2.7.0-community-2.3.1-buildbox-1.4.15
+
+    - run: bash ci/setup/install-buildstream.sh
+
+    - id: gate
+      env:
+        GH_TOKEN: ${{ github.token }}
+        FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force || false }}
+        EVENT_NAME: ${{ github.event_name }}
+        REPO: ${{ github.repository }}
+      run: bash ci/gate/wine-build.sh
+
+    - name: Build Proton Wine WCP
+      if: steps.gate.outputs.should_build == 'true'
+      run: |
+        rm -rf /tmp/buildstream-proton-wine artifacts
+        buildstream/bst build l1/proton-wine-wcp.bst
+        buildstream/bst artifact checkout l1/proton-wine-wcp.bst \
+          --deps none \
+          --directory /tmp/buildstream-proton-wine
+        mkdir -p artifacts
+        cp /tmp/buildstream-proton-wine/artifacts/* artifacts/
+        # shellcheck disable=SC1091
+        source artifacts/proton-wine-wcp.env
+        {
+          echo "WCP_NAME=$WCP_NAME"
+          echo "FULL_VERSION=$FULL_VERSION"
+          echo "SHA256=$SHA256"
+          echo "SIZE=$SIZE"
+          echo "COMMIT_FULL=$COMMIT_FULL"
+          echo "COMMIT_SHORT=$COMMIT_SHORT"
+        } >> "$GITHUB_ENV"
+
+    - name: Verify Proton Wine WCP
+      if: steps.gate.outputs.should_build == 'true'
+      run: bash ci/verify/proton-wcp.sh
+
+    - uses: actions/upload-artifact@v4
+      if: steps.gate.outputs.should_build == 'true'
+      with:
+        name: proton-wine-wcp
+        path: artifacts/Proton-*
+        if-no-files-found: error
+        retention-days: 14
+
+    - name: Publish Release wine
+      if: steps.gate.outputs.should_build == 'true' && github.ref == 'refs/heads/main'
+      env:
+        GH_TOKEN: ${{ github.token }}
+        REPO: ${{ github.repository }}
+        TARGET_REF: ${{ github.sha }}
+      run: |
+        BODY=$(cat <<EOF
+        Amphora Proton Wine \`${{ env.FULL_VERSION }}\`
+        https://github.com/amphora-dev/proton-wine/commit/${{ env.COMMIT_FULL }}
+        x86_64 Android API35/flexible-16KB Unix side with LLVM-MinGW WoW64 PE.
+        EOF
+        )
+        bash ci/publish/fixed-release.sh \
+          --tag wine \
+          --title wine \
+          --body "$BODY" \
+          -- "artifacts/${{ env.WCP_NAME }}" "artifacts/${{ env.WCP_NAME }}.sha256sum"
+
+    - name: Prune old Wine assets
+      if: steps.gate.outputs.should_build == 'true' && github.ref == 'refs/heads/main'
+      env:
+        GH_TOKEN: ${{ github.token }}
+        REPO: ${{ github.repository }}
+      run: |
+        bash ci/publish/prune-assets.sh \
+          --tag wine \
+          --match 'Proton-*' \
+          --keep "${{ env.WCP_NAME }}" "${{ env.WCP_NAME }}.sha256sum"
+
+    - name: Pin content_manifest wine
+      if: steps.gate.outputs.should_build == 'true' && github.ref == 'refs/heads/main'
+      uses: ./.github/actions/bump-manifest
+      with:
+        component: wine
+        sha256: ${{ env.SHA256 }}
+        size: ${{ env.SIZE }}
+        asset_path: ${{ env.WCP_NAME }}
+        ver_name: ${{ env.FULL_VERSION }}
+        remote_url: https://github.com/${{ github.repository }}/releases/download/wine/${{ env.WCP_NAME }}
+        kind: WCP
+        content_type: Proton
+        token: ${{ secrets.AMPHORA_REPO_TOKEN }}

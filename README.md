@@ -22,6 +22,7 @@ buildstream/bst artifact checkout imagefs/package.bst \
 ```bash
 buildstream/bst build l1/box64-wcp.bst
 buildstream/bst build l1/wrapper-tzst.bst
+buildstream/bst build l1/proton-wine-wcp.bst
 ```
 
 BuildStream 的 CAS 位于 `~/.cache/buildstream`。元素、源码、patch、junction
@@ -47,6 +48,7 @@ vendor/                              # BuildStream local sources/patches
 | `build-imagefs.yml` | `imagefs/package.bst` | `amphora/imagefs.txz` |
 | `build-box64.yml` | `l1/box64-wcp.bst` | `box64/Box64-*.wcp` |
 | `build-wrapper.yml` | `l1/wrapper-tzst.bst` | `wrapper/wrapper-*.tzst` |
+| `build-proton-wine.yml` | `l1/proton-wine-wcp.bst` | `wine/Proton-*.wcp` |
 
 所有 upstream ref 都固定在对应 `.bst` 元素中。手动 workflow 仅支持
 `force`，不接受绕过 BuildStream 的自定义源码 ref。
