@@ -108,6 +108,13 @@ CI asserts that static libiconv contains no `.la` metadata.
 
 Together with libffi, all four resolve from a warm local CAS in 335 ms.
 
+`libxshmfence` is the first non-test package that stages another target
+artifact (`xorgproto`) at `/opt/android-sysroot`. Its key is
+`825809a5509d77e855638e55c62c336be730b5ebcbc12c5ae4707db1ecdaf623`;
+the 40 KB checkout contains only its header, pkg-config file and AArch64 DSO,
+not xorgproto's headers. The pollfd backend, unversioned Android SONAME and
+`xshmfence_*` ABI match the production recipe.
+
 ## Measured result
 
 The validated artifact key is
