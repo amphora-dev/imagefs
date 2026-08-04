@@ -67,6 +67,8 @@ config:
   strip-commands:
   - |
     libdir="%{install-root}%{prefix}/lib"
-    for name in glib-2.0 gobject-2.0 gio-2.0 gmodule-2.0 gthread-2.0; do
+    for name in \
+      glib-2.0 gobject-2.0 gio-2.0 gmodule-2.0 gthread-2.0 \
+      girepository-2.0 intl; do
       find "$libdir" -type f -name "lib$name.so*" -exec "$STRIP" {} +
     done

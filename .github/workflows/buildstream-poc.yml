@@ -284,9 +284,12 @@ jobs:
         glib=artifacts/buildstream-glib/usr/lib/libglib-2.0.so
         gobject=artifacts/buildstream-glib/usr/lib/libgobject-2.0.so
         gio=artifacts/buildstream-glib/usr/lib/libgio-2.0.so
-        for dso in "$glib" "$gobject" "$gio"; do
+        girepository=artifacts/buildstream-glib/usr/lib/libgirepository-2.0.so
+        intl=artifacts/buildstream-glib/usr/lib/libintl.so
+        for dso in "$glib" "$gobject" "$gio" "$girepository" "$intl"; do
           test -f "$dso"
         done
+        readelf -dW "$glib" | grep -q 'NEEDED.*libintl.so'
         readelf -dW "$glib" | grep -q 'NEEDED.*libpcre2-8.so.0'
         readelf -Ws "$glib" | grep -q 'GLOBAL.* g_malloc$'
         readelf -Ws "$gobject" | grep -q 'GLOBAL.* g_object_new$'
