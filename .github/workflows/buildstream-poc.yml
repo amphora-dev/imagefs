@@ -74,6 +74,7 @@ jobs:
           text/libiconv.bst
           text/libexpat.bst
           text/pcre2.bst
+          text/freetype.bst
           crypto/gmp.bst
           x11/xorgproto.bst
           x11/xtrans.bst
@@ -133,6 +134,9 @@ jobs:
             --deps none \
             --directory "artifacts/buildstream-$element"
         done
+        buildstream/bst artifact checkout text/freetype.bst \
+          --deps none \
+          --directory artifacts/buildstream-freetype
         buildstream/bst artifact checkout crypto/gmp.bst \
           --deps none \
           --directory artifacts/buildstream-gmp
@@ -249,6 +253,16 @@ jobs:
         readelf -Ws "$pcre2" | grep -q 'GLOBAL.* pcre2_compile_8$'
         test -f artifacts/buildstream-pcre2/usr/include/pcre2.h
         test ! -e artifacts/buildstream-pcre2/usr/bin/pcre2grep
+
+        freetype=$(find artifacts/buildstream-freetype/usr/lib \
+          -type f -name 'libfreetype.so*' -print -quit)
+        test -n "$freetype"
+        readelf -dW "$freetype" | grep -q 'SONAME.*libfreetype.so.6'
+        readelf -dW "$freetype" | grep -q 'NEEDED.*libpng16.so.16'
+        readelf -dW "$freetype" | grep -q 'NEEDED.*libz.so.1'
+        readelf -dW "$freetype" | grep -q 'NEEDED.*libbrotlidec.so.1'
+        readelf -Ws "$freetype" | grep -q 'GLOBAL.* FT_Init_FreeType$'
+        test ! -e artifacts/buildstream-freetype/usr/lib/libpng16.so
 
         gmp=artifacts/buildstream-gmp/usr/lib/libgmp.so
         test -f "$gmp"
