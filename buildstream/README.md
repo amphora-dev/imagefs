@@ -15,6 +15,7 @@ content-addressed artifact without restoring `staging`, `src` or stamp files.
 - libffi as the first standard Autotools cross-compiled artifact
 - xorgproto/xtrans target metadata and static GNU libiconv
 - libxshmfence consuming relocated xorgproto
+- portable GMP using NDK Clang for both target and host generators
 - GitHub Actions: persists BuildStream's content-addressed store
 
 The package outputs contain only their own:
@@ -162,7 +163,7 @@ pulling the NDK into its build dependencies.
 
 ## Deliberate limits
 
-- Thirteen packages are migrated; production `build-all.sh` is unchanged.
+- Fourteen packages are migrated; production `build-all.sh` is unchanged.
 - NDK's zip does not preserve executable modes or symlinks through the community
   source plugin, so the toolchain element restores both before publishing its
   artifact. This matters for LLVM multicall tools such as `llvm-strip`.
@@ -174,6 +175,6 @@ pulling the NDK into its build dependencies.
 - libpng is the next high-risk Autotools package; it remains on the production
   path until a BuildStream build passes dedicated `PNG16_0`, SONAME and LOAD
   segment alignment checks.
-- GMP requires a host C compiler for build-time generators. It remains deferred
-  until that compiler is a pinned host artifact; the sandbox must not fall back
-  to runner gcc.
+- GMP requires executable host generators. It uses the same pinned NDK Clang in
+  `x86_64-linux-gnu` mode plus a small SHA-pinned Ubuntu host headers/crt
+  overlay; the sandbox never falls back to runner gcc.
