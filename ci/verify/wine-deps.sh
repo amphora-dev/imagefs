@@ -156,7 +156,7 @@ fi
 
 # ---- 已确认无消费者: 若重新出现在 rootfs 里, 说明有人又把它加回来了 ----
 unused=(
-  "libXrandr.so" "libXcomposite.so" "libXinerama.so" "libXxf86vm.so"
+  "libXrandr.so" "libXcomposite.so" "libXinerama.so"
   "libharfbuzz.so" "libxml2.so" "libcurl.so"
   "libpulse.so" "libGLdispatch.so" "libavcodec.so"
 )
