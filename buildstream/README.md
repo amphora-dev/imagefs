@@ -175,6 +175,17 @@ libxcb/xtrans/sysvshm from the target sysroot, links
 `libandroid-sysvshm.so`, and retains the unversioned `libXcursor.so` dlopen
 contract. The complete cached X11 graph resolves in 443 ms.
 
+The first X11 extension layer is fully isolated and stripped:
+
+| Element | Key | Checkout |
+|---|---|---:|
+| `libXext` | `9abc7ff198fc08c3d38e6f524611164d9111d151d7d3fc162dd5189a1911766d` | 620 KB |
+| `libXfixes` | `719f0822f3e5b1a4ca0d9295b96973304ce5420301fa81cc1442c4948a2009c3` | 80 KB |
+| `libXrender` | `df7980050abae892e90d465d732b298ae60de7cd635d270284ed962842c75ef5` | 136 KB |
+
+Each artifact has only its own DSO/headers/pkg-config metadata and records
+`libX11.so` as a runtime dependency. Their combined warm build takes 429 ms.
+
 ## Measured result
 
 The validated artifact key is
