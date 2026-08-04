@@ -69,6 +69,7 @@ jobs:
           graphics/vulkan-headers.bst
           graphics/libdrm.bst
           graphics/vulkan-loader.bst
+          graphics/mesa-gl.bst
           crypto/nettle.bst
           audio/alsa-lib.bst
           audio/alsa-android-aserver.bst
@@ -138,6 +139,9 @@ jobs:
         buildstream/bst artifact checkout graphics/vulkan-loader.bst \
           --deps none \
           --directory artifacts/buildstream-vulkan-loader
+        buildstream/bst artifact checkout graphics/mesa-gl.bst \
+          --deps none \
+          --directory artifacts/buildstream-mesa-gl
         buildstream/bst artifact checkout text/libffi.bst \
           --deps none \
           --directory artifacts/buildstream-libffi
@@ -271,6 +275,20 @@ jobs:
         strings "$vulkan" | grep -q 'VK_KHR_xcb_surface'
         strings "$vulkan" | grep -q 'VK_KHR_xlib_surface'
         test ! -e artifacts/buildstream-vulkan-loader/usr/lib/libxcb.so
+
+        mesa_gl=$(find artifacts/buildstream-mesa-gl/usr/lib \
+          -type f -name 'libGL.so.1.*' -print -quit)
+        mesa_egl=$(find artifacts/buildstream-mesa-gl/usr/lib \
+          -type f -name 'libEGL.so.1.*' -print -quit)
+        mesa_gallium=$(find artifacts/buildstream-mesa-gl/usr/lib \
+          -type f -name 'libgallium*.so' -print -quit)
+        test -n "$mesa_gl"
+        test -n "$mesa_egl"
+        test -n "$mesa_gallium"
+        test -f artifacts/buildstream-mesa-gl/usr/lib/.libgl-zink
+        strings "$mesa_gallium" | grep -q 'ZINK:'
+        readelf -dW "$mesa_gallium" | grep -q 'NEEDED.*libvulkan.so.1'
+        test ! -e artifacts/buildstream-mesa-gl/usr/lib/libvulkan.so
 
         ffi=artifacts/buildstream-libffi/usr/lib/libffi.so
         test -f "$ffi"
