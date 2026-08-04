@@ -32,6 +32,10 @@ sources:
 - kind: tar
   url: gnome:glib/2.82/glib-2.82.4.tar.xz
   ref: 37dd0877fe964cd15e9a2710b044a1830fb1bd93652a6d0cb6b8b2dff187c709
+- kind: tar
+  url: proxy-libintl:0.4.tar.gz
+  ref: 13ef3eea0a3bc0df55293be368dfbcff5a8dd5f4759280f28e030d1494a5dffb
+  directory: subprojects/proxy-libintl
 - kind: local
   path: buildstream/files/meson-aarch64-android26.ini
   directory: .bst
