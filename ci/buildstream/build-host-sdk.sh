@@ -69,7 +69,7 @@ EOF
         apt-get clean
         rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*.deb
         mkdir -p /usr/share/imagefs-host-sdk
-        dpkg-query -W -f="${Package}\t${Version}\t${Architecture}\n" |
+        dpkg-query -W -f="\${Package}\t\${Version}\t\${Architecture}\n" |
             LC_ALL=C sort > /usr/share/imagefs-host-sdk/dpkg-manifest.txt
     ' imagefs-host-sdk "${packages[@]}"
 
