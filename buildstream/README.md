@@ -1,8 +1,8 @@
-# BuildStream proof of concept
+# BuildStream imagefs build
 
-This is an opt-in migration experiment, not the production imagefs builder.
-It proves that an Android package can be built into an isolated,
-content-addressed artifact without restoring `staging`, `src` or stamp files.
+This is the production imagefs package graph. Each Android package is built as
+an isolated, content-addressed artifact without restoring shared `staging`,
+`src` or stamp files. The legacy `build-all.sh` remains a manual fallback.
 
 ## Scope
 
@@ -339,8 +339,9 @@ resolve together from warm CAS in 419 ms.
 
 - All forty production packages are migrated; libxcb's three bundled upstream
   inputs are separate BuildStream artifacts. A complete runtime image and
-  `imagefs.txz` are generated, while production `build-all.sh` remains available
-  for dual-build comparison.
+  `imagefs.txz` are generated. `build-imagefs.yml` consumes
+  `imagefs/package.bst`; `build-all.sh` remains available for rollback and
+  dual-build comparison.
 - NDK's zip does not preserve executable modes or symlinks through the community
   source plugin, so the toolchain element restores both before publishing its
   artifact. This matters for LLVM multicall tools such as `llvm-strip`.

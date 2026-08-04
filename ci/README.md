@@ -54,7 +54,7 @@ Only **positive** `paths:` (no `paths-ignore`). Anything else → **Actions → 
 
 | Workflow | Auto (`push` / `pull_request`) | Manual |
 |----------|--------------------------------|--------|
-| imagefs | `packages/**` `lib/**` `vendor/{winlator-bionic,mesa-gl-patches,wrapper-patches,zstd-patches}/**` `*.sh` (repo root) + own workflow file | `workflow_dispatch` (`force_publish`) |
+| imagefs | `buildstream/**` `project.conf` `ci/buildstream/**` + legacy packages/lib/vendor/root scripts + own workflow file | `workflow_dispatch` (`force_publish`) |
 | box64 | `ci/box64/**` `vendor/box64-patches/**` + own workflow file | `workflow_dispatch` (`box64_ref` / `force`) |
 | wrapper | `ci/wrapper/**` `vendor/wrapper-patches/**` (+ zstd-patches via staging recipes) X11/drm/sysvshm/zlib/zstd + own workflow | `workflow_dispatch` (`mesa_ref` / `force`) |
 

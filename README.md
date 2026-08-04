@@ -7,9 +7,12 @@ winlator bionic fork 的 imagefs 根文件系统完整构建系统。目标架�
 ## 快速开始
 
 ```bash
-# 可选：指向本机 NDK（CI 用 GitHub runner 自带的）
-export ANDROID_NDK_HOME=/path/to/ndk
+# 生产构建（首次先安装固定 BuildStream/BuildBox 工具）
+bash ci/setup/install-buildstream.sh
+buildstream/bst build imagefs/package.bst
 
+# 旧 Buildroot-lite 手动回退 / 单包调试
+export ANDROID_NDK_HOME=/path/to/ndk
 ./build-all.sh              # 编译全部包并打包 imagefs.txz
 JOBS=8 ./build-all.sh       # 指定并发
 ./build-all.sh zlib glib    # 构建指定包及其传递依赖
@@ -18,8 +21,8 @@ bash ci/verify/pkg-selftest.sh   # 不编包，只测 DEPENDS / topo / stamp
 
 依赖：cmake / meson / autotools / patchelf / ccache / NDK。CI 在 `ubuntu-latest` 上直接装这些工具运行，不再包一层 Docker。
 
-实验性按包 artifact 构建见 [`buildstream/README.md`](buildstream/README.md)；
-当前只迁移 zlib 做缓存/隔离验证，不替换生产 `build-all.sh`。
+生产按包 artifact 构建见 [`buildstream/README.md`](buildstream/README.md)；
+40 个生产包、runtime compose 与 `imagefs.txz` 打包均由 BuildStream 管理。
 
 静态检查（每次 push/PR 都跑，秒级）：`shellcheck -S warning` 覆盖全部 `*.sh`、`bash -n`、`pkg-selftest`、以及「`ALL_PACKAGES` 里每个包都有配方」。规则豁免与理由见 [`.shellcheckrc`](.shellcheckrc)，流水线见 [`lint.yml`](.github/workflows/lint.yml)。本地：`shellcheck -S warning $(find . -name '*.sh' -not -path './.git/*')`。
 

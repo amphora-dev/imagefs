@@ -19,6 +19,9 @@ on:
       - "vendor/mesa-gl-patches/**"
       - "vendor/wrapper-patches/**"
       - "vendor/zstd-patches/**"
+      - "buildstream/**"
+      - "project.conf"
+      - "ci/buildstream/**"
       - "*.sh"
       - "ci/verify/**"
       - "ci/gate/imagefs-publish.sh"
@@ -32,6 +35,9 @@ on:
       - "vendor/mesa-gl-patches/**"
       - "vendor/wrapper-patches/**"
       - "vendor/zstd-patches/**"
+      - "buildstream/**"
+      - "project.conf"
+      - "ci/buildstream/**"
       - "*.sh"
       - "ci/verify/**"
       - "ci/gate/imagefs-publish.sh"
@@ -41,13 +47,8 @@ permissions:
   contents: write
 
 env:
-  # CI always assembles a clean source tree and sysroot. Only content-addressed
-  # compiler objects survive between runs.
   BUILD_DIR: /tmp/imagefs-build
   OUTPUT_DIR: /tmp/imagefs-output
-  CCACHE_DIR: /tmp/imagefs-build/cache/ccache
-  CCACHE_MAXSIZE: 5G
-  REBUILD_ROOTFS: 1
 
 jobs:
   build:
@@ -55,39 +56,52 @@ jobs:
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-ndk-build
-        with:
-          deps: graph
 
-      # Immutable, URL-addressed source archives only. Extracted/patched source,
-      # staging and stamps are deliberately rebuilt from scratch.
-      - uses: actions/cache@v4
-        with:
-          path: /tmp/imagefs-build/cache/downloads
-          key: imagefs-sources-v1-${{ hashFiles('packages/**/*.sh', 'config.sh') }}
-          restore-keys: |
-            imagefs-sources-v1-
+      - name: Install BuildStream sandbox dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            apparmor-profiles apparmor-utils bubblewrap fuse3 lzip patch \
+            python3-venv xz-utils
+          sudo install -m 0644 \
+            /usr/share/apparmor/extra-profiles/bwrap-userns-restrict \
+            /etc/apparmor.d/bwrap-userns-restrict
+          sudo apparmor_parser -r /etc/apparmor.d/bwrap-userns-restrict
 
-      - uses: actions/cache/restore@v4
+      - name: Restore BuildStream CAS
+        uses: actions/cache@v4
         with:
-          path: /tmp/imagefs-build/cache/ccache
-          key: imagefs-ccache-${{ runner.os }}-${{ github.run_id }}
+          path: ~/.cache/buildstream
+          key: buildstream-imagefs-v1-${{ runner.os }}-${{ hashFiles('project.conf', 'buildstream/elements/**', 'buildstream/files/**') }}
           restore-keys: |
-            imagefs-ccache-${{ runner.os }}-
+            buildstream-imagefs-v1-${{ runner.os }}-
+
+      - name: Restore pinned BuildStream tools
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/imagefs-buildstream/tools
+          key: buildstream-tools-v3-${{ runner.os }}-bst-2.7.0-core-plugins-2.7.0-community-2.3.1-buildbox-1.4.15
+
+      - name: Install pinned BuildStream tools
+        run: bash ci/setup/install-buildstream.sh
 
       - run: bash ci/verify/pkg-selftest.sh
-      - run: |
-          mkdir -p "$BUILD_DIR" "$OUTPUT_DIR" "$CCACHE_DIR" artifacts
-          ./build-all.sh
-      - if: always()
-        run: ccache -s || true
-      - if: always()
-        uses: actions/cache/save@v4
-        with:
-          path: /tmp/imagefs-build/cache/ccache
-          key: imagefs-ccache-${{ runner.os }}-${{ github.run_id }}
+
+      - name: Build imagefs with BuildStream
+        run: |
+          rm -rf "$BUILD_DIR" "$OUTPUT_DIR" artifacts /tmp/buildstream-imagefs-package
+          mkdir -p "$BUILD_DIR/staging" "$OUTPUT_DIR" artifacts
+          buildstream/bst build imagefs/package.bst
+          buildstream/bst artifact checkout imagefs/package.bst \
+            --deps none \
+            --directory /tmp/buildstream-imagefs-package
+          cp /tmp/buildstream-imagefs-package/artifacts/imagefs.txz* \
+            "$OUTPUT_DIR/"
+          tar -xJf "$OUTPUT_DIR/imagefs.txz" -C "$BUILD_DIR/staging"
 
       - name: Verify artifact
+        env:
+          IMAGEFS_RUNTIME_STAGE: /tmp/imagefs-build/staging
         run: bash ci/verify/imagefs-artifact.sh
 
       - id: publish
