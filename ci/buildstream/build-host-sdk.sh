@@ -88,6 +88,8 @@ EOF
 
 rm -f "$rootfs/etc/machine-id"
 rm -rf "$rootfs/var/cache/ldconfig" "$rootfs/var/log/"* "$rootfs/var/tmp/"*
+find "$rootfs" -type f -name '*.pyc' -delete
+find "$rootfs" -depth -type d -name __pycache__ -empty -delete
 find "$rootfs/dev" -mindepth 1 -delete 2>/dev/null || true
 
 archive="$OUTPUT_DIR/$SDK_NAME"
