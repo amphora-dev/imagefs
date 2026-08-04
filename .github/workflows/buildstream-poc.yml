@@ -391,10 +391,10 @@ jobs:
         test ! -e artifacts/buildstream-alsa-android-aserver/usr/lib/libasound.so
 
         sdl=$(find artifacts/buildstream-sdl2/usr/lib \
-          -type f -name 'libSDL2.so*' -print -quit)
+          -type f -name 'libSDL2-2.0.so*' -print -quit)
         test -n "$sdl"
         readelf -Ws "$sdl" | grep -q 'GLOBAL.* SDL_Init$'
-        strings "$sdl" | grep -q 'libasound.so.2'
+        strings "$sdl" | grep -qx 'libasound.so'
         strings "$sdl" | grep -q 'libX11.so'
         test ! -e artifacts/buildstream-sdl2/usr/lib/libasound.so
 

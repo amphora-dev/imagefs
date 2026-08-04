@@ -192,6 +192,12 @@ It consumes alsa-lib only through the target sysroot, exports
 `_snd_pcm_android_aserver_open`, installs both loader-compatible plugin names
 and carries its `/etc/alsa` configuration without embedding libasound.
 
+SDL2's Linux/X11 profile is a 4.0 MB artifact with key
+`17f5a037ddeb44d0161893ec9257fe8ad72db8ddebd89b2916a1a4511e756b53`.
+It compiles with NDK Clang while `-U__ANDROID__` selects the production Linux
+backends, dynamically opens target ALSA/X11 and resolves from warm CAS in
+441 ms.
+
 The TLS layer is:
 
 | Element | Key | Checkout | Cold build |
