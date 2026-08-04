@@ -78,6 +78,8 @@ jobs:
           text/fontconfig.bst
           text/glib.bst
           crypto/gmp.bst
+          crypto/openssl.bst
+          crypto/gnutls.bst
           x11/xorgproto.bst
           x11/xtrans.bst
           x11/libxshmfence.bst
@@ -148,6 +150,11 @@ jobs:
         buildstream/bst artifact checkout crypto/gmp.bst \
           --deps none \
           --directory artifacts/buildstream-gmp
+        for element in openssl gnutls; do
+          buildstream/bst artifact checkout "crypto/$element.bst" \
+            --deps none \
+            --directory "artifacts/buildstream-$element"
+        done
         buildstream/bst artifact checkout crypto/nettle.bst \
           --deps none \
           --directory artifacts/buildstream-nettle
@@ -305,6 +312,26 @@ jobs:
         done
         test -z "$(find artifacts/buildstream-gmp -name '*.la' -print -quit)"
         test ! -e artifacts/buildstream-gmp/usr/bin/gcc
+
+        ssl=$(find artifacts/buildstream-openssl/usr/lib \
+          -type f -name 'libssl.so*' -print -quit)
+        crypto=$(find artifacts/buildstream-openssl/usr/lib \
+          -type f -name 'libcrypto.so*' -print -quit)
+        test -n "$ssl"
+        test -n "$crypto"
+        readelf -dW "$ssl" | grep -q 'NEEDED.*libcrypto.so'
+        readelf -Ws "$ssl" | grep -q 'GLOBAL.* SSL_new'
+        readelf -Ws "$crypto" | grep -q 'GLOBAL.* EVP_EncryptInit'
+        test -d artifacts/buildstream-openssl/usr/etc/ssl
+
+        gnutls=$(find artifacts/buildstream-gnutls/usr/lib \
+          -type f -name 'libgnutls.so*' -print -quit)
+        test -n "$gnutls"
+        readelf -dW "$gnutls" | grep -q 'NEEDED.*libhogweed.so'
+        readelf -dW "$gnutls" | grep -q 'NEEDED.*libnettle.so'
+        readelf -Ws "$gnutls" | grep -q 'GLOBAL.* gnutls_init'
+        test -f artifacts/buildstream-gnutls/usr/lib/pkgconfig/gnutls.pc
+        test ! -e artifacts/buildstream-gnutls/usr/lib/libhogweed.so
 
         nettle=$(find artifacts/buildstream-nettle/usr/lib \
           -type f -name 'libnettle.so*' -print -quit)
