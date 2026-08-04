@@ -296,6 +296,8 @@ asound=artifacts/buildstream-alsa-lib/usr/lib/libasound.so
 test -f "$asound"
 test -e artifacts/buildstream-alsa-lib/usr/lib/libasound.so.2
 readelf -Ws "$asound" | grep -q 'GLOBAL.* snd_pcm_open'
+# External PCM plugins (android_aserver) need ioplug API in libasound.
+readelf -Ws "$asound" | grep -q 'GLOBAL.* snd_pcm_ioplug_create'
 test -f artifacts/buildstream-alsa-lib/usr/include/alsa/pcm_external.h
 test -z "$(find artifacts/buildstream-alsa-lib -name '*.la' -print -quit)"
 
@@ -304,6 +306,12 @@ test -f "$aserver"
 readelf -dW "$aserver" | grep -q 'NEEDED.*libasound.so'
 readelf -Ws "$aserver" |
   grep -q 'GLOBAL.* _snd_pcm_android_aserver_open$'
+# -DPIC required: without it the plugin U-imports snd_dlsym_start
+# (static ALSA path) which shared libasound does not export.
+if nm -D "$aserver" 2>/dev/null | grep -q 'U snd_dlsym_start'; then
+  echo "alsa-android-aserver still references snd_dlsym_start (missing -DPIC)" >&2
+  exit 1
+fi
 test -L artifacts/buildstream-alsa-android-aserver/usr/lib/alsa-lib/libasound_module_pcm_android_aserver.so
 test -f artifacts/buildstream-alsa-android-aserver/usr/etc/alsa/conf.d/android_aserver.conf
 test ! -e artifacts/buildstream-alsa-android-aserver/usr/lib/libasound.so
