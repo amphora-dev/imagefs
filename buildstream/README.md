@@ -84,6 +84,13 @@ with BuildStream's dependency `config.location` to `/opt/android-sysroot`;
 `tests/autotools-sysroot-smoke.bst` element asserts Autoconf/Automake/Libtool are
 available while target zlib is visible only through that sysroot.
 
+Packages such as GMP execute build-time generators. Instead of adding a
+37-package GCC closure, the sandbox reuses the pinned NDK's multi-target
+Clang in `x86_64-linux-gnu` mode. A separate 6 MB download / 39 MB artifact
+provides only Ubuntu host libc/kernel headers, crt objects and GCC startup
+runtime from three SHA-pinned `.deb` files. Target compilation still uses the
+NDK API-26 wrapper.
+
 libffi 3.4.6 is the first consumer. It builds through the official `autotools`
 element in 5 seconds, checks out to 204 KB, preserves the `LIBFFI_*_8.0` symbol
 versions and completes a warm host-SDK + sysroot + package build in 356 ms.
@@ -115,6 +122,13 @@ artifact (`xorgproto`) at `/opt/android-sysroot`. Its key is
 the 40 KB checkout contains only its header, pkg-config file and AArch64 DSO,
 not xorgproto's headers. The pollfd backend, unversioned Android SONAME and
 `xshmfence_*` ABI match the production recipe.
+
+GMP 6.3.0's artifact key is
+`4a0c78add49e320fd2f49700005ca72684f4c409a80da7beca18de34199bf9ba`.
+Its portable-C cold build takes 17 seconds, the 1.1 MB artifact has Android
+SONAME `libgmp.so` and only Bionic libc/dl dependencies, and a warm build takes
+322 ms. The host compiler overlay key is
+`1a816e1ce9cca199db4c5f62e11e3bf275bdc32c793fc715de92f08e4d262610`.
 
 ## Measured result
 
