@@ -20,6 +20,7 @@ content-addressed artifact without restoring `staging`, `src` or stamp files.
 - Nettle/Hogweed over target GMP and minimal ALSA lib
 - Android audio-server ALSA PCM plugin and configuration
 - libxcb plus separately cached xcb-proto, libXau and libXdmcp inputs
+- libX11 over the composed XCB/xtrans/sysvshm target graph
 - GitHub Actions: persists BuildStream's content-addressed store
 
 The package outputs contain only their own:
@@ -204,7 +205,7 @@ pulling the NDK into its build dependencies.
 
 ## Deliberate limits
 
-- Twenty-one production packages are migrated; libxcb's three bundled upstream
+- Twenty-two production packages are migrated; libxcb's three bundled upstream
   inputs are separate BuildStream artifacts. Production `build-all.sh` is
   unchanged.
 - NDK's zip does not preserve executable modes or symlinks through the community

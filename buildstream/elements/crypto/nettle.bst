@@ -12,7 +12,7 @@ depends:
 - filename: toolchain/android-ndk-r29.bst
   type: build
 - filename: crypto/gmp.bst
-  type: build
+  type: all
   config:
     location: /opt/android-sysroot
 

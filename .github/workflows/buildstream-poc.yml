@@ -81,6 +81,7 @@ jobs:
           x11/libxau.bst
           x11/libxdmcp.bst
           x11/libxcb.bst
+          x11/libx11.bst
           tests/autotools-sysroot-smoke.bst
         )
         buildstream/bst build "${elements[@]}"
@@ -134,7 +135,7 @@ jobs:
         buildstream/bst artifact checkout audio/alsa-android-aserver.bst \
           --deps none \
           --directory artifacts/buildstream-alsa-android-aserver
-        for element in xorgproto xtrans libxshmfence xcb-proto libxau libxdmcp libxcb; do
+        for element in xorgproto xtrans libxshmfence xcb-proto libxau libxdmcp libxcb libx11; do
           buildstream/bst artifact checkout "x11/$element.bst" \
             --deps none \
             --directory "artifacts/buildstream-$element"
@@ -295,6 +296,15 @@ jobs:
         grep -q 'xcb_present_pixmap_synced' \
           artifacts/buildstream-libxcb/usr/include/xcb/present.h
         test ! -e artifacts/buildstream-libxcb/usr/lib/libXau.so
+
+        x11=artifacts/buildstream-libx11/usr/lib/libX11.so
+        test -f "$x11"
+        readelf -dW "$x11" | grep -q 'NEEDED.*libxcb.so'
+        readelf -dW "$x11" | grep -q 'NEEDED.*libsysvshm.so'
+        readelf -Ws "$x11" | grep -q 'GLOBAL.* XOpenDisplay$'
+        strings "$x11" | grep -qx 'libXcursor.so'
+        test -f artifacts/buildstream-libx11/usr/include/X11/Xlib.h
+        test ! -e artifacts/buildstream-libx11/usr/lib/libxcb.so
 
     - uses: actions/upload-artifact@v4
       with:

@@ -9,7 +9,7 @@ depends:
 - filename: toolchain/android-ndk-r29.bst
   type: build
 - filename: audio/alsa-lib.bst
-  type: build
+  type: all
   config:
     location: /opt/android-sysroot
 

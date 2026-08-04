@@ -20,11 +20,11 @@ depends:
   config:
     location: /opt/android-sysroot
 - filename: x11/libxau.bst
-  type: build
+  type: all
   config:
     location: /opt/android-sysroot
 - filename: x11/libxdmcp.bst
-  type: build
+  type: all
   config:
     location: /opt/android-sysroot
 
