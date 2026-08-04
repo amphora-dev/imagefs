@@ -14,7 +14,7 @@ content-addressed artifact without restoring `staging`, `src` or stamp files.
 - Termux `libandroid-shmem` runtime and Vulkan headers/registry artifacts
 - libffi as the first standard Autotools cross-compiled artifact
 - xorgproto/xtrans target metadata and static GNU libiconv
-- portable GMP and libxshmfence consuming relocated xorgproto
+- libxshmfence consuming relocated xorgproto
 - GitHub Actions: persists BuildStream's content-addressed store
 
 The package outputs contain only their own:
@@ -155,7 +155,7 @@ pulling the NDK into its build dependencies.
 
 ## Deliberate limits
 
-- Fourteen packages are migrated; production `build-all.sh` is unchanged.
+- Thirteen packages are migrated; production `build-all.sh` is unchanged.
 - NDK's zip does not preserve executable modes or symlinks through the community
   source plugin, so the toolchain element restores both before publishing its
   artifact. This matters for LLVM multicall tools such as `llvm-strip`.
@@ -164,6 +164,9 @@ pulling the NDK into its build dependencies.
   time, but differs from the production CMake recipe.
 - Vulkan CMake package metadata is not generated yet; headers and the registry
   used by current downstream recipes are present.
-- libpng remains on the production path until autotools/libtool are available
-  as declared sandbox tools; its `PNG16_0` symbol versioning is too sensitive
-  to replace with an approximate manual build.
+- libpng is the next high-risk Autotools package; it remains on the production
+  path until a BuildStream build passes dedicated `PNG16_0`, SONAME and LOAD
+  segment alignment checks.
+- GMP requires a host C compiler for build-time generators. It remains deferred
+  until that compiler is a pinned host artifact; the sandbox must not fall back
+  to runner gcc.
