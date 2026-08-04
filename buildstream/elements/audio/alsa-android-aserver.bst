@@ -3,6 +3,13 @@ kind: manual
 description: |
   Winlator Android audio-server ALSA PCM plugin and runtime configuration.
 
+  Must compile with -DPIC (not just -fPIC). ALSA headers treat PIC as the
+  shared-plugin path; without the macro, SND_PCM_PLUGIN_SYMBOL emits a
+  constructor that references snd_dlsym_start, which shared libasound does
+  not export. Result on device: winealsa fails with
+  "cannot locate symbol snd_dlsym_start" / mmdevapi c0000135.
+  Upstream: alsa-project/alsa-lib#289.
+
 depends:
 - filename: host/noble-amd64.bst
   junction: buildstream-sdk.bst
@@ -23,7 +30,7 @@ sources:
 config:
   build-commands:
   - |
-    "$CC" -fPIC -O2 -shared \
+    "$CC" -fPIC -DPIC -O2 -shared \
       -I/opt/android-sysroot/usr/include \
       -o asound_module_pcm_android_aserver.so \
       source/module_pcm_android_aserver.c \

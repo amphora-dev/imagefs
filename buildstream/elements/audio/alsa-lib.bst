@@ -3,6 +3,11 @@ kind: autotools
 description: |
   ALSA lib 1.2.13 with the minimal Winlator PCM/control plugin set.
 
+  pcm-plugins must include ioplug (pulls in extplug): android_aserver is an
+  external PCM plugin that calls snd_pcm_ioplug_create. Without ioplug in the
+  build, those symbols are absent from libasound and dlopen of the plugin fails
+  with "cannot locate symbol snd_pcm_ioplug_create".
+
 depends:
 - filename: host/noble-amd64.bst
   junction: buildstream-sdk.bst
@@ -26,7 +31,7 @@ variables:
     --with-alsa-ucm-confdir=no
     --with-alsa-ucm-prefix=no
     --with-tmpdir=/usr/tmp
-    --with-pcm-plugins=hw,dmix,dsnoop,plug,route,softvol
+    --with-pcm-plugins=hw,dmix,dsnoop,plug,route,softvol,ioplug
     --with-ctl-plugins=hw
 
 environment:
