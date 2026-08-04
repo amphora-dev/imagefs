@@ -35,14 +35,15 @@ config:
     set -eu
     libdir="%{install-root}%{prefix}/lib"
     plugindir="$libdir/alsa-lib"
-    mkdir -p "$plugindir" "%{install-root}/etc/alsa/conf.d"
+    etcdir="%{install-root}%{prefix}/etc/alsa"
+    mkdir -p "$plugindir" "$etcdir/conf.d"
     install -m 0755 asound_module_pcm_android_aserver.so "$libdir/"
     ln -s ../asound_module_pcm_android_aserver.so \
       "$plugindir/libasound_module_pcm_android_aserver.so"
     ln -s ../asound_module_pcm_android_aserver.so \
       "$plugindir/asound_module_pcm_android_aserver.so"
     install -m 0644 source/android_aserver.conf \
-      "%{install-root}/etc/alsa/conf.d/"
-    install -m 0644 source/alsa.conf "%{install-root}/etc/alsa/"
+      "$etcdir/conf.d/"
+    install -m 0644 source/alsa.conf "$etcdir/"
 
   strip-commands: []

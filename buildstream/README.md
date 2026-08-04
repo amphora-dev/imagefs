@@ -27,6 +27,7 @@ content-addressed artifact without restoring `staging`, `src` or stamp files.
 - SDL2 Linux/X11 profile over target ALSA and completed X11 headers
 - GStreamer core/base Wine media runtime libraries
 - Mesa desktop GL/EGL with Zink + softpipe and native TLS enforcement
+- complete merged-usr staging/runtime composition and reproducible imagefs.txz
 - Nettle/Hogweed over target GMP and minimal ALSA lib
 - Android audio-server ALSA PCM plugin and configuration
 - libxcb plus separately cached xcb-proto, libXau and libXdmcp inputs
@@ -319,8 +320,9 @@ resolve together from warm CAS in 419 ms.
 ## Deliberate limits
 
 - All forty production packages are migrated; libxcb's three bundled upstream
-  inputs are separate BuildStream artifacts. Production `build-all.sh` is
-  unchanged.
+  inputs are separate BuildStream artifacts. A complete runtime image and
+  `imagefs.txz` are generated, while production `build-all.sh` remains available
+  for dual-build comparison.
 - NDK's zip does not preserve executable modes or symlinks through the community
   source plugin, so the toolchain element restores both before publishing its
   artifact. This matters for LLVM multicall tools such as `llvm-strip`.

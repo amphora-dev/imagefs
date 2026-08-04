@@ -101,6 +101,7 @@ jobs:
           x11/libxi.bst
           x11/libxxf86vm.bst
           tests/autotools-sysroot-smoke.bst
+          imagefs/package.bst
         )
         buildstream/bst build "${elements[@]}"
         for element in "${elements[@]}"; do
@@ -162,6 +163,9 @@ jobs:
         buildstream/bst artifact checkout text/glib.bst \
           --deps none \
           --directory artifacts/buildstream-glib
+        buildstream/bst artifact checkout imagefs/package.bst \
+          --deps none \
+          --directory artifacts/buildstream-imagefs-package
         buildstream/bst artifact checkout crypto/gmp.bst \
           --deps none \
           --directory artifacts/buildstream-gmp
@@ -412,7 +416,7 @@ jobs:
         readelf -Ws "$aserver" |
           grep -q 'GLOBAL.* _snd_pcm_android_aserver_open$'
         test -L artifacts/buildstream-alsa-android-aserver/usr/lib/alsa-lib/libasound_module_pcm_android_aserver.so
-        test -f artifacts/buildstream-alsa-android-aserver/etc/alsa/conf.d/android_aserver.conf
+        test -f artifacts/buildstream-alsa-android-aserver/usr/etc/alsa/conf.d/android_aserver.conf
         test ! -e artifacts/buildstream-alsa-android-aserver/usr/lib/libasound.so
 
         sdl=$(find artifacts/buildstream-sdl2/usr/lib \
@@ -507,9 +511,20 @@ jobs:
           test ! -e "artifacts/buildstream-$artifact/usr/lib/libX11.so"
         done
 
+        cp artifacts/buildstream-imagefs-package/artifacts/imagefs.txz* \
+          artifacts/
+        (
+          cd artifacts
+          sha256sum -c imagefs.txz.sha256sum
+        )
+        tar -tJf artifacts/imagefs.txz >/dev/null
+        bash ci/verify/imagefs-artifact.sh
+
     - uses: actions/upload-artifact@v4
       with:
         name: buildstream-package-artifacts
-        path: artifacts/buildstream-*
+        path: |
+          artifacts/buildstream-*
+          artifacts/imagefs.txz*
         if-no-files-found: error
         retention-days: 7
