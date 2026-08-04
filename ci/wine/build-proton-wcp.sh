@@ -87,6 +87,7 @@ mkdir wine-tools
   unset CPPFLAGS CFLAGS CXXFLAGS LDFLAGS
   ../configure \
     --enable-archs=x86_64 \
+    --without-freetype \
     --without-x \
     --without-gstreamer \
     --without-vulkan \
