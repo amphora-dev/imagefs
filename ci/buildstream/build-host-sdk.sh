@@ -74,7 +74,7 @@ EOF
     ' imagefs-host-sdk "${packages[@]}"
 
 rm -f "$rootfs/etc/machine-id"
-rm -rf "$rootfs/var/log/"* "$rootfs/var/tmp/"*
+rm -rf "$rootfs/var/cache/ldconfig" "$rootfs/var/log/"* "$rootfs/var/tmp/"*
 find "$rootfs/dev" -mindepth 1 -delete 2>/dev/null || true
 
 archive="$OUTPUT_DIR/$SDK_NAME"
