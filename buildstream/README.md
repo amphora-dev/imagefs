@@ -187,6 +187,19 @@ The first X11 extension layer is fully isolated and stripped:
 Each artifact has only its own DSO/headers/pkg-config metadata and records
 `libX11.so` as a runtime dependency. Their combined warm build takes 429 ms.
 
+The remaining X11 client libraries are:
+
+| Element | Key | Checkout |
+|---|---|---:|
+| `libXcursor` | `d2c762165c50666a8b7b0449c0f3b8f927cf89eeda0c8625e3d9e6da02316605` | 368 KB |
+| `libXi` | `ed1a773c907e393b54248972f41709dddb451da5512895efcde6dfb9f3669b03` | 920 KB |
+| `libXxf86vm` | `7bd5f266c88b5ea955367fc361d88a176196943299d7b285ca2c7788f50728ee` | 176 KB |
+
+Their warm build takes 432 ms. Xcursor also exposed an old graph omission:
+its configure directly needs xproto/renderproto/fixesproto even though
+`depends.conf` relied on those files arriving transitively through shared
+staging. The BuildStream element declares xorgproto explicitly.
+
 ## Measured result
 
 The validated artifact key is
