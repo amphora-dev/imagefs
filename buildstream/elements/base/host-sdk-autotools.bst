@@ -11,5 +11,5 @@ description: |
 sources:
 - kind: tar
   url: imagefs-release:buildstream-host-sdk/imagefs-host-sdk-noble-amd64.tar.xz
-  ref: 8f51c84c396969e4dd0383f1d281bf8270fde251e0427326755fa1bc5d0ba9c1
+  ref: 7688b8af8ab271a2942860fdded44a10cba77c14f5b52ba29d54b4fbeff732f0
   base-dir: ""
