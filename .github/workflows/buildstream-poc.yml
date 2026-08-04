@@ -66,6 +66,8 @@ jobs:
           android/android-sysv-semaphore.bst
           android/libandroid-shmem.bst
           graphics/vulkan-headers.bst
+          crypto/nettle.bst
+          audio/alsa-lib.bst
           text/libffi.bst
           text/libiconv.bst
           text/libexpat.bst
@@ -118,6 +120,12 @@ jobs:
         buildstream/bst artifact checkout crypto/gmp.bst \
           --deps none \
           --directory artifacts/buildstream-gmp
+        buildstream/bst artifact checkout crypto/nettle.bst \
+          --deps none \
+          --directory artifacts/buildstream-nettle
+        buildstream/bst artifact checkout audio/alsa-lib.bst \
+          --deps none \
+          --directory artifacts/buildstream-alsa-lib
         for element in xorgproto xtrans libxshmfence; do
           buildstream/bst artifact checkout "x11/$element.bst" \
             --deps none \
@@ -222,6 +230,24 @@ jobs:
         done
         test -z "$(find artifacts/buildstream-gmp -name '*.la' -print -quit)"
         test ! -e artifacts/buildstream-gmp/usr/bin/gcc
+
+        nettle=$(find artifacts/buildstream-nettle/usr/lib \
+          -type f -name 'libnettle.so*' -print -quit)
+        hogweed=$(find artifacts/buildstream-nettle/usr/lib \
+          -type f -name 'libhogweed.so*' -print -quit)
+        test -n "$nettle"
+        test -n "$hogweed"
+        readelf -Ws "$nettle" | grep -q 'GLOBAL.* nettle_sha256_init$'
+        readelf -Ws "$hogweed" | grep -q 'GLOBAL.* nettle_rsa_sec_decrypt$'
+        readelf -dW "$hogweed" | grep -q 'NEEDED.*libgmp.so'
+        test ! -e artifacts/buildstream-nettle/usr/include/gmp.h
+
+        asound=artifacts/buildstream-alsa-lib/usr/lib/libasound.so
+        test -f "$asound"
+        test -e artifacts/buildstream-alsa-lib/usr/lib/libasound.so.2
+        readelf -Ws "$asound" | grep -q 'GLOBAL.* snd_pcm_open'
+        test -f artifacts/buildstream-alsa-lib/usr/include/alsa/pcm_external.h
+        test -z "$(find artifacts/buildstream-alsa-lib -name '*.la' -print -quit)"
 
         test -f artifacts/buildstream-xorgproto/usr/include/X11/Xproto.h
         test -f artifacts/buildstream-xorgproto/usr/share/pkgconfig/xproto.pc
