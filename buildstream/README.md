@@ -150,6 +150,12 @@ ALSA includes the external plugin headers and `libasound.so.2` compatibility
 link. All Nettle/Hogweed/ALSA/topology DSOs are stripped. Together they resolve
 from warm CAS in 429 ms.
 
+The Android AServer PCM plugin is a separate 48 KB artifact with key
+`db3ed651e6ed01f435bb4b21006f47c044a4512c9bc2ca170b9e10377aab8838`.
+It consumes alsa-lib only through the target sysroot, exports
+`_snd_pcm_android_aserver_open`, installs both loader-compatible plugin names
+and carries its `/etc/alsa` configuration without embedding libasound.
+
 ## Measured result
 
 The validated artifact key is

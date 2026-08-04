@@ -256,6 +256,8 @@ jobs:
         aserver=artifacts/buildstream-alsa-android-aserver/usr/lib/asound_module_pcm_android_aserver.so
         test -f "$aserver"
         readelf -dW "$aserver" | grep -q 'NEEDED.*libasound.so'
+        readelf -Ws "$aserver" |
+          grep -q 'GLOBAL.* _snd_pcm_android_aserver_open$'
         test -L artifacts/buildstream-alsa-android-aserver/usr/lib/alsa-lib/libasound_module_pcm_android_aserver.so
         test -f artifacts/buildstream-alsa-android-aserver/etc/alsa/conf.d/android_aserver.conf
         test ! -e artifacts/buildstream-alsa-android-aserver/usr/lib/libasound.so
