@@ -1,6 +1,6 @@
 # Mesa desktop GL patches (NDK / Termux link profile)
 
-Applied by `packages/graphics/mesa-gl.sh` onto the upstream Mesa release tarball
+Applied by `buildstream/elements/graphics/mesa-gl.bst` onto the upstream Mesa release tarball
 (`MESA_GL_VER`, default in that recipe), **after**
 `vendor/wrapper-patches/0003-termux-not-detect-os-android.patch`, which is shared
 with the Vulkan wrapper build.

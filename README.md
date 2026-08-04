@@ -1,98 +1,62 @@
 # imagefs
 
-winlator bionic fork 的 imagefs 根文件系统完整构建系统。目标架构 `aarch64-linux-android26`，所有二进制链接 Bionic libc。
+Amphora 的 Bionic imagefs 构建项目，目标为
+`aarch64-linux-android26`。构建系统只有 BuildStream 一条路径；Host SDK、
+Android NDK r29 和 Meson profiles 来自 commit-pinned
+[`amphora-dev/buildstream-sdk`](https://github.com/amphora-dev/buildstream-sdk)
+junction。
 
-仓库：[`amphora-dev/imagefs`](https://github.com/amphora-dev/imagefs)
-
-## 快速开始
+## 本地构建
 
 ```bash
-# 生产构建（首次先安装固定 BuildStream/BuildBox 工具）
+sudo apt-get install bubblewrap fuse3 git lzip patch python3-venv xz-utils
 bash ci/setup/install-buildstream.sh
+
 buildstream/bst build imagefs/package.bst
-
-# 旧 Buildroot-lite 手动回退 / 单包调试
-export ANDROID_NDK_HOME=/path/to/ndk
-./build-all.sh              # 编译全部包并打包 imagefs.txz
-JOBS=8 ./build-all.sh       # 指定并发
-./build-all.sh zlib glib    # 构建指定包及其传递依赖
-bash ci/verify/pkg-selftest.sh   # 不编包，只测 DEPENDS / topo / stamp
+buildstream/bst artifact checkout imagefs/package.bst \
+  --deps none --directory /tmp/imagefs-package
 ```
 
-依赖：cmake / meson / autotools / patchelf / ccache / NDK。CI 在 `ubuntu-latest` 上直接装这些工具运行，不再包一层 Docker。
-
-生产按包 artifact 构建见 [`buildstream/README.md`](buildstream/README.md)；
-40 个生产包、runtime compose 与 `imagefs.txz` 打包均由 BuildStream 管理。
-
-静态检查（每次 push/PR 都跑，秒级）：`shellcheck -S warning` 覆盖全部 `*.sh`、`bash -n`、`pkg-selftest`、以及「`ALL_PACKAGES` 里每个包都有配方」。规则豁免与理由见 [`.shellcheckrc`](.shellcheckrc)，流水线见 [`lint.yml`](.github/workflows/lint.yml)。本地：`shellcheck -S warning $(find . -name '*.sh' -not -path './.git/*')`。
-
-`android-sysvshm` / `alsa-android-aserver` 源码在 [`vendor/winlator-bionic/`](vendor/winlator-bionic/)。
-
-## 目录结构
-
-```text
-ci/{setup,gate,publish,verify,box64,wrapper}/   # CI 脚本（见 ci/README.md）
-packages/{compress,text,android,x11,…}/ # 配方按类别分目录 + depends.conf
-docs/{analysis,meson,evidence}/
-lib/pkg.sh                              # DEPENDS / topo / stamp
-lib/ndk.sh                              # NDK 发现（图构建与 L1 leaf 共用）
-```
-
-## Buildroot-lite 布局
-
-借鉴 Buildroot 的核心思想，保持 bash 轻量实现：
-
-| 目录 | 作用 |
-|------|------|
-| `$BUILD_DIR/host` | host 工具（不进 imagefs.txz） |
-| `$BUILD_DIR/staging` | 交叉编译 sysroot（headers + libs，增量编译） |
-| `$BUILD_DIR/target` | 运行时 rootfs（裁剪后打包） |
-
-- 依赖：[`packages/depends.conf`](packages/depends.conf) + [`lib/pkg.sh`](lib/pkg.sh) 做传递展开与拓扑排序（配方在 [`packages/`](packages/README.md) 各子目录）
-- 增量：content stamp = 配方脚本 + depends 行 + 依赖 stamp + toolchain fingerprint（改依赖会失效下游）
-- CI 缓存：只持久化经 SHA-256 sidecar 复核的原始源码归档与 ccache；`src/staging/host/built-pkgs` 每次从干净状态重建
-- 包脚本仍写 `$PREFIX`（=`staging/usr`），无需逐包大改
-
-## CI / Release
-
-分层（L0 脚本 / L1 leaf Box64+wrapper / L2 graph imagefs）、固定 Release tag、pin 约定见 **[`ci/README.md`](ci/README.md)**。不要把 `depends.conf` 拆成每包一个 GHA job。
-
-| Workflow | 触发 | 产物 |
-|----------|------|------|
-| [`build-imagefs.yml`](.github/workflows/build-imagefs.yml) | 改 packages/lib/vendor/root `*.sh`；或手动 | `amphora` → pin `rootfs` |
-| [`build-box64.yml`](.github/workflows/build-box64.yml) | 改 `ci/box64` / patches；或手动 | `box64` → pin `box64` |
-| [`build-wrapper.yml`](.github/workflows/build-wrapper.yml) | 改 `ci/wrapper` / X11 staging / patches；或手动 | `wrapper` → pin `runtimeAssets[graphics_driver/wrapper.tzst]` |
-
-```text
-https://github.com/amphora-dev/imagefs/releases/download/amphora/imagefs.txz
-https://github.com/amphora-dev/imagefs/releases/download/box64/Box64-<ver>-<sha>.wcp
-https://github.com/amphora-dev/imagefs/releases/download/wrapper/wrapper-<mesa_sha>.tzst
-```
+其他独立产物：
 
 ```bash
-export ANDROID_NDK_HOME=/path/to/ndk
-bash ci/box64/build-wcp.sh
-# Pipetto vulkan wrapper (uses staging X11/drm as sysroot; not in imagefs.txz)
-bash ci/wrapper/build-tzst.sh
+buildstream/bst build l1/box64-wcp.bst
+buildstream/bst build l1/wrapper-tzst.bst
 ```
 
-## 构建产物
+BuildStream 的 CAS 位于 `~/.cache/buildstream`。元素、源码、patch、junction
+commit 或依赖发生变化时会生成新 artifact key，不恢复共享 staging、源码树或
+stamp。
 
-- `imagefs.txz` — 运行时 rootfs（已裁剪 headers / 静态库 / man / glvnd / 多余 bin）；**不含** box64 / wrapper
-- `Box64-*.wcp` — 独立模拟器包（xz tar + `profile.json`），由 Amphora `ContentsManager` 装到 `${bindir}/box64`
-- `wrapper-*.tzst` — Pipetto `libvulkan_wrapper.so` + 自建 adrenotools/hooks + ICD（zstd tar），pin 为 manifest 的 `runtimeAssets[graphics_driver/wrapper.tzst]`
-- 音频：ALSA + android_aserver（无 pulseaudio）
+## 目录
 
-## 包列表
+```text
+project.conf                         # BuildStream project 与交叉编译默认值
+buildstream/elements/                # package、runtime、L1 artifact 图
+buildstream/elements/buildstream-sdk.bst
+ci/setup/install-buildstream.sh      # 固定 BuildStream/BuildBox 工具
+ci/{gate,publish,verify}/            # 发布门禁与 artifact 验证
+ci/wrapper/build-tzst.sh             # wrapper 元素的 sandbox 内打包器
+vendor/                              # BuildStream local sources/patches
+```
 
-基础库、X11/Vulkan 垫片、openssl/gnutls、alsa、sdl2、gstreamer、android-*。见 `build-all.sh` 的 `ALL_PACKAGES`、[`packages/depends.conf`](packages/depends.conf) 与 [`packages/README.md`](packages/README.md)。
+## CI 与产物
 
-取舍依据（为什么是这些包、为什么不是那些）见 [`docs/analysis/PACKAGE-SELECTION.md`](docs/analysis/PACKAGE-SELECTION.md)；可执行版本是 [`ci/verify/wine-deps.sh`](ci/verify/wine-deps.sh)。
+| Workflow | BuildStream target | Release |
+|---|---|---|
+| `build-imagefs.yml` | `imagefs/package.bst` | `amphora/imagefs.txz` |
+| `build-box64.yml` | `l1/box64-wcp.bst` | `box64/Box64-*.wcp` |
+| `build-wrapper.yml` | `l1/wrapper-tzst.bst` | `wrapper/wrapper-*.tzst` |
 
-写/改配方前先读 [`docs/analysis/ELF-PITFALLS.md`](docs/analysis/ELF-PITFALLS.md)：patchelf、符号版本、soname 软链这三类问题 `readelf` 都看不出来，只有真机 `dlopen` 会炸。配方风格与做法对照见 [`docs/analysis/MICEWINE-COMPARISON.md`](docs/analysis/MICEWINE-COMPARISON.md)（参照实现 [`KreitinnSoftware/MiceWine-Packages`](https://github.com/KreitinnSoftware/MiceWine-Packages)）。
+所有 upstream ref 都固定在对应 `.bst` 元素中。手动 workflow 仅支持
+`force`，不接受绕过 BuildStream 的自定义源码 ref。
 
-## 关键设计
+产物发布后由 `.github/actions/bump-manifest` 更新
+`amphora-dev/content_manifest`：
 
-- **Bionic libc**: 链接 `libc.so`，interpreter = `/system/bin/linker64`
-- **merged-usr**: `/bin` `/etc` `/lib` → `usr/*`
-- **ALSA android_aserver**: ALSA → Android 音频服务器
+- imagefs → `components.rootfs`
+- Box64 → `components.box64`
+- wrapper → `runtimeAssets[graphics_driver/wrapper.tzst]`
+
+运行时 ABI/SONAME、裁剪和 ELF alignment 断言位于
+[`ci/verify/`](ci/verify/) 及各元素的 install/strip commands 中。

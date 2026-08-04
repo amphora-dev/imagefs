@@ -1,6 +1,7 @@
 # Pipetto vulkan wrapper patches (NDK / Amphora)
 
-Applied by `ci/wrapper/build-tzst.sh` onto the mesa fork and ref pinned in [`ci/upstream.sh`](../../ci/upstream.sh).
+Applied by `ci/wrapper/build-tzst.sh` onto the Mesa source pinned by
+`buildstream/elements/l1/wrapper-tzst.bst`.
 
 | Patch | Why |
 |-------|-----|
