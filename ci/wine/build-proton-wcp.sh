@@ -83,11 +83,13 @@ mkdir wine-tools
   export LD=/usr/bin/ld
   export RANLIB=/usr/bin/ranlib
   export STRIP=/usr/bin/strip
-  unset DLLTOOL PKG_CONFIG_PATH PKG_CONFIG_LIBDIR ACLOCAL_PATH
-  unset CPPFLAGS CFLAGS CXXFLAGS LDFLAGS
+  unset DLLTOOL PKG_CONFIG_PATH ACLOCAL_PATH
+  export PKG_CONFIG_LIBDIR=/opt/host-freetype/lib/pkgconfig
+  export CPPFLAGS=-I/opt/host-freetype/include/freetype2
+  export LDFLAGS=-L/opt/host-freetype/lib
+  unset CFLAGS CXXFLAGS
   ../configure \
     --enable-archs=x86_64 \
-    --without-freetype \
     --without-x \
     --without-gstreamer \
     --without-vulkan \

@@ -14,6 +14,8 @@ depends:
 - filename: toolchains/llvm-mingw-20250920-ucrt.bst
   junction: buildstream-sdk.bst
   type: build
+- filename: wine/host-freetype.bst
+  type: build
 - filename: wine/termuxfs-x86_64.bst
   type: build
   config:
