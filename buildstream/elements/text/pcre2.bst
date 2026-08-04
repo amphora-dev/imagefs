@@ -26,5 +26,5 @@ variables:
 config:
   strip-commands:
   - |
-    find "%{install-root}%{prefix}/lib" -type f -name 'libpcre2-8.so*' \
+    find "%{install-root}%{prefix}/lib" -type f -name 'libpcre2*.so*' \
       -exec "$STRIP" {} +
