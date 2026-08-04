@@ -3,8 +3,8 @@ kind: manual
 description: |
   zlib 1.3.1 for aarch64-linux-android26.
 
-  This mirrors packages/compress/zlib.sh but writes only to install-root, so
-  BuildStream can cache and reuse the package as an isolated artifact.
+  The element writes only to install-root so BuildStream can cache and reuse
+  the package as an isolated artifact.
 
 depends:
 - filename: host/noble-amd64.bst

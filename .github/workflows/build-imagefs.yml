@@ -13,32 +13,24 @@ on:
   push:
     branches: [main]
     paths:
-      - "packages/**"
-      - "lib/**"
       - "vendor/winlator-bionic/**"
       - "vendor/mesa-gl-patches/**"
       - "vendor/wrapper-patches/**"
-      - "vendor/zstd-patches/**"
       - "buildstream/**"
       - "project.conf"
-      - "ci/buildstream/**"
-      - "*.sh"
+      - "ci/setup/install-buildstream.sh"
       - "ci/verify/**"
       - "ci/gate/imagefs-publish.sh"
       - ".github/workflows/build-imagefs.yml"
   pull_request:
     branches: [main]
     paths:
-      - "packages/**"
-      - "lib/**"
       - "vendor/winlator-bionic/**"
       - "vendor/mesa-gl-patches/**"
       - "vendor/wrapper-patches/**"
-      - "vendor/zstd-patches/**"
       - "buildstream/**"
       - "project.conf"
-      - "ci/buildstream/**"
-      - "*.sh"
+      - "ci/setup/install-buildstream.sh"
       - "ci/verify/**"
       - "ci/gate/imagefs-publish.sh"
       - ".github/workflows/build-imagefs.yml"
@@ -84,8 +76,6 @@ jobs:
 
       - name: Install pinned BuildStream tools
         run: bash ci/setup/install-buildstream.sh
-
-      - run: bash ci/verify/pkg-selftest.sh
 
       - name: Build imagefs with BuildStream
         run: |

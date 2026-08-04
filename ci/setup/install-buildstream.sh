@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install pinned BuildStream/BuildBox tooling for the opt-in PoC workflow.
+# Install pinned BuildStream/BuildBox tooling for production workflows.
 set -euo pipefail
 
 BST_VERSION="${BST_VERSION:-2.7.0}"

@@ -1,20 +1,4 @@
 # shellcheck configuration — enforced by .github/workflows/lint.yml.
 #
-# Two blanket disables, both with a reason. Everything else is expected to be
-# clean, so a new finding means a new bug rather than more noise to scroll past.
-
-# SC2034 (variable appears unused): config.sh, packages/config.sh, ci/upstream.sh
-# and lib/*.sh exist to define variables for whoever sources them. shellcheck
-# analyses one file at a time and cannot see those consumers.
-disable=SC2034
-
-# SC2011 (don't use ls | xargs): the ~27 hits are all the same reporting idiom at
-# the end of a package recipe --
-#   log "  zstd $VER: $(ls $PREFIX/lib/libzstd*.so* | xargs -n1 basename | ...)"
-# The inputs are our own install paths, filenames are ASCII, and the output is a
-# log line. Rewriting each with find -print0 buys nothing.
-disable=SC2011
-
-# Follow `source`d files so the definitions above are actually resolvable when a
-# path is statically known.
+# Follow `source`d files when a path is statically known.
 external-sources=true

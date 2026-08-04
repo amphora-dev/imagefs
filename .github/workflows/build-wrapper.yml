@@ -1,22 +1,14 @@
 # Build wrapper-*.tzst → Release tag `wrapper` → runtimeAssets[wrapper.tzst]
 # Contracts: ci/README.md
-# No schedule — run manually or when wrapper / staging X11 inputs change.
+# No schedule — run manually or when wrapper graph inputs change.
 name: build-wrapper
 
 # Auto: leaf inputs + X11/drm/sysvshm staging recipes that affect the ICD ABI.
 on:
   workflow_dispatch:
     inputs:
-      mesa_ref:
-        description: "Custom Mesa ref (empty = pinned BuildStream source)"
-        required: false
-        default: ""
       force:
         description: "Build even if this commit was already published"
-        type: boolean
-        default: false
-      skip_staging:
-        description: "Reuse existing /tmp staging only (local/debug; GHA no longer restores staging)"
         type: boolean
         default: false
   push:
@@ -24,37 +16,17 @@ on:
     paths:
       - "ci/wrapper/**"
       - "ci/gate/wrapper-build.sh"
-      - "ci/upstream.sh"
-      - "lib/ndk.sh"
-      - "lib/pkg.sh"
-      - "lib/util.sh"
       - "vendor/wrapper-patches/**"
-      - "vendor/zstd-patches/**"
-      - "buildstream/elements/l1/wrapper-tzst.bst"
-      - "buildstream/elements/buildstream-sdk.bst"
+      - "buildstream/elements/**"
       - "project.conf"
       - "ci/setup/install-buildstream.sh"
-      - "packages/x11/**"
-      - "packages/graphics/libdrm.sh"
-      - "packages/android/android-sysvshm.sh"
-      - "packages/android/libcxx-shared.sh"
-      - "packages/compress/zlib.sh"
-      - "packages/compress/zstd.sh"
-      - "packages/depends.conf"
       - ".github/workflows/build-wrapper.yml"
 
 permissions:
   contents: write
 
 env:
-  # Same posture as build-imagefs: never restore staging/stamps/src between runs.
-  # restore-keys on those trees previously resurfaced dirty sysroots after recipe
-  # or patch edits (stamps skipped rebuilds into a half-cleared tree).
-  BUILD_DIR: /tmp/imagefs-build
   OUTPUT_DIR: ${{ github.workspace }}/artifacts
-  CCACHE_DIR: /tmp/imagefs-build/cache/ccache
-  CCACHE_MAXSIZE: 5G
-  REBUILD_ROOTFS: 1
 
 jobs:
   build:
@@ -62,9 +34,6 @@ jobs:
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-ndk-build
-        with:
-          deps: wrapper
 
       - name: Install BuildStream sandbox dependencies
         run: |
@@ -91,48 +60,24 @@ jobs:
 
       - run: bash ci/setup/install-buildstream.sh
 
-      # Wrapper staging uses the normal package recipes. Cache only their
-      # validated source archives, never extracted source/sysroot/stamps.
-      - uses: actions/cache@v4
-        with:
-          path: /tmp/imagefs-build/cache/downloads
-          key: wrapper-sources-v1-${{ hashFiles('packages/**/*.sh', 'config.sh') }}
-          restore-keys: |
-            wrapper-sources-v1-
-
-      - uses: actions/cache/restore@v4
-        with:
-          path: /tmp/imagefs-build/cache/ccache
-          key: wrapper-ccache-${{ runner.os }}-${{ github.run_id }}
-          restore-keys: |
-            wrapper-ccache-${{ runner.os }}-
-
       - id: gate
         env:
           GH_TOKEN: ${{ github.token }}
           FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force || false }}
           EVENT_NAME: ${{ github.event_name }}
           REPO: ${{ github.repository }}
-          MESA_REF_INPUT: ${{ inputs.mesa_ref }}
         run: bash ci/gate/wrapper-build.sh
 
       - name: Build wrapper.tzst
         if: steps.gate.outputs.should_build == 'true'
-        env:
-          MESA_REF: ${{ steps.gate.outputs.mesa_ref }}
-          SKIP_STAGING: ${{ github.event_name == 'workflow_dispatch' && inputs.skip_staging && '1' || '0' }}
         run: |
-          mkdir -p "$BUILD_DIR" "$OUTPUT_DIR" "$CCACHE_DIR"
-          if [ -n "${{ inputs.mesa_ref || '' }}" ]; then
-            bash ci/wrapper/build-tzst.sh
-          else
-            rm -rf /tmp/buildstream-wrapper
-            buildstream/bst build l1/wrapper-tzst.bst
-            buildstream/bst artifact checkout l1/wrapper-tzst.bst \
-              --deps none \
-              --directory /tmp/buildstream-wrapper
-            cp /tmp/buildstream-wrapper/artifacts/* artifacts/
-          fi
+          mkdir -p "$OUTPUT_DIR"
+          rm -rf /tmp/buildstream-wrapper
+          buildstream/bst build l1/wrapper-tzst.bst
+          buildstream/bst artifact checkout l1/wrapper-tzst.bst \
+            --deps none \
+            --directory /tmp/buildstream-wrapper
+          cp /tmp/buildstream-wrapper/artifacts/* artifacts/
           # shellcheck disable=SC1091
           source artifacts/wrapper-tzst.env
           {
@@ -143,14 +88,6 @@ jobs:
             echo "COMMIT_FULL=$COMMIT_FULL"
             echo "COMMIT_SHORT=$COMMIT_SHORT"
           } >> "$GITHUB_ENV"
-
-      - if: always()
-        run: ccache -s || true
-      - if: always()
-        uses: actions/cache/save@v4
-        with:
-          path: /tmp/imagefs-build/cache/ccache
-          key: wrapper-ccache-${{ runner.os }}-${{ github.run_id }}
 
       - uses: actions/upload-artifact@v4
         if: steps.gate.outputs.should_build == 'true'

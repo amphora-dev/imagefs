@@ -1,4 +1,4 @@
-name: buildstream-poc
+name: buildstream-verify
 
 on:
   workflow_dispatch:
@@ -7,14 +7,14 @@ on:
     - "project.conf"
     - "buildstream/**"
     - "ci/setup/install-buildstream.sh"
-    - ".github/workflows/buildstream-poc.yml"
+    - ".github/workflows/buildstream-verify.yml"
   pull_request:
     branches: [main]
     paths:
     - "project.conf"
     - "buildstream/**"
     - "ci/setup/install-buildstream.sh"
-    - ".github/workflows/buildstream-poc.yml"
+    - ".github/workflows/buildstream-verify.yml"
 
 jobs:
   package-artifacts:

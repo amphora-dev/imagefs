@@ -3,9 +3,8 @@ kind: manual
 description: |
   zstd 1.5.6 for aarch64-linux-android26.
 
-  The production recipe uses CMake plus an Android SONAME patch. This isolated
-  PoC links the same upstream library source set directly and writes the SONAME
-  at link time, avoiding both undeclared host CMake and post-link patchelf.
+  This element links the upstream library source set directly and writes the
+  SONAME at link time, avoiding post-link ELF mutation.
 
 depends:
 - filename: host/noble-amd64.bst

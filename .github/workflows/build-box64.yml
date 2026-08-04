@@ -7,10 +7,6 @@ name: build-box64
 on:
   workflow_dispatch:
     inputs:
-      box64_ref:
-        description: "Custom ptitSeb/box64 ref (empty = pinned BuildStream source)"
-        required: false
-        default: ""
       force:
         description: "Build even if this commit was already published"
         type: boolean
@@ -18,11 +14,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "ci/box64/**"
       - "ci/gate/box64-build.sh"
-      - "ci/upstream.sh"
-      - "lib/ndk.sh"
-      - "lib/util.sh"
       - "vendor/box64-patches/**"
       - "buildstream/elements/l1/box64-wcp.bst"
       - "buildstream/elements/buildstream-sdk.bst"
@@ -39,9 +31,6 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-ndk-build
-        with:
-          deps: leaf
 
       - name: Install BuildStream sandbox dependencies
         run: |
@@ -74,25 +63,18 @@ jobs:
           FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force || false }}
           EVENT_NAME: ${{ github.event_name }}
           REPO: ${{ github.repository }}
-          BOX64_REF_INPUT: ${{ inputs.box64_ref || '' }}
         run: bash ci/gate/box64-build.sh
 
       - name: Build WCP
         if: steps.gate.outputs.should_build == 'true'
-        env:
-          BOX64_REF: ${{ steps.gate.outputs.box64_ref }}
         run: |
-          if [ -n "${{ inputs.box64_ref || '' }}" ]; then
-            bash ci/box64/build-wcp.sh
-          else
-            rm -rf /tmp/buildstream-box64
-            buildstream/bst build l1/box64-wcp.bst
-            buildstream/bst artifact checkout l1/box64-wcp.bst \
-              --deps none \
-              --directory /tmp/buildstream-box64
-            mkdir -p artifacts
-            cp /tmp/buildstream-box64/artifacts/* artifacts/
-          fi
+          rm -rf /tmp/buildstream-box64
+          buildstream/bst build l1/box64-wcp.bst
+          buildstream/bst artifact checkout l1/box64-wcp.bst \
+            --deps none \
+            --directory /tmp/buildstream-box64
+          mkdir -p artifacts
+          cp /tmp/buildstream-box64/artifacts/* artifacts/
           # shellcheck disable=SC1091
           source artifacts/box64-wcp.env
           {

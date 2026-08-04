@@ -5,9 +5,8 @@
 # Independent of imagefs.txz packaging — Amphora pins it via
 # content_manifest.runtimeAssets[] (assetPath graphics_driver/wrapper.tzst).
 #
-# Sysroot: build a staging subset of the imagefs package graph
-# ($BUILD_DIR/staging) so headers + aarch64 X11/drm/sysvshm match Amphora
-# rootfs SONAMEs (unversioned libxcb.so, libandroid_shm* exports, …).
+# Sysroot: BuildStream stages the exact imagefs X11/drm/sysvshm artifacts at
+# $STAGING_ROOT so compile-time headers and runtime SONAMEs stay identical.
 # Do NOT mix Termux headers with foreign libs — that produced runtime
 # VK_ERROR_INCOMPATIBLE_DRIVER (-9) in earlier experiments.
 #
@@ -24,13 +23,12 @@
 #   wrapper-tzst.env   # FULL_VERSION / TZST_NAME / SHA256 / SIZE / …
 #
 # Env:
-#   MESA_REF / MESA_REPO / MESA_SRC
-#   ADRENOTOOLS_REF  pin for subprojects/libadrenotools.wrap (default 8483dfd…)
+#   WRAPPER_MESA_SRC / WRAPPER_MESA_COMMIT required (provided by BuildStream)
+#   ADRENOTOOLS_REF  exact prestaged libadrenotools commit
 #   ANDROID_NDK_HOME   required
 #   WRAPPER_API        NDK API for mesa compile (default 30 — memfd_create)
-#   BUILD_DIR          default /tmp/imagefs-build (shared staging with graph)
+#   STAGING_ROOT       target sysroot staged by BuildStream
 #   OUTPUT_DIR         default $PWD/artifacts
-#   SKIP_STAGING       1 = assume staging already built
 #   JOBS
 # =============================================================================
 set -euo pipefail
@@ -38,55 +36,29 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-# shellcheck disable=SC1091
-source "$REPO_ROOT/ci/upstream.sh"
-MESA_REF="${MESA_REF:-$MESA_DEFAULT_REF}"
-# Prefer WRAPPER_MESA_SRC. Ignore ambient MESA_SRC unless WRAPPER_HONOR_MESA_SRC=1
-# (avoids stale /tmp/pipetto-mesa from local experiments).
-if [ "${WRAPPER_HONOR_MESA_SRC:-0}" = "1" ]; then
-  MESA_SRC="${WRAPPER_MESA_SRC:-${MESA_SRC:-}}"
-else
-  MESA_SRC="${WRAPPER_MESA_SRC:-}"
-fi
+: "${WRAPPER_MESA_SRC:?BuildStream must provide WRAPPER_MESA_SRC}"
+: "${WRAPPER_MESA_COMMIT:?BuildStream must provide WRAPPER_MESA_COMMIT}"
+: "${ANDROID_NDK_HOME:?BuildStream must provide ANDROID_NDK_HOME}"
+MESA_SRC="$WRAPPER_MESA_SRC"
 WRAPPER_API="${WRAPPER_API:-30}"
 OUTPUT_DIR="${OUTPUT_DIR:-$PWD/artifacts}"
-BUILD_DIR="${BUILD_DIR:-/tmp/imagefs-build}"
-SKIP_STAGING="${SKIP_STAGING:-0}"
+STAGING_ROOT="${STAGING_ROOT:-/opt/android-sysroot}"
 JOBS="${JOBS:-$(nproc)}"
-WORKDIR="${WORKDIR:-$BUILD_DIR/wrapper-mesa}"
-WRAPPER_PRESTAGED_MESA="${WRAPPER_PRESTAGED_MESA:-0}"
-WRAPPER_MESA_COMMIT="${WRAPPER_MESA_COMMIT:-}"
-# Pin Pipetto libadrenotools (mesa wrap defaults to HEAD). Override with full SHA.
+WORKDIR="${WORKDIR:-/tmp/wrapper-mesa}"
 ADRENOTOOLS_REF="${ADRENOTOOLS_REF:-8483dfdaa2abf97ee89ad0e5f337e7b508550c6b}"
 
 # Runtime RPATH matches imagefs packaging style; Amphora also sets LD_LIBRARY_PATH.
 RPATH_USR="/usr/lib"
 
-# Staging packages needed to compile/link the wrapper ICD.
-WRAPPER_STAGING_PKGS=(
-  zlib
-  zstd
-  libffi
-  libexpat
-  android-sysvshm
-  libcxx-shared
-  xorgproto
-  libxcb
-  xtrans
-  libx11
-  libxext
-  libxfixes
-  libxshmfence
-  libdrm
-)
-
-source "$REPO_ROOT/lib/ndk.sh"
-# shellcheck disable=SC1091
-source "$REPO_ROOT/lib/util.sh"
+need() {
+  command -v "$1" >/dev/null 2>&1 || {
+    echo "FAIL: missing $1" >&2
+    exit 1
+  }
+}
 
 check_deps() {
   local tools=(meson ninja cmake python3 pkg-config zstd patchelf flex bison)
-  [ "$WRAPPER_PRESTAGED_MESA" = "1" ] || tools+=(git)
   for b in "${tools[@]}"; do
     need "$b"
   done
@@ -96,19 +68,8 @@ check_deps() {
   }
 }
 
-build_staging() {
-  if [ "$SKIP_STAGING" = "1" ]; then
-    echo "SKIP_STAGING=1 — using existing $BUILD_DIR/staging"
-  else
-    echo "Building staging sysroot packages: ${WRAPPER_STAGING_PKGS[*]}"
-    (
-      cd "$REPO_ROOT"
-      export BUILD_DIR
-      export SKIP_IMAGEFS_PACKAGE=1
-      ./build-all.sh "${WRAPPER_STAGING_PKGS[@]}"
-    )
-  fi
-  local staging="$BUILD_DIR/staging"
+validate_staging() {
+  local staging="$STAGING_ROOT"
   [[ -d "$staging/usr/lib" ]] || {
     echo "FAIL: staging missing $staging/usr/lib" >&2
     exit 1
@@ -147,81 +108,29 @@ build_staging() {
 }
 
 ensure_mesa() {
-  if [ "$WRAPPER_PRESTAGED_MESA" = "1" ]; then
-    [ -n "$MESA_SRC" ] && [ -d "$MESA_SRC" ] || {
-      echo "FAIL: WRAPPER_PRESTAGED_MESA requires WRAPPER_MESA_SRC" >&2
-      exit 1
-    }
-    [ -n "$WRAPPER_MESA_COMMIT" ] || {
-      echo "FAIL: WRAPPER_MESA_COMMIT required for prestaged Mesa" >&2
-      exit 1
-    }
-    cd "$MESA_SRC"
-    COMMIT_FULL="$WRAPPER_MESA_COMMIT"
-    COMMIT_SHORT="${COMMIT_FULL:0:9}"
-    MESA_VERSION="$(tr -d '\n' <VERSION 2>/dev/null || echo unknown)"
-    FULL_VERSION="${MESA_VERSION}-${COMMIT_SHORT}"
-    TZST_NAME="wrapper-${COMMIT_SHORT}.tzst"
-    echo "Prestaged Mesa $FULL_VERSION ($COMMIT_FULL)"
-    return
-  fi
-
-  if [ -n "$MESA_SRC" ] && [ -d "$MESA_SRC/.git" ]; then
-    echo "Using MESA_SRC=$MESA_SRC"
-  else
-    MESA_SRC="$WORKDIR/src/mesa"
-    mkdir -p "$(dirname "$MESA_SRC")"
-    if [ ! -d "$MESA_SRC/.git" ]; then
-      rm -rf "$MESA_SRC"
-      git clone --filter=blob:none "$MESA_REPO" "$MESA_SRC"
-    fi
-  fi
-  cd "$MESA_SRC"
-  git fetch --tags --force origin
-  # Resolve against origin/ first. MESA_DEFAULT_REF is a branch (wrapper-25);
-  # in a reused clone `git checkout <branch>` lands on the stale local branch and
-  # the `git pull --ff-only || true` that used to follow swallowed the failure.
-  # ci/gate/wrapper-build.sh meanwhile reads the fresh upstream sha, so the gate
-  # asked for a build the tzst then labelled with the old commit — published and
-  # pinned as the new one, and never converging.
-  local target="" cand resolved
-  for cand in "refs/remotes/origin/$MESA_REF" "refs/tags/$MESA_REF" "$MESA_REF"; do
-    if resolved="$(git rev-parse --verify --quiet "${cand}^{commit}")"; then
-      target="$resolved"
-      break
-    fi
-  done
-  [ -n "$target" ] || {
-    echo "FAIL: cannot resolve MESA_REF=$MESA_REF in $MESA_REPO" >&2
+  [ -d "$MESA_SRC" ] || {
+    echo "FAIL: prestaged Mesa missing: $MESA_SRC" >&2
     exit 1
   }
-  git checkout --force --detach "$target"
-  git reset --hard "$target"
-  git clean -fdx
-  COMMIT_FULL="$(git rev-parse HEAD)"
-  COMMIT_SHORT="$(git rev-parse --short=9 HEAD)"
+  cd "$MESA_SRC"
+  COMMIT_FULL="$WRAPPER_MESA_COMMIT"
+  COMMIT_SHORT="${COMMIT_FULL:0:9}"
   MESA_VERSION="$(tr -d '\n' <VERSION 2>/dev/null || echo unknown)"
   FULL_VERSION="${MESA_VERSION}-${COMMIT_SHORT}"
   TZST_NAME="wrapper-${COMMIT_SHORT}.tzst"
-  echo "Mesa $FULL_VERSION ($COMMIT_FULL)"
+  echo "Prestaged Mesa $FULL_VERSION ($COMMIT_FULL)"
 }
 
 apply_patches() {
   cd "$MESA_SRC"
   local patch
   shopt -s nullglob
-  local status
   for patch in "$REPO_ROOT"/vendor/wrapper-patches/*.patch; do
-    status=0
-    apply_patch "$patch" || status=$?
-    case $status in
-      0) echo "Applied $patch" ;;
-      1) echo "Already present: $patch" ;;
-      *)
-        echo "FAIL: patch did not apply: $patch" >&2
-        exit 1
-        ;;
-    esac
+    patch -p1 --forward --batch <"$patch" || {
+      echo "FAIL: patch did not apply cleanly: $patch" >&2
+      exit 1
+    }
+    echo "Applied $patch"
   done
   shopt -u nullglob
   # Drop -Werror=gnu-empty-initializer from trial flag lists without deleting
@@ -235,28 +144,14 @@ if t2 != t:
     p.write_text(t2)
     print("stripped -Werror=gnu-empty-initializer from meson.build trial lists")
 PY
-  # Pin libadrenotools wrap (upstream uses revision=HEAD).
-  local wrap="$MESA_SRC/subprojects/libadrenotools.wrap"
-  [[ -f "$wrap" ]] || {
-    echo "FAIL: missing $wrap" >&2
+  [[ -d "$MESA_SRC/subprojects/libadrenotools" ]] || {
+    echo "FAIL: prestaged libadrenotools source missing" >&2
     exit 1
   }
-  python3 - <<PY
-from pathlib import Path
-p = Path("$wrap")
-lines = []
-for line in p.read_text().splitlines(True):
-    if line.startswith("revision"):
-        lines.append("revision = $ADRENOTOOLS_REF\n")
-    else:
-        lines.append(line)
-p.write_text("".join(lines))
-print(f"pinned libadrenotools.wrap revision=$ADRENOTOOLS_REF")
-PY
 }
 
 write_cross_files() {
-  local staging="$BUILD_DIR/staging"
+  local staging="$STAGING_ROOT"
   local prefix="$staging/usr"
   local tc="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64"
   local clang="$tc/bin/aarch64-linux-android${WRAPPER_API}-clang"
@@ -291,9 +186,9 @@ write_cross_files() {
   cat >"$WORKDIR/android-aarch64.txt" <<EOF
 [binaries]
 ar = '$tc/bin/llvm-ar'
-c = ['ccache', '$clang']
+c = '$clang'
 # Keep exceptions for C++ subprojects (libadrenotools); mesa C++ files are fine with them.
-cpp = ['ccache', '$clangxx']
+cpp = '$clangxx'
 c_ld = '$tc/bin/ld.lld'
 cpp_ld = '$tc/bin/ld.lld'
 strip = '$tc/bin/llvm-strip'
@@ -323,12 +218,10 @@ EOF
 
   cat >"$WORKDIR/native.txt" <<EOF
 [binaries]
-c = ['ccache', 'clang']
-cpp = ['ccache', 'clang++']
-ar = 'llvm-ar'
-strip = 'llvm-strip'
-c_ld = 'ld.lld'
-cpp_ld = 'ld.lld'
+c = '/usr/bin/gcc'
+cpp = '/usr/bin/g++'
+ar = '/usr/bin/ar'
+strip = '/usr/bin/strip'
 
 [host_machine]
 system = 'linux'
@@ -339,7 +232,7 @@ EOF
 }
 
 configure_and_build() {
-  local staging="$BUILD_DIR/staging"
+  local staging="$STAGING_ROOT"
   local prefix="$staging/usr"
   local builddir="$WORKDIR/build"
   rm -rf "$builddir"
@@ -439,7 +332,7 @@ pack_tzst() {
   done
   # libnativewindow.so is real on /system; keep NEEDED, do not pack a stub.
 
-  # Self-built adrenotools (+ hooks) from the Mesa subproject — same vintage as
+# Self-built adrenotools (+ hooks) from the prestaged Mesa subproject.
   # each other. Guest ADRENOTOOLS_HOOKS_PATH is imagefs usr/lib.
   local adreno="$builddir/subprojects/libadrenotools/libadrenotools.so"
   [[ -f "$adreno" ]] || {
@@ -519,7 +412,6 @@ PY
 FULL_VERSION=${FULL_VERSION}
 COMMIT_FULL=${COMMIT_FULL}
 COMMIT_SHORT=${COMMIT_SHORT}
-MESA_REF=${MESA_REF}
 ADRENOTOOLS_REF=${ADRENOTOOLS_REF}
 TZST_NAME=${TZST_NAME}
 SHA256=${SHA256}
@@ -531,10 +423,14 @@ EOF
 }
 
 main() {
-  ndk_require
+  local clang="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android${WRAPPER_API}-clang"
+  [[ -x "$clang" ]] || {
+    echo "FAIL: BuildStream NDK compiler missing: $clang" >&2
+    exit 1
+  }
   check_deps
   mkdir -p "$WORKDIR" "$OUTPUT_DIR"
-  build_staging
+  validate_staging
   ensure_mesa
   apply_patches
   write_cross_files

@@ -1,31 +1,25 @@
 #!/usr/bin/env bash
 # Decide whether to build/publish Box64 WCP.
-# Writes should_build, box64_ref, upstream_short, upstream_full to $GITHUB_OUTPUT.
+# Writes should_build, upstream_short and upstream_full to $GITHUB_OUTPUT.
 #
 # Env:
 #   FORCE, EVENT_NAME, REPO, GH_TOKEN
-#   BOX64_REF_INPUT — optional git ref from workflow_dispatch
 set -euo pipefail
 : "${GITHUB_OUTPUT:?GITHUB_OUTPUT required}"
 
-# shellcheck disable=SC1091
-source "$(cd "$(dirname "$0")/.." && pwd)/upstream.sh"
-
-REF="${BOX64_REF_INPUT:-$BOX64_DEFAULT_REF}"
-TMP="$(mktemp -d)"
-trap 'rm -rf "$TMP"' EXIT
-
-git clone --filter=blob:none "$BOX64_REPO" "$TMP/box64"
-cd "$TMP/box64"
-git fetch --depth 1 origin "$REF"
-git checkout --force FETCH_HEAD
-
-SHORT="$(git rev-parse --short=9 HEAD)"
-FULL="$(git rev-parse HEAD)"
+ELEMENT="buildstream/elements/l1/box64-wcp.bst"
+FULL="$(awk '
+  /url: box64:box64.git/ { box64=1; next }
+  box64 && $1 == "ref:" { print $2; exit }
+' "$ELEMENT")"
+[[ "$FULL" =~ ^[0-9a-f]{40}$ ]] || {
+  echo "Invalid pinned Box64 commit in $ELEMENT: $FULL" >&2
+  exit 1
+}
+SHORT="${FULL:0:9}"
 {
   echo "upstream_short=$SHORT"
   echo "upstream_full=$FULL"
-  echo "box64_ref=$REF"
 } >> "$GITHUB_OUTPUT"
 
 if [ "${FORCE}" = "true" ] || [ "${EVENT_NAME}" = "push" ]; then

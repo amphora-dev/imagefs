@@ -16,12 +16,10 @@
 # 的 NEEDED 缺失只会让那一个 Wine 模块用不了, 而不是拖垮启动。
 set -euo pipefail
 
-# Repo root (ci/verify → ../..), same pattern as pkg-selftest.sh.
-SCRIPT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
-# shellcheck disable=SC1091
-source "$SCRIPT_DIR/config.sh"
-
+ROOTFS="${IMAGEFS_RUNTIME_STAGE:-${ROOTFS:-/tmp/imagefs-build/staging}}"
 LIB="$ROOTFS/usr/lib"
+section() { printf '\n== %s ==\n' "$*"; }
+log() { printf '%s\n' "$*"; }
 fail=0
 
 # ---- 必需: 缺了影响基本使用 ----
@@ -35,7 +33,7 @@ required=(
   "libgio-2.0.so:多个 unix 模块"
   # 图形栈的 NEEDED。这几项缺了不是降级, 是 Vulkan/OpenGL 驱动直接加载失败,
   # 表现为黑屏而非报错, 所以必须断言。
-  # 自建 Mesa GL (packages/graphics/mesa-gl.sh): Wine opengl32 → EGL → zink.
+  # 自建 Mesa GL (graphics/mesa-gl.bst): Wine opengl32 → EGL → zink.
   # DirectDraw is handled by Amphora's native wrapper → D3D9/DXVK path.
   # 的入口, 缺了 OpenGL/DX7 直接黑屏。Wine >=10.17 走 libEGL, 更早走 libGL。
   "libEGL.so.1:Wine >=10.17 win32u → EGL x11 → zink"
@@ -84,7 +82,7 @@ optional=(
   "libXcursor.so:X 光标"
 )
 
-# ---- 打包裁剪断言（仅当 package-imagefs 设置了 IMAGEFS_RUNTIME_STAGE）----
+# ---- BuildStream runtime composition 裁剪断言 ----
 section "运行时裁剪断言"
 if [ -n "${IMAGEFS_RUNTIME_STAGE:-}" ]; then
   PRUNE_ROOT="$IMAGEFS_RUNTIME_STAGE"
@@ -217,7 +215,7 @@ section "已判定无消费者的库 (若出现说明被重新引入)"
 extra=0
 for name in "${unused[@]}"; do
   if [ -e "$LIB/$name" ]; then
-    echo "  UNEXPECTED $name — 见 build-all.sh Tier 4 注释, 确认是否真有消费者"
+    echo "  UNEXPECTED $name — 确认 BuildStream runtime 是否确有消费者"
     extra=$((extra + 1))
   fi
 done
