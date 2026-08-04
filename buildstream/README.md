@@ -121,6 +121,20 @@ only its header, pkg-config file and AArch64 DSO, not xorgproto's headers. The
 pollfd backend, unversioned Android SONAME and `xshmfence_*` ABI match the
 production recipe.
 
+The first CMake batch uses the official plugin with centralized NDK/sysroot
+flags:
+
+| CMake element | Key | Checkout | Cold build |
+|---|---|---:|---:|
+| `brotli` | `88fa5768e77b89eaf6dae1c5e3a5133a3ea25e42a18d1022ba2ff2b5a17d8997` | 944 KB | 4 s |
+| `libexpat` | `90a7132a462820bce0f473133fd1795ce6cec9d6d3740239a2ea7df814eab77c` | 432 KB | 4 s |
+| `pcre2` | `3d572e160c04c031e3c9f7451dca90ec5d0d93c1bf6b0b0bcae53a2473b0e281` | 3.0 MB | 9 s |
+
+All DSOs are stripped, versioned SONAMEs match downstream NEEDED entries and
+the three-package warm build takes 433 ms. CMake target probes are linked
+instead of forced static, preventing host-style false positives such as
+`-lpthreads`.
+
 ## Measured result
 
 The validated artifact key is
