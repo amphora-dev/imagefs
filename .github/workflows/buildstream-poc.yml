@@ -75,6 +75,7 @@ jobs:
           text/libexpat.bst
           text/pcre2.bst
           text/freetype.bst
+          text/fontconfig.bst
           crypto/gmp.bst
           x11/xorgproto.bst
           x11/xtrans.bst
@@ -137,6 +138,9 @@ jobs:
         buildstream/bst artifact checkout text/freetype.bst \
           --deps none \
           --directory artifacts/buildstream-freetype
+        buildstream/bst artifact checkout text/fontconfig.bst \
+          --deps none \
+          --directory artifacts/buildstream-fontconfig
         buildstream/bst artifact checkout crypto/gmp.bst \
           --deps none \
           --directory artifacts/buildstream-gmp
@@ -263,6 +267,15 @@ jobs:
         readelf -dW "$freetype" | grep -q 'NEEDED.*libbrotlidec.so.1'
         readelf -Ws "$freetype" | grep -q 'GLOBAL.* FT_Init_FreeType$'
         test ! -e artifacts/buildstream-freetype/usr/lib/libpng16.so
+
+        fontconfig=$(find artifacts/buildstream-fontconfig/usr/lib \
+          -type f -name 'libfontconfig.so*' -print -quit)
+        test -n "$fontconfig"
+        readelf -dW "$fontconfig" | grep -q 'NEEDED.*libfreetype.so'
+        readelf -dW "$fontconfig" | grep -q 'NEEDED.*libexpat.so.1'
+        readelf -Ws "$fontconfig" | grep -q 'GLOBAL.* FcInit$'
+        test -f artifacts/buildstream-fontconfig/usr/etc/fonts/fonts.conf
+        test ! -e artifacts/buildstream-fontconfig/usr/lib/libfreetype.so
 
         gmp=artifacts/buildstream-gmp/usr/lib/libgmp.so
         test -f "$gmp"
