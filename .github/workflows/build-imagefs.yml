@@ -81,13 +81,18 @@ jobs:
         run: |
           rm -rf "$BUILD_DIR" "$OUTPUT_DIR" artifacts /tmp/buildstream-imagefs-package
           mkdir -p "$BUILD_DIR/staging" "$OUTPUT_DIR" artifacts
-          buildstream/bst build imagefs/package.bst
+          buildstream/bst build \
+            imagefs/package.bst \
+            tests/autotools-sysroot-smoke.bst
           buildstream/bst artifact checkout imagefs/package.bst \
             --deps none \
             --directory /tmp/buildstream-imagefs-package
           cp /tmp/buildstream-imagefs-package/artifacts/imagefs.txz* \
             "$OUTPUT_DIR/"
           tar -xJf "$OUTPUT_DIR/imagefs.txz" -C "$BUILD_DIR/staging"
+
+      - name: Verify isolated package artifacts
+        run: bash ci/verify/buildstream-artifacts.sh
 
       - name: Verify artifact
         env:
