@@ -54,6 +54,8 @@ BUILD_DIR="${BUILD_DIR:-/tmp/imagefs-build}"
 SKIP_STAGING="${SKIP_STAGING:-0}"
 JOBS="${JOBS:-$(nproc)}"
 WORKDIR="${WORKDIR:-$BUILD_DIR/wrapper-mesa}"
+WRAPPER_PRESTAGED_MESA="${WRAPPER_PRESTAGED_MESA:-0}"
+WRAPPER_MESA_COMMIT="${WRAPPER_MESA_COMMIT:-}"
 # Pin Pipetto libadrenotools (mesa wrap defaults to HEAD). Override with full SHA.
 ADRENOTOOLS_REF="${ADRENOTOOLS_REF:-8483dfdaa2abf97ee89ad0e5f337e7b508550c6b}"
 
@@ -83,7 +85,9 @@ source "$REPO_ROOT/lib/ndk.sh"
 source "$REPO_ROOT/lib/util.sh"
 
 check_deps() {
-  for b in git meson ninja cmake python3 pkg-config zstd patchelf flex bison; do
+  local tools=(meson ninja cmake python3 pkg-config zstd patchelf flex bison)
+  [ "$WRAPPER_PRESTAGED_MESA" = "1" ] || tools+=(git)
+  for b in "${tools[@]}"; do
     need "$b"
   done
   python3 -c 'import mako' 2>/dev/null || {
@@ -143,6 +147,25 @@ build_staging() {
 }
 
 ensure_mesa() {
+  if [ "$WRAPPER_PRESTAGED_MESA" = "1" ]; then
+    [ -n "$MESA_SRC" ] && [ -d "$MESA_SRC" ] || {
+      echo "FAIL: WRAPPER_PRESTAGED_MESA requires WRAPPER_MESA_SRC" >&2
+      exit 1
+    }
+    [ -n "$WRAPPER_MESA_COMMIT" ] || {
+      echo "FAIL: WRAPPER_MESA_COMMIT required for prestaged Mesa" >&2
+      exit 1
+    }
+    cd "$MESA_SRC"
+    COMMIT_FULL="$WRAPPER_MESA_COMMIT"
+    COMMIT_SHORT="${COMMIT_FULL:0:9}"
+    MESA_VERSION="$(tr -d '\n' <VERSION 2>/dev/null || echo unknown)"
+    FULL_VERSION="${MESA_VERSION}-${COMMIT_SHORT}"
+    TZST_NAME="wrapper-${COMMIT_SHORT}.tzst"
+    echo "Prestaged Mesa $FULL_VERSION ($COMMIT_FULL)"
+    return
+  fi
+
   if [ -n "$MESA_SRC" ] && [ -d "$MESA_SRC/.git" ]; then
     echo "Using MESA_SRC=$MESA_SRC"
   else

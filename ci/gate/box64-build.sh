@@ -11,19 +11,14 @@ set -euo pipefail
 # shellcheck disable=SC1091
 source "$(cd "$(dirname "$0")/.." && pwd)/upstream.sh"
 
-REF="${BOX64_REF_INPUT:-}"
+REF="${BOX64_REF_INPUT:-$BOX64_DEFAULT_REF}"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
 git clone --filter=blob:none "$BOX64_REPO" "$TMP/box64"
 cd "$TMP/box64"
-if [ -n "$REF" ]; then
-  git fetch --depth 1 origin "$REF"
-  git checkout --force FETCH_HEAD
-else
-  git checkout --force main
-  git pull --ff-only origin main
-fi
+git fetch --depth 1 origin "$REF"
+git checkout --force FETCH_HEAD
 
 SHORT="$(git rev-parse --short=9 HEAD)"
 FULL="$(git rev-parse HEAD)"

@@ -13,3 +13,4 @@ MESA_REPO="${MESA_REPO:-https://github.com/Pipetto-crypto/mesa.git}"
 MESA_DEFAULT_REF="${MESA_DEFAULT_REF:-wrapper-25}"
 
 BOX64_REPO="${BOX64_REPO:-https://github.com/ptitSeb/box64.git}"
+BOX64_DEFAULT_REF="${BOX64_DEFAULT_REF:-0db8df7757b523e41cf31b6204c47d22b8fb4f08}"

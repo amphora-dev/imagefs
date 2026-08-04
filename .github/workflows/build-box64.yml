@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       box64_ref:
-        description: "ptitSeb/box64 git ref (empty = main tip)"
+        description: "Custom ptitSeb/box64 ref (empty = pinned BuildStream source)"
         required: false
         default: ""
       force:
@@ -24,6 +24,10 @@ on:
       - "lib/ndk.sh"
       - "lib/util.sh"
       - "vendor/box64-patches/**"
+      - "buildstream/elements/l1/box64-wcp.bst"
+      - "buildstream/elements/base/host-sdk-autotools.bst"
+      - "project.conf"
+      - "ci/setup/install-buildstream.sh"
       - ".github/workflows/build-box64.yml"
 
 permissions:
@@ -39,6 +43,31 @@ jobs:
         with:
           deps: leaf
 
+      - name: Install BuildStream sandbox dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            apparmor-profiles apparmor-utils bubblewrap fuse3 lzip patch \
+            python3-venv xz-utils
+          sudo install -m 0644 \
+            /usr/share/apparmor/extra-profiles/bwrap-userns-restrict \
+            /etc/apparmor.d/bwrap-userns-restrict
+          sudo apparmor_parser -r /etc/apparmor.d/bwrap-userns-restrict
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/buildstream
+          key: buildstream-box64-v1-${{ runner.os }}-${{ hashFiles('project.conf', 'buildstream/elements/l1/box64-wcp.bst', 'buildstream/elements/base/host-sdk-autotools.bst', 'vendor/box64-patches/**') }}
+          restore-keys: |
+            buildstream-box64-v1-${{ runner.os }}-
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/imagefs-buildstream/tools
+          key: buildstream-tools-v3-${{ runner.os }}-bst-2.7.0-core-plugins-2.7.0-community-2.3.1-buildbox-1.4.15
+
+      - run: bash ci/setup/install-buildstream.sh
+
       - id: gate
         env:
           GH_TOKEN: ${{ github.token }}
@@ -53,7 +82,17 @@ jobs:
         env:
           BOX64_REF: ${{ steps.gate.outputs.box64_ref }}
         run: |
-          bash ci/box64/build-wcp.sh
+          if [ -n "${{ inputs.box64_ref || '' }}" ]; then
+            bash ci/box64/build-wcp.sh
+          else
+            rm -rf /tmp/buildstream-box64
+            buildstream/bst build l1/box64-wcp.bst
+            buildstream/bst artifact checkout l1/box64-wcp.bst \
+              --deps none \
+              --directory /tmp/buildstream-box64
+            mkdir -p artifacts
+            cp /tmp/buildstream-box64/artifacts/* artifacts/
+          fi
           # shellcheck disable=SC1091
           source artifacts/box64-wcp.env
           {
