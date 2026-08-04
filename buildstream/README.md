@@ -22,6 +22,7 @@ content-addressed artifact without restoring `staging`, `src` or stamp files.
 - Fontconfig over the completed target font dependency graph
 - GLib over target zlib/libffi/PCRE2/static libiconv
 - OpenSSL and GnuTLS/Hogweed crypto runtime layer
+- minimal libdrm Meson artifact for the graphics stack
 - Nettle/Hogweed over target GMP and minimal ALSA lib
 - Android audio-server ALSA PCM plugin and configuration
 - libxcb plus separately cached xcb-proto, libXau and libXdmcp inputs
@@ -189,6 +190,18 @@ It consumes alsa-lib only through the target sysroot, exports
 `_snd_pcm_android_aserver_open`, installs both loader-compatible plugin names
 and carries its `/etc/alsa` configuration without embedding libasound.
 
+The TLS layer is:
+
+| Element | Key | Checkout | Cold build |
+|---|---|---:|---:|
+| `openssl` | `07505a51419349d73a9b80f6f07e85608e6a108c39a0b71ac7e87ee02b3dbc60` | 20 MB | 48 s |
+| `gnutls` | `737258858f5202cf7ed57dc513d84d21287b2c5673efc5f174abfb71f526ebcf` | 2.7 MB | 53 s |
+
+GnuTLS builds only the LGPL runtime directories and explicitly records
+GMP/Nettle/zlib/libc++ runtime dependencies. Its C++ DSO exposed another
+shared-staging omission: `libc++_shared.so` was previously present but absent
+from depends.conf. OpenSSL/GnuTLS warm together in 428 ms.
+
 The XCB/X11 layer splits the old multi-upstream libxcb recipe into separately
 cached inputs:
 
@@ -276,7 +289,7 @@ pulling the NDK into its build dependencies.
 
 ## Deliberate limits
 
-- Thirty-four production packages are migrated; libxcb's three bundled upstream
+- Thirty-five production packages are migrated; libxcb's three bundled upstream
   inputs are separate BuildStream artifacts. Production `build-all.sh` is
   unchanged.
 - NDK's zip does not preserve executable modes or symlinks through the community

@@ -67,6 +67,7 @@ jobs:
           android/android-sysv-semaphore.bst
           android/libandroid-shmem.bst
           graphics/vulkan-headers.bst
+          graphics/libdrm.bst
           crypto/nettle.bst
           audio/alsa-lib.bst
           audio/alsa-android-aserver.bst
@@ -127,6 +128,9 @@ jobs:
         buildstream/bst artifact checkout graphics/vulkan-headers.bst \
           --deps none \
           --directory artifacts/buildstream-vulkan-headers
+        buildstream/bst artifact checkout graphics/libdrm.bst \
+          --deps none \
+          --directory artifacts/buildstream-libdrm
         buildstream/bst artifact checkout text/libffi.bst \
           --deps none \
           --directory artifacts/buildstream-libffi
@@ -238,6 +242,12 @@ jobs:
         test -f artifacts/buildstream-vulkan-headers/usr/include/vulkan/vulkan.h
         test -f artifacts/buildstream-vulkan-headers/usr/include/vk_video/vulkan_video_codecs_common.h
         test -f artifacts/buildstream-vulkan-headers/usr/share/vulkan/registry/vk.xml
+
+        drm=artifacts/buildstream-libdrm/usr/lib/libdrm.so
+        test -f "$drm"
+        readelf -Ws "$drm" | grep -q 'GLOBAL.* drmIoctl$'
+        test -f artifacts/buildstream-libdrm/usr/include/xf86drm.h
+        test ! -e artifacts/buildstream-libdrm/usr/lib/libdrm_amdgpu.so
 
         ffi=artifacts/buildstream-libffi/usr/lib/libffi.so
         test -f "$ffi"
