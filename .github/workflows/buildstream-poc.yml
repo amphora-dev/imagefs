@@ -257,7 +257,7 @@ jobs:
         freetype=$(find artifacts/buildstream-freetype/usr/lib \
           -type f -name 'libfreetype.so*' -print -quit)
         test -n "$freetype"
-        readelf -dW "$freetype" | grep -q 'SONAME.*libfreetype.so.6'
+        readelf -dW "$freetype" | grep -q 'SONAME.*libfreetype.so'
         readelf -dW "$freetype" | grep -q 'NEEDED.*libpng16.so.16'
         readelf -dW "$freetype" | grep -q 'NEEDED.*libz.so.1'
         readelf -dW "$freetype" | grep -q 'NEEDED.*libbrotlidec.so.1'

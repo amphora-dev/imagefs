@@ -143,6 +143,18 @@ the three-package warm build takes 433 ms. CMake target probes are linked
 instead of forced static, preventing host-style false positives such as
 `-lpthreads`.
 
+The first font dependencies are:
+
+| Element | Key | Checkout | Cold package build |
+|---|---|---:|---:|
+| `libpng` | `cd01ce8881a9041fedbeceaf9485d772590ec944701cd0a54bef0eac8299f096` | 752 KB | 4 s |
+| `freetype` | `310647c50594a8ed8f6d62c14ca951f3659df9e69ba5ef17b11dfd404b87bd49` | 1.7 MB | 5 s |
+
+libpng fails closed on PNG16_0, `libpng16.so.16`, unresolved NEON symbols and
+LOAD page congruence. FreeType's Meson build records target zlib,
+libpng16 and Brotli NEEDED entries without carrying those dependencies. Their
+warm build takes 432 ms.
+
 The next dependency layer adds:
 
 | Element | Key | Checkout | Cold build |
