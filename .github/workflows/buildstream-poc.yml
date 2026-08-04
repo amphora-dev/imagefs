@@ -521,14 +521,14 @@ jobs:
           sha256sum -c imagefs.txz.sha256sum
         )
         tar -tJf artifacts/imagefs.txz >/dev/null
-        verify_build="$RUNNER_TEMP/buildstream-imagefs-verify"
+        verify_build="${RUNNER_TEMP:-/tmp}/buildstream-imagefs-verify"
         rm -rf "$verify_build"
         mkdir -p "$verify_build/staging"
         tar -xJf artifacts/imagefs.txz -C "$verify_build/staging"
         OUTPUT_DIR="$PWD/artifacts" \
           BUILD_DIR="$verify_build" \
           IMAGEFS_RUNTIME_STAGE="$verify_build/staging" \
-          ARTIFACTS="$RUNNER_TEMP/buildstream-verified-artifacts" \
+          ARTIFACTS="${RUNNER_TEMP:-/tmp}/buildstream-verified-artifacts" \
           bash ci/verify/imagefs-artifact.sh
 
     - uses: actions/upload-artifact@v4
