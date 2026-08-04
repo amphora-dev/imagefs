@@ -1,0 +1,52 @@
+kind: autotools
+
+description: |
+  libxcb 1.17.0 for Android/Bionic.
+
+  Protocol XML/Python data and Xau/Xdmcp target libraries are separate,
+  content-addressed dependencies composed under /opt/android-sysroot.
+
+depends:
+- filename: base/host-sdk-autotools.bst
+  type: build
+- filename: toolchain/android-ndk-r29.bst
+  type: build
+- filename: x11/xorgproto.bst
+  type: build
+  config:
+    location: /opt/android-sysroot
+- filename: x11/xcb-proto.bst
+  type: build
+  config:
+    location: /opt/android-sysroot
+- filename: x11/libxau.bst
+  type: build
+  config:
+    location: /opt/android-sysroot
+- filename: x11/libxdmcp.bst
+  type: build
+  config:
+    location: /opt/android-sysroot
+
+sources:
+- kind: tar
+  url: xorg:lib/libxcb-1.17.0.tar.xz
+  ref: 599ebf9996710fea71622e6e184f3a8ad5b43d0e5fa8c4e407123c88a59a6d55
+
+variables:
+  conf-root: "%{build-root}"
+  command-subdir: _build
+  conf-local: >-
+    --enable-shared
+    --disable-static
+    --without-xcb-proto-datadir
+
+environment:
+  PYTHON: python3
+
+config:
+  strip-commands:
+  - |
+    find "%{install-root}" -type f -name '*.la' -delete
+    find "%{install-root}%{prefix}/lib" -type f -name 'libxcb*.so*' \
+      -exec "$STRIP" {} +

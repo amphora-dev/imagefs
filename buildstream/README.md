@@ -19,6 +19,7 @@ content-addressed artifact without restoring `staging`, `src` or stamp files.
 - CMake leaves: Brotli, Expat and PCRE2
 - Nettle/Hogweed over target GMP and minimal ALSA lib
 - Android audio-server ALSA PCM plugin and configuration
+- libxcb plus separately cached xcb-proto, libXau and libXdmcp inputs
 - GitHub Actions: persists BuildStream's content-addressed store
 
 The package outputs contain only their own:
@@ -203,7 +204,9 @@ pulling the NDK into its build dependencies.
 
 ## Deliberate limits
 
-- Twenty packages are migrated; production `build-all.sh` is unchanged.
+- Twenty-one production packages are migrated; libxcb's three bundled upstream
+  inputs are separate BuildStream artifacts. Production `build-all.sh` is
+  unchanged.
 - NDK's zip does not preserve executable modes or symlinks through the community
   source plugin, so the toolchain element restores both before publishing its
   artifact. This matters for LLVM multicall tools such as `llvm-strip`.

@@ -77,6 +77,10 @@ jobs:
           x11/xorgproto.bst
           x11/xtrans.bst
           x11/libxshmfence.bst
+          x11/xcb-proto.bst
+          x11/libxau.bst
+          x11/libxdmcp.bst
+          x11/libxcb.bst
           tests/autotools-sysroot-smoke.bst
         )
         buildstream/bst build "${elements[@]}"
@@ -130,7 +134,7 @@ jobs:
         buildstream/bst artifact checkout audio/alsa-android-aserver.bst \
           --deps none \
           --directory artifacts/buildstream-alsa-android-aserver
-        for element in xorgproto xtrans libxshmfence; do
+        for element in xorgproto xtrans libxshmfence xcb-proto libxau libxdmcp libxcb; do
           buildstream/bst artifact checkout "x11/$element.bst" \
             --deps none \
             --directory "artifacts/buildstream-$element"
@@ -273,6 +277,24 @@ jobs:
         test -f artifacts/buildstream-libxshmfence/usr/include/X11/xshmfence.h
         test -f artifacts/buildstream-libxshmfence/usr/lib/pkgconfig/xshmfence.pc
         test ! -e artifacts/buildstream-libxshmfence/usr/include/X11/Xproto.h
+
+        test -f artifacts/buildstream-xcb-proto/usr/share/xcb/xproto.xml
+        test -n "$(find artifacts/buildstream-xcb-proto \
+          -path '*/xcbgen/state.py' -print -quit)"
+
+        xau=artifacts/buildstream-libxau/usr/lib/libXau.so
+        xdmcp=artifacts/buildstream-libxdmcp/usr/lib/libXdmcp.so
+        readelf -Ws "$xau" | grep -q 'GLOBAL.* XauGetAuthByAddr$'
+        readelf -Ws "$xdmcp" | grep -q 'GLOBAL.* XdmcpReadARRAY8$'
+
+        xcb=artifacts/buildstream-libxcb/usr/lib/libxcb.so
+        test -f "$xcb"
+        readelf -dW "$xcb" | grep -q 'NEEDED.*libXau.so'
+        readelf -dW "$xcb" | grep -q 'NEEDED.*libXdmcp.so'
+        test -f artifacts/buildstream-libxcb/usr/include/xcb/present.h
+        grep -q 'xcb_present_pixmap_synced' \
+          artifacts/buildstream-libxcb/usr/include/xcb/present.h
+        test ! -e artifacts/buildstream-libxcb/usr/lib/libXau.so
 
     - uses: actions/upload-artifact@v4
       with:
