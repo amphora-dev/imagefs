@@ -1,0 +1,25 @@
+kind: cmake
+
+description: |
+  Brotli 1.1.0 shared libraries for Android/Bionic.
+
+depends:
+- filename: base/host-sdk-autotools.bst
+  type: build
+- filename: toolchain/android-ndk-r29.bst
+  type: build
+
+sources:
+- kind: tar
+  url: brotli:v1.1.0.tar.gz
+  ref: e720a6ca29428b803f4ad165371771f5398faba397edf6778837a18599ea13ff
+
+variables:
+  cmake-local: >-
+    -DBUILD_SHARED_LIBS=ON
+
+config:
+  strip-commands:
+  - |
+    find "%{install-root}%{prefix}/lib" -type f -name 'libbrotli*.so*' \
+      -exec "$STRIP" {} +

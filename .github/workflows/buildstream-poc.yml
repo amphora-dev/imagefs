@@ -59,6 +59,7 @@ jobs:
         elements=(
           compress/zlib.bst
           compress/zstd.bst
+          compress/brotli.bst
           android/libcxx-shared.bst
           android/android-sysvshm.bst
           android/android-spawn.bst
@@ -67,6 +68,8 @@ jobs:
           graphics/vulkan-headers.bst
           text/libffi.bst
           text/libiconv.bst
+          text/libexpat.bst
+          text/pcre2.bst
           crypto/gmp.bst
           x11/xorgproto.bst
           x11/xtrans.bst
@@ -90,6 +93,9 @@ jobs:
         buildstream/bst artifact checkout compress/zstd.bst \
           --deps none \
           --directory artifacts/buildstream-zstd
+        buildstream/bst artifact checkout compress/brotli.bst \
+          --deps none \
+          --directory artifacts/buildstream-brotli
         for element in libcxx-shared android-sysvshm android-spawn android-sysv-semaphore libandroid-shmem; do
           buildstream/bst artifact checkout "android/$element.bst" \
             --deps none \
@@ -104,6 +110,11 @@ jobs:
         buildstream/bst artifact checkout text/libiconv.bst \
           --deps none \
           --directory artifacts/buildstream-libiconv
+        for element in libexpat pcre2; do
+          buildstream/bst artifact checkout "text/$element.bst" \
+            --deps none \
+            --directory "artifacts/buildstream-$element"
+        done
         buildstream/bst artifact checkout crypto/gmp.bst \
           --deps none \
           --directory artifacts/buildstream-gmp
@@ -129,6 +140,16 @@ jobs:
         done
         test ! -e artifacts/buildstream-zlib/opt/android-ndk
         test ! -e artifacts/buildstream-zstd/opt/android-ndk
+
+        for lib in common dec enc; do
+          brotli=$(find artifacts/buildstream-brotli/usr/lib \
+            -type f -name "libbrotli${lib}.so*" -print -quit)
+          test -n "$brotli"
+          readelf -dW "$brotli" | grep -q "SONAME.*libbrotli${lib}.so"
+        done
+        brotli_dec=$(find artifacts/buildstream-brotli/usr/lib \
+          -type f -name 'libbrotlidec.so*' -print -quit)
+        readelf -Ws "$brotli_dec" | grep -q 'GLOBAL.* BrotliDecoderDecompress$'
 
         test -f artifacts/buildstream-libcxx-shared/usr/lib/libc++_shared.so
         readelf -dW artifacts/buildstream-libcxx-shared/usr/lib/libc++_shared.so |
@@ -177,6 +198,21 @@ jobs:
         test -f artifacts/buildstream-libiconv/usr/include/iconv.h
         test ! -e artifacts/buildstream-libiconv/usr/lib/libiconv.so
         test -z "$(find artifacts/buildstream-libiconv -name '*.la' -print -quit)"
+
+        expat=$(find artifacts/buildstream-libexpat/usr/lib \
+          -type f -name 'libexpat.so*' -print -quit)
+        test -n "$expat"
+        readelf -dW "$expat" | grep -q 'SONAME.*libexpat.so'
+        readelf -Ws "$expat" | grep -q 'GLOBAL.* XML_ParserCreate$'
+        test -f artifacts/buildstream-libexpat/usr/include/expat.h
+
+        pcre2=$(find artifacts/buildstream-pcre2/usr/lib \
+          -type f -name 'libpcre2-8.so*' -print -quit)
+        test -n "$pcre2"
+        readelf -dW "$pcre2" | grep -q 'SONAME.*libpcre2-8.so'
+        readelf -Ws "$pcre2" | grep -q 'GLOBAL.* pcre2_compile_8$'
+        test -f artifacts/buildstream-pcre2/usr/include/pcre2.h
+        test ! -e artifacts/buildstream-pcre2/usr/bin/pcre2grep
 
         gmp=artifacts/buildstream-gmp/usr/lib/libgmp.so
         test -f "$gmp"

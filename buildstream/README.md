@@ -16,6 +16,7 @@ content-addressed artifact without restoring `staging`, `src` or stamp files.
 - xorgproto/xtrans target metadata and static GNU libiconv
 - libxshmfence consuming relocated xorgproto
 - portable GMP with separate host GCC and Android NDK compiler roles
+- CMake leaves: Brotli, Expat and PCRE2
 - GitHub Actions: persists BuildStream's content-addressed store
 
 The package outputs contain only their own:
@@ -167,7 +168,7 @@ pulling the NDK into its build dependencies.
 
 ## Deliberate limits
 
-- Fourteen packages are migrated; production `build-all.sh` is unchanged.
+- Seventeen packages are migrated; production `build-all.sh` is unchanged.
 - NDK's zip does not preserve executable modes or symlinks through the community
   source plugin, so the toolchain element restores both before publishing its
   artifact. This matters for LLVM multicall tools such as `llvm-strip`.
