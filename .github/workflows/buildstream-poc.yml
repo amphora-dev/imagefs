@@ -85,6 +85,9 @@ jobs:
           x11/libxext.bst
           x11/libxfixes.bst
           x11/libxrender.bst
+          x11/libxcursor.bst
+          x11/libxi.bst
+          x11/libxxf86vm.bst
           tests/autotools-sysroot-smoke.bst
         )
         buildstream/bst build "${elements[@]}"
@@ -138,7 +141,7 @@ jobs:
         buildstream/bst artifact checkout audio/alsa-android-aserver.bst \
           --deps none \
           --directory artifacts/buildstream-alsa-android-aserver
-        for element in xorgproto xtrans libxshmfence xcb-proto libxau libxdmcp libxcb libx11 libxext libxfixes libxrender; do
+        for element in xorgproto xtrans libxshmfence xcb-proto libxau libxdmcp libxcb libx11 libxext libxfixes libxrender libxcursor libxi libxxf86vm; do
           buildstream/bst artifact checkout "x11/$element.bst" \
             --deps none \
             --directory "artifacts/buildstream-$element"
@@ -313,6 +316,21 @@ jobs:
           libxext:libXext.so:XextCreateExtension \
           libxfixes:libXfixes.so:XFixesQueryExtension \
           libxrender:libXrender.so:XRenderQueryExtension; do
+          artifact=${spec%%:*}
+          rest=${spec#*:}
+          soname=${rest%%:*}
+          symbol=${rest#*:}
+          dso="artifacts/buildstream-$artifact/usr/lib/$soname"
+          test -f "$dso"
+          readelf -dW "$dso" | grep -q 'NEEDED.*libX11.so'
+          readelf -Ws "$dso" | grep -q "GLOBAL.* $symbol$"
+          test ! -e "artifacts/buildstream-$artifact/usr/lib/libX11.so"
+        done
+
+        for spec in \
+          libxcursor:libXcursor.so:XcursorImageCreate \
+          libxi:libXi.so:XIQueryVersion \
+          libxxf86vm:libXxf86vm.so:XF86VidModeQueryVersion; do
           artifact=${spec%%:*}
           rest=${spec#*:}
           soname=${rest%%:*}

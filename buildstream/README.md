@@ -22,6 +22,7 @@ content-addressed artifact without restoring `staging`, `src` or stamp files.
 - libxcb plus separately cached xcb-proto, libXau and libXdmcp inputs
 - libX11 over the composed XCB/xtrans/sysvshm target graph
 - first X11 extension layer: Xext, Xfixes and Xrender
+- remaining X11 client layer: Xcursor, Xi and Xxf86vm
 - GitHub Actions: persists BuildStream's content-addressed store
 
 The package outputs contain only their own:
@@ -233,7 +234,7 @@ pulling the NDK into its build dependencies.
 
 ## Deliberate limits
 
-- Twenty-five production packages are migrated; libxcb's three bundled upstream
+- Twenty-eight production packages are migrated; libxcb's three bundled upstream
   inputs are separate BuildStream artifacts. Production `build-all.sh` is
   unchanged.
 - NDK's zip does not preserve executable modes or symlinks through the community
