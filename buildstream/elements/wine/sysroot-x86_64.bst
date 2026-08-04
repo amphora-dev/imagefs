@@ -34,7 +34,6 @@ depends:
 - { filename: wine/x86_64/x11/libxxf86vm.bst, type: build }
 - { filename: wine/x86_64/graphics/vulkan-headers.bst, type: build }
 - { filename: wine/x86_64/graphics/libdrm.bst, type: build }
-- { filename: wine/x86_64/graphics/vulkan-loader.bst, type: build }
 - { filename: wine/x86_64/media/sdl2.bst, type: build }
 - { filename: wine/x86_64/media/gstreamer.bst, type: build }
 - { filename: wine/x86_64/media/gst-plugins-base.bst, type: build }
