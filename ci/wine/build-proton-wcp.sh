@@ -76,6 +76,15 @@ rm -rf wine-tools
 mkdir wine-tools
 (
   cd wine-tools
+  export CC=/usr/bin/gcc
+  export CXX=/usr/bin/g++
+  export AS=/usr/bin/as
+  export AR=/usr/bin/ar
+  export LD=/usr/bin/ld
+  export RANLIB=/usr/bin/ranlib
+  export STRIP=/usr/bin/strip
+  unset DLLTOOL PKG_CONFIG_PATH PKG_CONFIG_LIBDIR ACLOCAL_PATH
+  unset CPPFLAGS CFLAGS CXXFLAGS LDFLAGS
   ../configure \
     --without-x \
     --without-gstreamer \
