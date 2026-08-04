@@ -44,6 +44,7 @@ test -f "$PREFIX_PACK"
 test -f VERSION
 
 export PATH="$LLVM_MINGW_ROOT/bin:$TOOLCHAIN:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+export LD_LIBRARY_PATH=/opt/host-freetype/lib
 export CC="$TOOLCHAIN/$TARGET-clang"
 export AS="$CC"
 export CXX="$TOOLCHAIN/$TARGET-clang++"
@@ -86,7 +87,7 @@ mkdir wine-tools
   export CPPFLAGS=-I/opt/host-freetype/include/freetype2
   export LDFLAGS=-L/opt/host-freetype/lib
   export FREETYPE_CFLAGS=-I/opt/host-freetype/include/freetype2
-  export FREETYPE_LIBS="/opt/host-freetype/lib/libfreetype.a -lm"
+  export FREETYPE_LIBS="-L/opt/host-freetype/lib -lfreetype"
   unset CFLAGS CXXFLAGS
   ../configure \
     --enable-archs=x86_64 \

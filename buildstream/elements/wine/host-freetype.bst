@@ -25,8 +25,6 @@ config:
     unset CPPFLAGS CFLAGS CXXFLAGS LDFLAGS
     ./configure \
       --prefix=/opt/host-freetype \
-      --disable-shared \
-      --enable-static \
       --without-zlib \
       --without-bzip2 \
       --without-png \
