@@ -20,6 +20,7 @@ content-addressed artifact without restoring `staging`, `src` or stamp files.
 - libpng with PNG16_0/SONAME/LOAD alignment enforcement
 - FreeType over target zlib/libpng/Brotli through a shared Meson cross-file
 - Fontconfig over the completed target font dependency graph
+- GLib over target zlib/libffi/PCRE2/static libiconv
 - Nettle/Hogweed over target GMP and minimal ALSA lib
 - Android audio-server ALSA PCM plugin and configuration
 - libxcb plus separately cached xcb-proto, libXau and libXdmcp inputs
@@ -262,7 +263,7 @@ pulling the NDK into its build dependencies.
 
 ## Deliberate limits
 
-- Thirty-one production packages are migrated; libxcb's three bundled upstream
+- Thirty-two production packages are migrated; libxcb's three bundled upstream
   inputs are separate BuildStream artifacts. Production `build-all.sh` is
   unchanged.
 - NDK's zip does not preserve executable modes or symlinks through the community

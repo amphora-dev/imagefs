@@ -76,6 +76,7 @@ jobs:
           text/pcre2.bst
           text/freetype.bst
           text/fontconfig.bst
+          text/glib.bst
           crypto/gmp.bst
           x11/xorgproto.bst
           x11/xtrans.bst
@@ -141,6 +142,9 @@ jobs:
         buildstream/bst artifact checkout text/fontconfig.bst \
           --deps none \
           --directory artifacts/buildstream-fontconfig
+        buildstream/bst artifact checkout text/glib.bst \
+          --deps none \
+          --directory artifacts/buildstream-glib
         buildstream/bst artifact checkout crypto/gmp.bst \
           --deps none \
           --directory artifacts/buildstream-gmp
@@ -276,6 +280,19 @@ jobs:
         readelf -Ws "$fontconfig" | grep -q 'GLOBAL.* FcInit$'
         test -f artifacts/buildstream-fontconfig/usr/etc/fonts/fonts.conf
         test ! -e artifacts/buildstream-fontconfig/usr/lib/libfreetype.so
+
+        glib=artifacts/buildstream-glib/usr/lib/libglib-2.0.so
+        gobject=artifacts/buildstream-glib/usr/lib/libgobject-2.0.so
+        gio=artifacts/buildstream-glib/usr/lib/libgio-2.0.so
+        for dso in "$glib" "$gobject" "$gio"; do
+          test -f "$dso"
+        done
+        readelf -dW "$glib" | grep -q 'NEEDED.*libpcre2-8.so.0'
+        readelf -Ws "$glib" | grep -q 'GLOBAL.* g_malloc$'
+        readelf -Ws "$gobject" | grep -q 'GLOBAL.* g_object_new$'
+        readelf -Ws "$gio" | grep -q 'GLOBAL.* g_file_new_for_path$'
+        test -f artifacts/buildstream-glib/usr/bin/glib-mkenums
+        test ! -e artifacts/buildstream-glib/usr/lib/libpcre2-8.so
 
         gmp=artifacts/buildstream-gmp/usr/lib/libgmp.so
         test -f "$gmp"
