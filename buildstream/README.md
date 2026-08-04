@@ -99,7 +99,7 @@ exports a deterministic `imagefs-host-sdk-noble-amd64.tar.xz`. The fixed
 
 The generator is reproducible across the local Cloud VM and GitHub runner:
 both produced a 131 MB archive with SHA-256
-`0f0d976d343779286c6b71ac2de4c6c606bdb70d8ef5c0867d6a8022dd6fc3f5`.
+`7688b8af8ab271a2942860fdded44a10cba77c14f5b52ba29d54b4fbeff732f0`.
 `host-sdk.lock` enforces this result, so an apt repository update fails closed
 until the package manifest and lock are reviewed together.
 Meson 1.11.2 is installed from a pinned PyPI version and recorded separately in
