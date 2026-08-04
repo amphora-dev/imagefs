@@ -15,7 +15,6 @@ content-addressed artifact without restoring `staging`, `src` or stamp files.
 - libffi as the first standard Autotools cross-compiled artifact
 - xorgproto/xtrans target metadata and static GNU libiconv
 - libxshmfence consuming relocated xorgproto
-- portable GMP using NDK Clang for both target and host generators
 - GitHub Actions: persists BuildStream's content-addressed store
 
 The package outputs contain only their own:
@@ -84,13 +83,6 @@ with BuildStream's dependency `config.location` to `/opt/android-sysroot`;
 `tests/autotools-sysroot-smoke.bst` element asserts Autoconf/Automake/Libtool are
 available while target zlib is visible only through that sysroot.
 
-Packages such as GMP execute build-time generators. Instead of adding a
-37-package GCC closure, the sandbox reuses the pinned NDK's multi-target
-Clang in `x86_64-linux-gnu` mode. A separate 6 MB download / 39 MB artifact
-provides only Ubuntu host libc/kernel headers, crt objects and GCC startup
-runtime from three SHA-pinned `.deb` files. Target compilation still uses the
-NDK API-26 wrapper.
-
 libffi 3.4.6 is the first consumer. It builds through the official `autotools`
 element in 5 seconds, checks out to 204 KB, preserves the `LIBFFI_*_8.0` symbol
 versions and completes a warm host-SDK + sysroot + package build in 356 ms.
@@ -122,15 +114,6 @@ artifact (`xorgproto`) at `/opt/android-sysroot`. Its key is
 the 40 KB checkout contains only its header, pkg-config file and AArch64 DSO,
 not xorgproto's headers. The pollfd backend, unversioned Android SONAME and
 `xshmfence_*` ABI match the production recipe.
-
-GMP 6.3.0's artifact key is
-`4a0c78add49e320fd2f49700005ca72684f4c409a80da7beca18de34199bf9ba`.
-Its portable-C cold build takes 17 seconds, the 1.1 MB artifact has Android
-SONAME `libgmp.so` and only Bionic libc/dl dependencies, and a warm build takes
-322 ms. The host compiler overlay key is
-`1a816e1ce9cca199db4c5f62e11e3bf275bdc32c793fc715de92f08e4d262610`.
-The first CI runner to populate both new artifacts spent 51 seconds in the
-whole 14-package build/status step, including source fetch and GMP compilation.
 
 ## Measured result
 
@@ -179,7 +162,7 @@ pulling the NDK into its build dependencies.
 
 ## Deliberate limits
 
-- Fourteen packages are migrated; production `build-all.sh` is unchanged.
+- Thirteen packages are migrated; production `build-all.sh` is unchanged.
 - NDK's zip does not preserve executable modes or symlinks through the community
   source plugin, so the toolchain element restores both before publishing its
   artifact. This matters for LLVM multicall tools such as `llvm-strip`.
@@ -191,6 +174,5 @@ pulling the NDK into its build dependencies.
 - libpng is the next high-risk Autotools package; it remains on the production
   path until a BuildStream build passes dedicated `PNG16_0`, SONAME and LOAD
   segment alignment checks.
-- GMP requires executable host generators. It uses the same pinned NDK Clang in
-  `x86_64-linux-gnu` mode plus a small SHA-pinned Ubuntu host headers/crt
-  overlay; the sandbox never falls back to runner gcc.
+- GMP remains deferred until a supported, pinned Linux host compiler artifact
+  is available. NDK Clang is kept strictly on its supported Android target.
