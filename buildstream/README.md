@@ -129,6 +129,8 @@ Its portable-C cold build takes 17 seconds, the 1.1 MB artifact has Android
 SONAME `libgmp.so` and only Bionic libc/dl dependencies, and a warm build takes
 322 ms. The host compiler overlay key is
 `1a816e1ce9cca199db4c5f62e11e3bf275bdc32c793fc715de92f08e4d262610`.
+The first CI runner to populate both new artifacts spent 51 seconds in the
+whole 14-package build/status step, including source fetch and GMP compilation.
 
 ## Measured result
 
