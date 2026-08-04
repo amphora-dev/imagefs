@@ -33,7 +33,7 @@ variables:
     --disable-assembly
 
 environment:
-  CC_FOR_BUILD: "%{ndk-toolchain}/bin/clang-21 --target=x86_64-linux-gnu --sysroot=/ -fuse-ld=lld --rtlib=compiler-rt"
+  CC_FOR_BUILD: "%{ndk-toolchain}/bin/clang-21 --target=x86_64-linux-gnu --sysroot=/ -fuse-ld=lld"
   CPP_FOR_BUILD: "%{ndk-toolchain}/bin/clang-21 --target=x86_64-linux-gnu --sysroot=/ -E"
 
 config:

@@ -19,6 +19,9 @@ sources:
 - kind: remote
   url: ubuntu-archive:pool/main/l/linux/linux-libc-dev_6.8.0-136.136_amd64.deb
   ref: adde3ef425ccf82bf5f14d45a3143fab6c6eea26c1fd0f8a5eb43989e5fe255d
+- kind: remote
+  url: ubuntu-archive:pool/main/g/gcc-13/libgcc-13-dev_13.3.0-6ubuntu2%7e24.04.1_amd64.deb
+  ref: cd689db2691edaa10f37329307292796bb599e722e0505c79e14caaa1fe9a93a
 
 config:
   install-commands:
@@ -30,5 +33,6 @@ config:
     test -f "%{install-root}/usr/include/stdio.h"
     test -f "%{install-root}/usr/include/linux/futex.h"
     test -f "%{install-root}/usr/lib/x86_64-linux-gnu/crt1.o"
+    test -f "%{install-root}/usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o"
 
   strip-commands: []
