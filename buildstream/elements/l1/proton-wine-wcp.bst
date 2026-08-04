@@ -16,7 +16,7 @@ depends:
   type: build
 - filename: wine/host-freetype.bst
   type: build
-- filename: wine/termuxfs-x86_64.bst
+- filename: wine/sysroot-x86_64.bst
   type: build
   config:
     location: /opt/android-x86_64-sysroot

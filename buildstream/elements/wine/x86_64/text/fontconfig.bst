@@ -1,0 +1,50 @@
+kind: meson
+
+description: |
+  Fontconfig 2.15.0 for Android/Bionic with imagefs runtime paths.
+
+depends:
+- filename: profiles/android-cross-files.bst
+  junction: buildstream-sdk.bst
+  type: build
+  config:
+    location: /opt/amphora-sdk/profiles
+- filename: host/noble-amd64.bst
+  junction: buildstream-sdk.bst
+  type: build
+- filename: toolchains/android-ndk-r29.bst
+  junction: buildstream-sdk.bst
+  type: build
+- filename: wine/x86_64/text/freetype.bst
+  type: all
+  config:
+    location: /opt/android-sysroot
+- filename: wine/x86_64/text/libexpat.bst
+  type: all
+  config:
+    location: /opt/android-sysroot
+- filename: wine/x86_64/compress/libpng.bst
+  type: all
+  config:
+    location: /opt/android-sysroot
+
+sources:
+- kind: tar
+  url: fontconfig:fontconfig-2.15.0.tar.xz
+  ref: 63a0658d0e06e0fa886106452b58ef04f21f58202ea02a94c39de0d3335d7c0e
+
+variables:
+  target-triple: x86_64-linux-android35
+  meson-global: "--cross-file=/opt/amphora-sdk/profiles/meson-x86_64-android35.ini --buildtype=release"
+  sysconfdir: /usr/etc
+  meson-local: >-
+    -Ddefault-fonts-dirs=/usr/share/fonts
+    -Dcache-dir=/usr/var/cache/fontconfig
+    -Dtests=disabled
+    -Ddoc=disabled
+
+config:
+  strip-commands:
+  - |
+    find "%{install-root}%{prefix}/lib" -type f -name 'libfontconfig.so*' \
+      -exec "$STRIP" {} +
