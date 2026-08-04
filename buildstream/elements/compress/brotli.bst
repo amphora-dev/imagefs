@@ -17,6 +17,8 @@ sources:
 variables:
   cmake-local: >-
     -DBUILD_SHARED_LIBS=ON
+    -DBROTLI_DISABLE_TESTS=ON
+    -DCMAKE_C_STANDARD_LIBRARIES=-lm
 
 config:
   strip-commands:
