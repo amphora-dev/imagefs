@@ -23,6 +23,7 @@ content-addressed artifact without restoring `staging`, `src` or stamp files.
 - GLib over target zlib/libffi/PCRE2/static libiconv
 - OpenSSL and GnuTLS/Hogweed crypto runtime layer
 - minimal libdrm Meson artifact for the graphics stack
+- Vulkan loader with XCB/Xlib WSI over the target X11 graph
 - Nettle/Hogweed over target GMP and minimal ALSA lib
 - Android audio-server ALSA PCM plugin and configuration
 - libxcb plus separately cached xcb-proto, libXau and libXdmcp inputs
@@ -289,7 +290,7 @@ pulling the NDK into its build dependencies.
 
 ## Deliberate limits
 
-- Thirty-five production packages are migrated; libxcb's three bundled upstream
+- Thirty-six production packages are migrated; libxcb's three bundled upstream
   inputs are separate BuildStream artifacts. Production `build-all.sh` is
   unchanged.
 - NDK's zip does not preserve executable modes or symlinks through the community

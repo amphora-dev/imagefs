@@ -68,6 +68,7 @@ jobs:
           android/libandroid-shmem.bst
           graphics/vulkan-headers.bst
           graphics/libdrm.bst
+          graphics/vulkan-loader.bst
           crypto/nettle.bst
           audio/alsa-lib.bst
           audio/alsa-android-aserver.bst
@@ -131,6 +132,9 @@ jobs:
         buildstream/bst artifact checkout graphics/libdrm.bst \
           --deps none \
           --directory artifacts/buildstream-libdrm
+        buildstream/bst artifact checkout graphics/vulkan-loader.bst \
+          --deps none \
+          --directory artifacts/buildstream-vulkan-loader
         buildstream/bst artifact checkout text/libffi.bst \
           --deps none \
           --directory artifacts/buildstream-libffi
@@ -248,6 +252,12 @@ jobs:
         readelf -Ws "$drm" | grep -q 'GLOBAL.* drmIoctl$'
         test -f artifacts/buildstream-libdrm/usr/include/xf86drm.h
         test ! -e artifacts/buildstream-libdrm/usr/lib/libdrm_amdgpu.so
+
+        vulkan=artifacts/buildstream-vulkan-loader/usr/lib/libvulkan.so
+        test -f "$vulkan"
+        readelf -Ws "$vulkan" | grep -q 'GLOBAL.* vkGetInstanceProcAddr$'
+        readelf -dW "$vulkan" | grep -q 'NEEDED.*libxcb.so'
+        test ! -e artifacts/buildstream-vulkan-loader/usr/lib/libxcb.so
 
         ffi=artifacts/buildstream-libffi/usr/lib/libffi.so
         test -f "$ffi"
