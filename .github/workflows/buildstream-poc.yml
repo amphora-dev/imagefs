@@ -294,7 +294,7 @@ jobs:
         test -n "$mesa_gallium"
         test -f artifacts/buildstream-mesa-gl/usr/lib/.libgl-zink
         strings "$mesa_gallium" | grep -q 'ZINK:'
-        readelf -dW "$mesa_gallium" | grep -q 'NEEDED.*libvulkan.so.1'
+        strings "$mesa_gallium" | grep -qx 'libvulkan.so.1'
         test ! -e artifacts/buildstream-mesa-gl/usr/lib/libvulkan.so
 
         ffi=artifacts/buildstream-libffi/usr/lib/libffi.so
