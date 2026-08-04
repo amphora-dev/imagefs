@@ -121,15 +121,32 @@ else:
         old_ver = int(str(entry.get("version", "0")))
         entry["version"] = str(old_ver + 1)
         print(f"bumped rootfs pin v{old_ver} -> v{old_ver + 1} sha={sha} size={size}")
-    elif component == "box64":
+    elif component in ("box64", "wine", "dxvk", "vkd3d"):
+        # WCP pins: install path is contents/<contentType>/<verName>-<verCode>/.
+        # verName/verCode must mirror the package's profile.json so Amphora's
+        # isInstalled + reconcileToPin stay idempotent across rebuilds.
         if ver_name is None:
-            raise SystemExit("VER_NAME required for box64")
+            raise SystemExit(f"VER_NAME required for {component}")
+        ctype = content_type or entry.get("contentType")
+        if not ctype:
+            defaults = {
+                "box64": "Box64",
+                "wine": "Proton",
+                "dxvk": "DXVK",
+                "vkd3d": "VKD3D",
+            }
+            ctype = defaults.get(component)
+        if not ctype:
+            raise SystemExit(f"CONTENT_TYPE required for {component}")
         entry["verName"] = ver_name
         entry["verCode"] = int(os.environ.get("VER_CODE") or 0)
-        entry["version"] = f"Box64-{ver_name}-{entry['verCode']}"
-        entry.setdefault("kind", "WCP")
-        entry.setdefault("contentType", "Box64")
-        print(f"bumped box64 pin -> {entry.get('assetPath')} sha={sha} size={size}")
+        entry["contentType"] = ctype
+        entry["kind"] = kind or "WCP"
+        entry["version"] = f"{ctype}-{ver_name}-{entry['verCode']}"
+        print(
+            f"bumped {component} pin -> {entry.get('assetPath')} "
+            f"version={entry['version']} sha={sha} size={size}"
+        )
     else:
         if ver_name is not None:
             entry["verName"] = ver_name
