@@ -28,6 +28,10 @@ depends:
   type: build
   config:
     location: /opt/android-sysroot
+- filename: android/libcxx-shared.bst
+  type: all
+  config:
+    location: /opt/android-sysroot
 
 sources:
 - kind: tar

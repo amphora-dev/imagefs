@@ -331,7 +331,11 @@ jobs:
         readelf -dW "$gnutls" | grep -q 'NEEDED.*libnettle.so'
         readelf -Ws "$gnutls" | grep -q 'GLOBAL.* gnutls_init'
         test -f artifacts/buildstream-gnutls/usr/lib/pkgconfig/gnutls.pc
+        gnutlsxx=artifacts/buildstream-gnutls/usr/lib/libgnutlsxx.so
+        test -f "$gnutlsxx"
+        readelf -dW "$gnutlsxx" | grep -q 'NEEDED.*libc++_shared.so'
         test ! -e artifacts/buildstream-gnutls/usr/lib/libhogweed.so
+        test ! -e artifacts/buildstream-gnutls/usr/lib/libc++_shared.so
 
         nettle=$(find artifacts/buildstream-nettle/usr/lib \
           -type f -name 'libnettle.so*' -print -quit)
