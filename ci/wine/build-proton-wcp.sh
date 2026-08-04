@@ -60,8 +60,6 @@ export CFLAGS="-march=x86-64 -mtune=generic -fPIC -DANDROID_SUPPORT_FLEXIBLE_PAG
 export CXXFLAGS="$CFLAGS"
 export LDFLAGS="-L$DEPS/lib -Wl,-rpath,/usr/lib -Wl,-z,max-page-size=16384"
 export FREETYPE_CFLAGS="-I$DEPS/include/freetype2"
-export PULSE_CFLAGS="-I$DEPS/include/pulse"
-export PULSE_LIBS="-L$DEPS/lib/pulseaudio -lpulse"
 export SDL2_CFLAGS="-I$DEPS/include/SDL2"
 export SDL2_LIBS="-L$DEPS/lib -lSDL2"
 export FONTCONFIG_LIBS="-L$DEPS/lib -lfontconfig -lfreetype -lexpat"
@@ -87,6 +85,8 @@ mkdir wine-tools
   export PKG_CONFIG_LIBDIR=/opt/host-freetype/lib/pkgconfig
   export CPPFLAGS=-I/opt/host-freetype/include/freetype2
   export LDFLAGS=-L/opt/host-freetype/lib
+  export FREETYPE_CFLAGS=-I/opt/host-freetype/include/freetype2
+  export FREETYPE_LIBS="/opt/host-freetype/lib/libfreetype.a -lm"
   unset CFLAGS CXXFLAGS
   ../configure \
     --enable-archs=x86_64 \
@@ -137,7 +137,7 @@ mkdir wine-tools
   --without-pcsclite \
   --without-piper \
   --with-pthread \
-  --with-pulse \
+  --without-pulse \
   --without-sane \
   --with-sdl \
   --without-udev \
