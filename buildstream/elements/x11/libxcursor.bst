@@ -7,6 +7,10 @@ depends:
   type: build
 - filename: toolchain/android-ndk-r29.bst
   type: build
+- filename: x11/xorgproto.bst
+  type: build
+  config:
+    location: /opt/android-sysroot
 - filename: x11/libx11.bst
   type: all
   config:
