@@ -21,6 +21,7 @@ content-addressed artifact without restoring `staging`, `src` or stamp files.
 - Android audio-server ALSA PCM plugin and configuration
 - libxcb plus separately cached xcb-proto, libXau and libXdmcp inputs
 - libX11 over the composed XCB/xtrans/sysvshm target graph
+- first X11 extension layer: Xext, Xfixes and Xrender
 - GitHub Actions: persists BuildStream's content-addressed store
 
 The package outputs contain only their own:
@@ -221,7 +222,7 @@ pulling the NDK into its build dependencies.
 
 ## Deliberate limits
 
-- Twenty-two production packages are migrated; libxcb's three bundled upstream
+- Twenty-five production packages are migrated; libxcb's three bundled upstream
   inputs are separate BuildStream artifacts. Production `build-all.sh` is
   unchanged.
 - NDK's zip does not preserve executable modes or symlinks through the community
