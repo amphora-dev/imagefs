@@ -16,6 +16,7 @@ source "$LOCK_FILE"
 : "${SDK_NAME:?missing SDK_NAME in $LOCK_FILE}"
 : "${SDK_SHA256:?missing SDK_SHA256 in $LOCK_FILE}"
 : "${UBUNTU_BASE_SHA256:?missing UBUNTU_BASE_SHA256 in $LOCK_FILE}"
+: "${MESON_VERSION:?missing MESON_VERSION in $LOCK_FILE}"
 
 for tool in bwrap curl sha256sum tar xz; do
     command -v "$tool" >/dev/null || {
@@ -61,6 +62,7 @@ bwrap \
     --setenv HOME /root \
     --setenv LC_ALL C.UTF-8 \
     --setenv DEBIAN_FRONTEND noninteractive \
+    --setenv MESON_VERSION "$MESON_VERSION" \
     /bin/bash -euxo pipefail -c '
         cat > /usr/sbin/policy-rc.d <<EOF
 #!/bin/sh
@@ -70,12 +72,18 @@ EOF
         apt-get -o APT::Sandbox::User=root update
         apt-get -o APT::Sandbox::User=root \
             install -y --no-install-recommends "$@"
+        python3 -m pip install \
+            --break-system-packages \
+            --no-cache-dir \
+            "meson==$MESON_VERSION"
         rm -f /usr/sbin/policy-rc.d
         apt-get clean
         rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*.deb
         mkdir -p /usr/share/imagefs-host-sdk
         dpkg-query -W -f="\${Package}\t\${Version}\t\${Architecture}\n" |
             LC_ALL=C sort > /usr/share/imagefs-host-sdk/dpkg-manifest.txt
+        python3 -m pip freeze --local |
+            LC_ALL=C sort > /usr/share/imagefs-host-sdk/pip-manifest.txt
     ' imagefs-host-sdk "${packages[@]}"
 
 rm -f "$rootfs/etc/machine-id"
@@ -106,4 +114,6 @@ printf '%s  %s\n' "$actual_sha256" "$(basename "$archive")" |
     tee "$archive.sha256"
 cp "$rootfs/usr/share/imagefs-host-sdk/dpkg-manifest.txt" \
     "$OUTPUT_DIR/imagefs-host-sdk-packages.txt"
+cp "$rootfs/usr/share/imagefs-host-sdk/pip-manifest.txt" \
+    "$OUTPUT_DIR/imagefs-host-sdk-pip-packages.txt"
 du -h "$archive"

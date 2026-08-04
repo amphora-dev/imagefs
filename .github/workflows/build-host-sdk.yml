@@ -53,8 +53,8 @@ jobs:
           ./usr/share/imagefs-host-sdk/dpkg-manifest.txt |
           grep -q $'^gcc\t'
         tar -xOJf artifacts/imagefs-host-sdk-noble-amd64.tar.xz \
-          ./usr/share/imagefs-host-sdk/dpkg-manifest.txt |
-          grep -q $'^meson\t'
+          ./usr/share/imagefs-host-sdk/pip-manifest.txt |
+          grep -q '^meson==1.11.2$'
 
     - uses: actions/upload-artifact@v4
       with:
@@ -85,4 +85,5 @@ jobs:
           -- \
           artifacts/imagefs-host-sdk-noble-amd64.tar.xz \
           artifacts/imagefs-host-sdk-noble-amd64.tar.xz.sha256 \
-          artifacts/imagefs-host-sdk-packages.txt
+          artifacts/imagefs-host-sdk-packages.txt \
+          artifacts/imagefs-host-sdk-pip-packages.txt
