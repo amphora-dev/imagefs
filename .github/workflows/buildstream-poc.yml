@@ -73,6 +73,8 @@ jobs:
           audio/alsa-lib.bst
           audio/alsa-android-aserver.bst
           media/sdl2.bst
+          media/gstreamer.bst
+          media/gst-plugins-base.bst
           text/libffi.bst
           text/libiconv.bst
           text/libexpat.bst
@@ -176,6 +178,11 @@ jobs:
         buildstream/bst artifact checkout media/sdl2.bst \
           --deps none \
           --directory artifacts/buildstream-sdl2
+        for element in gstreamer gst-plugins-base; do
+          buildstream/bst artifact checkout "media/$element.bst" \
+            --deps none \
+            --directory "artifacts/buildstream-$element"
+        done
         for element in xorgproto xtrans libxshmfence xcb-proto libxau libxdmcp libxcb libx11 libxext libxfixes libxrender libxcursor libxi libxxf86vm; do
           buildstream/bst artifact checkout "x11/$element.bst" \
             --deps none \
@@ -397,6 +404,21 @@ jobs:
         strings "$sdl" | grep -qx 'libasound.so'
         strings "$sdl" | grep -q 'libX11.so'
         test ! -e artifacts/buildstream-sdl2/usr/lib/libasound.so
+
+        gst=artifacts/buildstream-gstreamer/usr/lib/libgstreamer-1.0.so
+        gstbase=artifacts/buildstream-gstreamer/usr/lib/libgstbase-1.0.so
+        test -f "$gst"
+        test -f "$gstbase"
+        readelf -Ws "$gst" | grep -q 'GLOBAL.* gst_init$'
+        readelf -dW "$gst" | grep -q 'NEEDED.*libglib-2.0.so'
+        test ! -e artifacts/buildstream-gstreamer/usr/lib/libglib-2.0.so
+
+        for lib in app audio video tag gl; do
+          dso="artifacts/buildstream-gst-plugins-base/usr/lib/libgst${lib}-1.0.so"
+          test -f "$dso"
+          readelf -dW "$dso" | grep -q 'NEEDED.*libgstreamer-1.0.so'
+        done
+        test ! -e artifacts/buildstream-gst-plugins-base/usr/lib/libgstreamer-1.0.so
 
         test -f artifacts/buildstream-xorgproto/usr/include/X11/Xproto.h
         test -f artifacts/buildstream-xorgproto/usr/share/pkgconfig/xproto.pc
