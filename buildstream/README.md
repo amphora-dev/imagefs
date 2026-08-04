@@ -17,6 +17,7 @@ content-addressed artifact without restoring `staging`, `src` or stamp files.
 - libxshmfence consuming relocated xorgproto
 - portable GMP with separate host GCC and Android NDK compiler roles
 - CMake leaves: Brotli, Expat and PCRE2
+- libpng with PNG16_0/SONAME/LOAD alignment enforcement
 - Nettle/Hogweed over target GMP and minimal ALSA lib
 - Android audio-server ALSA PCM plugin and configuration
 - libxcb plus separately cached xcb-proto, libXau and libXdmcp inputs
@@ -247,7 +248,7 @@ pulling the NDK into its build dependencies.
 
 ## Deliberate limits
 
-- Twenty-eight production packages are migrated; libxcb's three bundled upstream
+- Twenty-nine production packages are migrated; libxcb's three bundled upstream
   inputs are separate BuildStream artifacts. Production `build-all.sh` is
   unchanged.
 - NDK's zip does not preserve executable modes or symlinks through the community
@@ -258,9 +259,6 @@ pulling the NDK into its build dependencies.
   time, but differs from the production CMake recipe.
 - Vulkan CMake package metadata is not generated yet; headers and the registry
   used by current downstream recipes are present.
-- libpng is the next high-risk Autotools package; it remains on the production
-  path until a BuildStream build passes dedicated `PNG16_0`, SONAME and LOAD
-  segment alignment checks.
 - GMP build-time generators use the host SDK GCC while target objects use NDK
   Clang. NDK remains strictly on its supported Android target.
 - SDL2 remains deferred until its undeclared X11 header dependencies are

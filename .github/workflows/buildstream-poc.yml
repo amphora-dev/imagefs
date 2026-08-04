@@ -60,6 +60,7 @@ jobs:
           compress/zlib.bst
           compress/zstd.bst
           compress/brotli.bst
+          compress/libpng.bst
           android/libcxx-shared.bst
           android/android-sysvshm.bst
           android/android-spawn.bst
@@ -110,6 +111,9 @@ jobs:
         buildstream/bst artifact checkout compress/brotli.bst \
           --deps none \
           --directory artifacts/buildstream-brotli
+        buildstream/bst artifact checkout compress/libpng.bst \
+          --deps none \
+          --directory artifacts/buildstream-libpng
         for element in libcxx-shared android-sysvshm android-spawn android-sysv-semaphore libandroid-shmem; do
           buildstream/bst artifact checkout "android/$element.bst" \
             --deps none \
@@ -173,6 +177,15 @@ jobs:
         brotli_dec=$(find artifacts/buildstream-brotli/usr/lib \
           -type f -name 'libbrotlidec.so*' -print -quit)
         readelf -Ws "$brotli_dec" | grep -q 'GLOBAL.* BrotliDecoderDecompress$'
+
+        png=artifacts/buildstream-libpng/usr/lib/libpng16.so.16.44.0
+        test -f "$png"
+        readelf -dW "$png" | grep -q 'SONAME.*libpng16.so.16'
+        readelf -dW "$png" | grep -q 'NEEDED.*libz.so.1'
+        readelf -V "$png" | grep -q 'PNG16_0'
+        readelf -Ws "$png" | grep -q 'png_create_read_struct'
+        test -L artifacts/buildstream-libpng/usr/lib/libpng.so
+        test ! -e artifacts/buildstream-libpng/usr/lib/libz.so
 
         test -f artifacts/buildstream-libcxx-shared/usr/lib/libc++_shared.so
         readelf -dW artifacts/buildstream-libcxx-shared/usr/lib/libc++_shared.so |
