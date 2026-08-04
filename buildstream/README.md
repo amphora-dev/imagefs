@@ -228,6 +228,24 @@ in 439 ms. Mesa keeps its API30 Termux profile, pins both patch sets, verifies
 Zink, rejects Android stub NEEDED entries and enforces one native TLS ABI; its
 warm build takes 466 ms.
 
+## Complete imagefs artifact
+
+`imagefs/staging.bst` composes every package artifact with the merged-usr base
+layout. `imagefs/runtime.bst` applies the production runtime prune policy and
+reasserts Android system-library pointers. `imagefs/package.bst` creates the
+reproducible split `imagefs.txz`.
+
+The locally verified final result is:
+
+- package key: `54af3ec3a6dc46462b1f249205d7d49fa85b2726481c13c806db6c1e90c2878b`
+- runtime tree: 51 MB
+- `imagefs.txz`: 12 MB
+- SHA-256: `a48bdb748d0e9c2b3f12d37ac1e9ef30712cb055af6c36a4c9d2eebf1b6383e0`
+- all required Wine/media/graphics dependencies present
+- optional font/Vulkan/SDL/X input dependencies present
+- all ELF LOAD segments page-congruent
+- Mesa Zink marker/megadriver and Android shm exports valid
+
 The XCB/X11 layer splits the old multi-upstream libxcb recipe into separately
 cached inputs:
 
