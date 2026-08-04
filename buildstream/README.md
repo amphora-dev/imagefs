@@ -136,6 +136,19 @@ the three-package warm build takes 433 ms. CMake target probes are linked
 instead of forced static, preventing host-style false positives such as
 `-lpthreads`.
 
+The next dependency layer adds:
+
+| Element | Key | Checkout | Cold build |
+|---|---|---:|---:|
+| `nettle` | `6d3156ba3c5e9b90ae5024f96b169824696e2ab266cd9758612ae1b358cbcede` | 1.3 MB | 9 s |
+| `alsa-lib` | `4d7526a5b070d96b3899f5fd3bbb3c4bf1e26cbcc0c10adf70d539036b9ad054` | 2.0 MB | 10 s |
+
+Nettle consumes GMP only through `/opt/android-sysroot`; Hogweed has the
+expected `libgmp.so` NEEDED entry without carrying GMP files in its artifact.
+ALSA includes the external plugin headers and `libasound.so.2` compatibility
+link. All Nettle/Hogweed/ALSA/topology DSOs are stripped. Together they resolve
+from warm CAS in 429 ms.
+
 ## Measured result
 
 The validated artifact key is
