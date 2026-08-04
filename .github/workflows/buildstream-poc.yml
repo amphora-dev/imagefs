@@ -300,7 +300,7 @@ jobs:
         x11=artifacts/buildstream-libx11/usr/lib/libX11.so
         test -f "$x11"
         readelf -dW "$x11" | grep -q 'NEEDED.*libxcb.so'
-        readelf -dW "$x11" | grep -q 'NEEDED.*libsysvshm.so'
+        readelf -dW "$x11" | grep -q 'NEEDED.*libandroid-sysvshm.so'
         readelf -Ws "$x11" | grep -q 'GLOBAL.* XOpenDisplay$'
         strings "$x11" | grep -qx 'libXcursor.so'
         test -f artifacts/buildstream-libx11/usr/include/X11/Xlib.h

@@ -158,6 +158,22 @@ It consumes alsa-lib only through the target sysroot, exports
 `_snd_pcm_android_aserver_open`, installs both loader-compatible plugin names
 and carries its `/etc/alsa` configuration without embedding libasound.
 
+The XCB/X11 layer splits the old multi-upstream libxcb recipe into separately
+cached inputs:
+
+| Element | Key | Checkout |
+|---|---|---:|
+| `xcb-proto` | `d9c8b63aae41fe54f00af636e10fd389c740ebe6fb87e4b980a06c71341bff3d` | 1.2 MB |
+| `libXau` | `c95d150997436bd732ea819607f033740e20676fa75ad80497a61cee55fbeae5` | 100 KB |
+| `libXdmcp` | `30eb226dc33a2fc5808e69c2d62413f93f15d5ebe11ac85f490d828be03bb825` | 172 KB |
+| `libxcb` | `8a6cacbadde653d8aa5c327ba55088572447dfa1265e2c3c988636019e2fd962` | 13 MB |
+| `libX11` | `b815e7afc4dd9417af79db601215a09aae6f6d7ee39c7a7f8f2caa57c2803e8e` | 7.7 MB |
+
+Generated Present headers include `xcb_present_pixmap_synced`. libX11 consumes
+libxcb/xtrans/sysvshm from the target sysroot, links
+`libandroid-sysvshm.so`, and retains the unversioned `libXcursor.so` dlopen
+contract. The complete cached X11 graph resolves in 443 ms.
+
 ## Measured result
 
 The validated artifact key is
