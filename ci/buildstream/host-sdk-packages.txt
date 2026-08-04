@@ -1,0 +1,30 @@
+# Host-only build tools. Target headers and libraries must come from
+# /opt/android-sysroot, never from this SDK.
+build-essential
+cmake
+ninja-build
+autoconf
+automake
+libtool
+libtool-bin
+autotools-dev
+pkg-config
+perl
+python3
+python3-pip
+python3-setuptools
+python3-wheel
+python3-mako
+meson
+patch
+file
+rsync
+binutils
+gperf
+flex
+bison
+gettext
+texinfo
+patchelf
+zstd
+libglib2.0-dev-bin

@@ -77,6 +77,14 @@ BuildStream 2.7 docker source rejects the modern OCI index/manifest media types;
 upstream support is still an unmerged change. The small `.deb` overlay uses
 released core/community capabilities instead of vendoring that patch.
 
+`ci/buildstream/build-host-sdk.sh` is the replacement path as the tool set
+grows. It starts from the same SHA-pinned Ubuntu Base, uses apt in a separate
+networked bubblewrap generation step, records the complete dpkg manifest and
+exports a deterministic `imagefs-host-sdk-noble-amd64.tar.xz`. The fixed
+`buildstream-host-sdk` Release is published only from `main`; after its first
+publish, package elements can import one tar+SHA and the 14-source bootstrap
+overlay can be removed.
+
 Host tools remain at sandbox `/`. Android package dependencies are relocated
 with BuildStream's dependency `config.location` to `/opt/android-sysroot`;
 `PKG_CONFIG_SYSROOT_DIR` and `PKG_CONFIG_LIBDIR` point only there. The
