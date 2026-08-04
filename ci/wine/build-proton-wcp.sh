@@ -86,6 +86,7 @@ mkdir wine-tools
   unset DLLTOOL PKG_CONFIG_PATH PKG_CONFIG_LIBDIR ACLOCAL_PATH
   unset CPPFLAGS CFLAGS CXXFLAGS LDFLAGS
   ../configure \
+    --enable-archs=x86_64 \
     --without-x \
     --without-gstreamer \
     --without-vulkan \
