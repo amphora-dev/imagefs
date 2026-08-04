@@ -15,6 +15,10 @@ sources:
   url: khronos:Vulkan-Headers/archive/refs/tags/v1.4.313.tar.gz
   ref: f3298b8dc620530493296759858a69b622f98ececa0e8c75488ad2000778148f
 
+environment:
+  CC: /usr/bin/cc
+  CXX: /usr/bin/c++
+
 config:
   configure-commands:
   - |
