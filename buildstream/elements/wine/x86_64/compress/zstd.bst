@@ -33,7 +33,7 @@ config:
     # Huffman decoder and must not enter this x86_64 build.
     test "$(printf '%s\n' "$sources" | grep -c .)" -eq 32
     "$CC" -O3 -fPIC -fvisibility=hidden \
-      -DZSTD_MULTITHREAD -DZSTD_LEGACY_SUPPORT=0 \
+      -DZSTD_MULTITHREAD -DZSTD_LEGACY_SUPPORT=0 -DZSTD_DISABLE_ASM \
       -Ilib -Ilib/common \
       -shared -Wl,-soname,libzstd.so.1 -Wl,-rpath,/usr/lib \
       $sources -o libzstd.so.1.5.6

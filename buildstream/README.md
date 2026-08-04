@@ -38,8 +38,8 @@ libadrenotools source、目标依赖和 NDK 放入同一 sandbox，再调用
 `ci/wrapper/build-tzst.sh` 完成 ABI 校验与 TZST 打包。
 
 Proton Wine 是独立 x86_64 L1 artifact：Unix ELF 使用 NDK r29/API35，
-x86_64/i386 PE 使用 LLVM-MinGW；固定 Termux x86_64 sysroot 与 prefixPack
-均作为 SHA-pinned source 参与 artifact key。
+x86_64/i386 PE 使用 LLVM-MinGW；其 132MB 开发 sysroot 由独立 x86_64
+package 子图从源码构建，prefixPack 作为 SHA-pinned source 参与 artifact key。
 
 ## Commands
 
