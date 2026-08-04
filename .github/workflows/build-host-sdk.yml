@@ -44,7 +44,10 @@ jobs:
 
     - name: Verify host SDK
       run: |
-        sha256sum -c artifacts/imagefs-host-sdk-noble-amd64.tar.xz.sha256
+        (
+          cd artifacts
+          sha256sum -c imagefs-host-sdk-noble-amd64.tar.xz.sha256
+        )
         tar -tJf artifacts/imagefs-host-sdk-noble-amd64.tar.xz >/dev/null
         tar -xOJf artifacts/imagefs-host-sdk-noble-amd64.tar.xz \
           ./usr/share/imagefs-host-sdk/dpkg-manifest.txt |

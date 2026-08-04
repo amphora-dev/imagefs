@@ -85,6 +85,12 @@ exports a deterministic `imagefs-host-sdk-noble-amd64.tar.xz`. The fixed
 publish, package elements can import one tar+SHA and the 14-source bootstrap
 overlay can be removed.
 
+The generator is reproducible across the local Cloud VM and GitHub runner:
+both produced a 131 MB archive with SHA-256
+`8f51c84c396969e4dd0383f1d281bf8270fde251e0427326755fa1bc5d0ba9c1`.
+`host-sdk.lock` enforces this result, so an apt repository update fails closed
+until the package manifest and lock are reviewed together.
+
 Host tools remain at sandbox `/`. Android package dependencies are relocated
 with BuildStream's dependency `config.location` to `/opt/android-sysroot`;
 `PKG_CONFIG_SYSROOT_DIR` and `PKG_CONFIG_LIBDIR` point only there. The

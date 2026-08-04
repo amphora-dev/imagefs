@@ -4,13 +4,18 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 PACKAGES_FILE="${HOST_SDK_PACKAGES_FILE:-$REPO_ROOT/ci/buildstream/host-sdk-packages.txt}"
+LOCK_FILE="${HOST_SDK_LOCK_FILE:-$REPO_ROOT/ci/buildstream/host-sdk.lock}"
 OUTPUT_DIR="${OUTPUT_DIR:-$REPO_ROOT/artifacts}"
 CACHE_DIR="${HOST_SDK_DOWNLOAD_DIR:-$HOME/.cache/imagefs-host-sdk}"
 BASE_NAME="ubuntu-base-24.04.4-base-amd64.tar.gz"
 BASE_URL="https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/$BASE_NAME"
-BASE_SHA256="c1e67ef7b17a6300e136118bd1dc04725009cb376c1aad10abcf8cd453628d58"
 SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-1770683160}"
-SDK_NAME="imagefs-host-sdk-noble-amd64.tar.xz"
+
+# shellcheck source=/dev/null
+source "$LOCK_FILE"
+: "${SDK_NAME:?missing SDK_NAME in $LOCK_FILE}"
+: "${SDK_SHA256:?missing SDK_SHA256 in $LOCK_FILE}"
+: "${UBUNTU_BASE_SHA256:?missing UBUNTU_BASE_SHA256 in $LOCK_FILE}"
 
 for tool in bwrap curl sha256sum tar xz; do
     command -v "$tool" >/dev/null || {
@@ -29,10 +34,10 @@ mapfile -t packages < <(
 
 mkdir -p "$CACHE_DIR" "$OUTPUT_DIR"
 base_archive="$CACHE_DIR/$BASE_NAME"
-if ! printf '%s  %s\n' "$BASE_SHA256" "$base_archive" | sha256sum -c - >/dev/null 2>&1; then
+if ! printf '%s  %s\n' "$UBUNTU_BASE_SHA256" "$base_archive" | sha256sum -c - >/dev/null 2>&1; then
     rm -f "$base_archive"
     curl -fsSL --retry 3 "$BASE_URL" -o "$base_archive"
-    printf '%s  %s\n' "$BASE_SHA256" "$base_archive" | sha256sum -c -
+    printf '%s  %s\n' "$UBUNTU_BASE_SHA256" "$base_archive" | sha256sum -c -
 fi
 
 work="$(mktemp -d)"
@@ -91,7 +96,14 @@ tar \
     -C "$rootfs" -cf - . |
     xz -T0 -6 > "$archive"
 
-sha256sum "$archive" | tee "$archive.sha256"
+actual_sha256="$(sha256sum "$archive" | awk '{print $1}')"
+if [ "$actual_sha256" != "$SDK_SHA256" ]; then
+    echo "host SDK drift: expected $SDK_SHA256, got $actual_sha256" >&2
+    echo "Review dpkg manifest and update host-sdk.lock intentionally." >&2
+    exit 1
+fi
+printf '%s  %s\n' "$actual_sha256" "$(basename "$archive")" |
+    tee "$archive.sha256"
 cp "$rootfs/usr/share/imagefs-host-sdk/dpkg-manifest.txt" \
     "$OUTPUT_DIR/imagefs-host-sdk-packages.txt"
 du -h "$archive"
