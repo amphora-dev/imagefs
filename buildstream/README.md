@@ -99,9 +99,11 @@ exports a deterministic `imagefs-host-sdk-noble-amd64.tar.xz`. The fixed
 
 The generator is reproducible across the local Cloud VM and GitHub runner:
 both produced a 131 MB archive with SHA-256
-`8f51c84c396969e4dd0383f1d281bf8270fde251e0427326755fa1bc5d0ba9c1`.
+`0f0d976d343779286c6b71ac2de4c6c606bdb70d8ef5c0867d6a8022dd6fc3f5`.
 `host-sdk.lock` enforces this result, so an apt repository update fails closed
 until the package manifest and lock are reviewed together.
+Meson 1.11.2 is installed from a pinned PyPI version and recorded separately in
+the SDK pip manifest.
 
 Host tools remain at sandbox `/`. Android package dependencies are relocated
 with BuildStream's dependency `config.location` to `/opt/android-sysroot`;
