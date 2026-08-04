@@ -281,12 +281,16 @@ Two more source artifacts are now covered:
 | Element | Key | Checkout |
 |---|---|---:|
 | `libandroid-shmem` | `7f8fc23bd7c3144acfcd189ce3ea711e406aa59fd752cd888f71e34f0bc424c6` | 28 KB |
-| `vulkan-headers` | `bb5165e5edf091ca2c00cb6bd8273cc43ebbb65186ef52c6726046d26fdf2083` | 32 MB |
+| `vulkan-headers` | `d2f436a369d6a08a9e0ffb541e07785f2c1e36f9ad027a238958b43c84b80927` | 32 MB |
+| `libdrm` | `f7d27250d3ca0c7a82b084cdb481087e7064ed9cc55ddc97d0c2c52532c4d38b` | 716 KB |
+| `vulkan-loader` | `aca2e17c7b57d69ecb771f8b730fd10a62151930741ca424a69df172bad3b368` | 560 KB |
 
 `libandroid-shmem` pins both the full upstream commit and GitHub archive
 SHA-256, exports the expected `libandroid_shm*` ABI, and deliberately omits the
 polluting `sys/shm.h`. Vulkan-Headers publishes its headers and registry without
-pulling the NDK into its build dependencies.
+pulling the NDK into its build dependencies. Its host-CMake install also
+provides the config metadata consumed by Vulkan-Loader. libdrm and the loader
+resolve together from warm CAS in 419 ms.
 
 ## Deliberate limits
 
@@ -299,8 +303,6 @@ pulling the NDK into its build dependencies.
 - zstd is linked from its upstream library source set without CMake. This keeps
   host tools declared (shell/coreutils + NDK only) and preserves SONAME at link
   time, but differs from the production CMake recipe.
-- Vulkan CMake package metadata is not generated yet; headers and the registry
-  used by current downstream recipes are present.
 - GMP build-time generators use the host SDK GCC while target objects use NDK
   Clang. NDK remains strictly on its supported Android target.
 - SDL2 remains deferred until its undeclared X11 header dependencies are

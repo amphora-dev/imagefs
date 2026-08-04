@@ -257,7 +257,8 @@ jobs:
         vulkan=artifacts/buildstream-vulkan-loader/usr/lib/libvulkan.so
         test -f "$vulkan"
         readelf -Ws "$vulkan" | grep -q 'GLOBAL.* vkGetInstanceProcAddr$'
-        readelf -dW "$vulkan" | grep -q 'NEEDED.*libxcb.so'
+        strings "$vulkan" | grep -q 'VK_KHR_xcb_surface'
+        strings "$vulkan" | grep -q 'VK_KHR_xlib_surface'
         test ! -e artifacts/buildstream-vulkan-loader/usr/lib/libxcb.so
 
         ffi=artifacts/buildstream-libffi/usr/lib/libffi.so
