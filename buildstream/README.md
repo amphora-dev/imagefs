@@ -14,6 +14,7 @@ content-addressed artifact without restoring `staging`, `src` or stamp files.
 - Termux `libandroid-shmem` runtime and Vulkan headers/registry artifacts
 - libffi as the first standard Autotools cross-compiled artifact
 - xorgproto/xtrans target metadata and static GNU libiconv
+- portable GMP and libxshmfence consuming relocated xorgproto
 - GitHub Actions: persists BuildStream's content-addressed store
 
 The package outputs contain only their own:
@@ -154,7 +155,7 @@ pulling the NDK into its build dependencies.
 
 ## Deliberate limits
 
-- Twelve leaf packages are migrated; production `build-all.sh` is unchanged.
+- Fourteen packages are migrated; production `build-all.sh` is unchanged.
 - NDK's zip does not preserve executable modes or symlinks through the community
   source plugin, so the toolchain element restores both before publishing its
   artifact. This matters for LLVM multicall tools such as `llvm-strip`.
