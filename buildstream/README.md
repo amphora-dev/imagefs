@@ -24,6 +24,7 @@ content-addressed artifact without restoring `staging`, `src` or stamp files.
 - OpenSSL and GnuTLS/Hogweed crypto runtime layer
 - minimal libdrm Meson artifact for the graphics stack
 - Vulkan loader with XCB/Xlib WSI over the target X11 graph
+- SDL2 Linux/X11 profile over target ALSA and completed X11 headers
 - Nettle/Hogweed over target GMP and minimal ALSA lib
 - Android audio-server ALSA PCM plugin and configuration
 - libxcb plus separately cached xcb-proto, libXau and libXdmcp inputs
@@ -294,7 +295,7 @@ resolve together from warm CAS in 419 ms.
 
 ## Deliberate limits
 
-- Thirty-six production packages are migrated; libxcb's three bundled upstream
+- Thirty-seven production packages are migrated; libxcb's three bundled upstream
   inputs are separate BuildStream artifacts. Production `build-all.sh` is
   unchanged.
 - NDK's zip does not preserve executable modes or symlinks through the community
@@ -305,5 +306,3 @@ resolve together from warm CAS in 419 ms.
   time, but differs from the production CMake recipe.
 - GMP build-time generators use the host SDK GCC while target objects use NDK
   Clang. NDK remains strictly on its supported Android target.
-- SDL2 remains deferred until its undeclared X11 header dependencies are
-  represented in the BuildStream graph.

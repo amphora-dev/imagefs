@@ -72,6 +72,7 @@ jobs:
           crypto/nettle.bst
           audio/alsa-lib.bst
           audio/alsa-android-aserver.bst
+          media/sdl2.bst
           text/libffi.bst
           text/libiconv.bst
           text/libexpat.bst
@@ -172,6 +173,9 @@ jobs:
         buildstream/bst artifact checkout audio/alsa-android-aserver.bst \
           --deps none \
           --directory artifacts/buildstream-alsa-android-aserver
+        buildstream/bst artifact checkout media/sdl2.bst \
+          --deps none \
+          --directory artifacts/buildstream-sdl2
         for element in xorgproto xtrans libxshmfence xcb-proto libxau libxdmcp libxcb libx11 libxext libxfixes libxrender libxcursor libxi libxxf86vm; do
           buildstream/bst artifact checkout "x11/$element.bst" \
             --deps none \
@@ -385,6 +389,14 @@ jobs:
         test -L artifacts/buildstream-alsa-android-aserver/usr/lib/alsa-lib/libasound_module_pcm_android_aserver.so
         test -f artifacts/buildstream-alsa-android-aserver/etc/alsa/conf.d/android_aserver.conf
         test ! -e artifacts/buildstream-alsa-android-aserver/usr/lib/libasound.so
+
+        sdl=$(find artifacts/buildstream-sdl2/usr/lib \
+          -type f -name 'libSDL2.so*' -print -quit)
+        test -n "$sdl"
+        readelf -Ws "$sdl" | grep -q 'GLOBAL.* SDL_Init$'
+        strings "$sdl" | grep -q 'libasound.so.2'
+        strings "$sdl" | grep -q 'libX11.so'
+        test ! -e artifacts/buildstream-sdl2/usr/lib/libasound.so
 
         test -f artifacts/buildstream-xorgproto/usr/include/X11/Xproto.h
         test -f artifacts/buildstream-xorgproto/usr/share/pkgconfig/xproto.pc
