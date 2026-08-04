@@ -157,6 +157,18 @@ LOAD page congruence. FreeType's Meson build records target zlib,
 libpng16 and Brotli NEEDED entries without carrying those dependencies. Their
 warm build takes 432 ms.
 
+The upper text layer is:
+
+| Element | Key | Checkout | Cold package build |
+|---|---|---:|---:|
+| `fontconfig` | `fde64b4e8f7ffb79a1a8e0bfe438bcc30b70d04e75fbc704ca9f3a954751b9b6` | 888 KB | ~6 s |
+| `glib` | `f71063e0d2dee146d3f68d278f204e10bb0076d3baa5042d3e5501af86d5b5bf` | 20 MB | 25 s |
+
+GLib pins proxy-libintl as an explicit offline source, applies the known Bionic
+frexp/frexpl cross result, and strips all six GLib DSOs plus `libintl.so`.
+Fontconfig installs merged-usr-compatible `/usr/etc/fonts` paths. Their warm
+build takes 438 ms.
+
 The next dependency layer adds:
 
 | Element | Key | Checkout | Cold build |
