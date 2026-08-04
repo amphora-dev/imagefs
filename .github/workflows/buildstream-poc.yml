@@ -246,6 +246,7 @@ jobs:
         test -f artifacts/buildstream-vulkan-headers/usr/include/vulkan/vulkan.h
         test -f artifacts/buildstream-vulkan-headers/usr/include/vk_video/vulkan_video_codecs_common.h
         test -f artifacts/buildstream-vulkan-headers/usr/share/vulkan/registry/vk.xml
+        test -f artifacts/buildstream-vulkan-headers/usr/share/cmake/VulkanHeaders/VulkanHeadersConfig.cmake
 
         drm=artifacts/buildstream-libdrm/usr/lib/libdrm.so
         test -f "$drm"
