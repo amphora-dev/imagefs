@@ -55,8 +55,8 @@ Only **positive** `paths:` (no `paths-ignore`). Anything else → **Actions → 
 | Workflow | Auto (`push` / `pull_request`) | Manual |
 |----------|--------------------------------|--------|
 | imagefs | `buildstream/**` `project.conf` `ci/buildstream/**` + legacy packages/lib/vendor/root scripts + own workflow file | `workflow_dispatch` (`force_publish`) |
-| box64 | `ci/box64/**` `vendor/box64-patches/**` + own workflow file | `workflow_dispatch` (`box64_ref` / `force`) |
-| wrapper | `ci/wrapper/**` `vendor/wrapper-patches/**` (+ zstd-patches via staging recipes) X11/drm/sysvshm/zlib/zstd + own workflow | `workflow_dispatch` (`mesa_ref` / `force`) |
+| box64 | BuildStream L1 element + `ci/box64/**` `vendor/box64-patches/**` + own workflow | `workflow_dispatch` (`box64_ref` / `force`; custom ref uses legacy fallback) |
+| wrapper | BuildStream L1 element + `ci/wrapper/**` `vendor/wrapper-patches/**` X11/drm/sysvshm staging inputs + own workflow | `workflow_dispatch` (`mesa_ref` / `force`; custom ref uses legacy fallback) |
 
 Not on the allow-list (docs, shared `ci/setup|gate|publish|verify` edits that don't touch leaf paths, actions, README): edit freely; rebuild when you need it via dispatch.
 No schedule. Fixed Release tags remain `amphora` / `box64` / `wrapper` (not git version tags).

@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       mesa_ref:
-        description: "mesa git ref (empty = MESA_DEFAULT_REF in ci/upstream.sh)"
+        description: "Custom Mesa ref (empty = pinned BuildStream source)"
         required: false
         default: ""
       force:
@@ -30,6 +30,10 @@ on:
       - "lib/util.sh"
       - "vendor/wrapper-patches/**"
       - "vendor/zstd-patches/**"
+      - "buildstream/elements/l1/wrapper-tzst.bst"
+      - "buildstream/elements/base/host-sdk-autotools.bst"
+      - "project.conf"
+      - "ci/setup/install-buildstream.sh"
       - "packages/x11/**"
       - "packages/graphics/libdrm.sh"
       - "packages/android/android-sysvshm.sh"
@@ -61,6 +65,31 @@ jobs:
       - uses: ./.github/actions/setup-ndk-build
         with:
           deps: wrapper
+
+      - name: Install BuildStream sandbox dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            apparmor-profiles apparmor-utils bubblewrap fuse3 lzip patch \
+            python3-venv xz-utils
+          sudo install -m 0644 \
+            /usr/share/apparmor/extra-profiles/bwrap-userns-restrict \
+            /etc/apparmor.d/bwrap-userns-restrict
+          sudo apparmor_parser -r /etc/apparmor.d/bwrap-userns-restrict
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/buildstream
+          key: buildstream-wrapper-v1-${{ runner.os }}-${{ hashFiles('project.conf', 'buildstream/elements/l1/wrapper-tzst.bst', 'buildstream/elements/base/host-sdk-autotools.bst', 'ci/wrapper/**', 'vendor/wrapper-patches/**') }}
+          restore-keys: |
+            buildstream-wrapper-v1-${{ runner.os }}-
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/imagefs-buildstream/tools
+          key: buildstream-tools-v3-${{ runner.os }}-bst-2.7.0-core-plugins-2.7.0-community-2.3.1-buildbox-1.4.15
+
+      - run: bash ci/setup/install-buildstream.sh
 
       # Wrapper staging uses the normal package recipes. Cache only their
       # validated source archives, never extracted source/sysroot/stamps.
@@ -94,7 +123,16 @@ jobs:
           SKIP_STAGING: ${{ github.event_name == 'workflow_dispatch' && inputs.skip_staging && '1' || '0' }}
         run: |
           mkdir -p "$BUILD_DIR" "$OUTPUT_DIR" "$CCACHE_DIR"
-          bash ci/wrapper/build-tzst.sh
+          if [ -n "${{ inputs.mesa_ref || '' }}" ]; then
+            bash ci/wrapper/build-tzst.sh
+          else
+            rm -rf /tmp/buildstream-wrapper
+            buildstream/bst build l1/wrapper-tzst.bst
+            buildstream/bst artifact checkout l1/wrapper-tzst.bst \
+              --deps none \
+              --directory /tmp/buildstream-wrapper
+            cp /tmp/buildstream-wrapper/artifacts/* artifacts/
+          fi
           # shellcheck disable=SC1091
           source artifacts/wrapper-tzst.env
           {

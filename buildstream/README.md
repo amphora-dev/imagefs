@@ -28,6 +28,7 @@ an isolated, content-addressed artifact without restoring shared `staging`,
 - GStreamer core/base Wine media runtime libraries
 - Mesa desktop GL/EGL with Zink + softpipe and native TLS enforcement
 - complete merged-usr staging/runtime composition and reproducible imagefs.txz
+- independent Box64 WCP and Pipetto wrapper TZST L1 artifacts
 - Nettle/Hogweed over target GMP and minimal ALSA lib
 - Android audio-server ALSA PCM plugin and configuration
 - libxcb plus separately cached xcb-proto, libXau and libXdmcp inputs
