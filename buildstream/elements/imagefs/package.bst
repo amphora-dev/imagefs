@@ -3,7 +3,8 @@ kind: manual
 description: Reproducible imagefs.txz deployment artifact.
 
 depends:
-- filename: base/host-sdk-autotools.bst
+- filename: host/noble-amd64.bst
+  junction: buildstream-sdk.bst
   type: build
 - filename: imagefs/runtime.bst
   type: build

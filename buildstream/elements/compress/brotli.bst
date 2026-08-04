@@ -4,9 +4,11 @@ description: |
   Brotli 1.1.0 shared libraries for Android/Bionic.
 
 depends:
-- filename: base/host-sdk-autotools.bst
+- filename: host/noble-amd64.bst
+  junction: buildstream-sdk.bst
   type: build
-- filename: toolchain/android-ndk-r29.bst
+- filename: toolchains/android-ndk-r29.bst
+  junction: buildstream-sdk.bst
   type: build
 
 sources:

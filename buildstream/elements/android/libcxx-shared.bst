@@ -7,9 +7,11 @@ description: |
   while publishing only the target runtime library.
 
 depends:
-- filename: base/ubuntu.bst
+- filename: host/noble-amd64.bst
+  junction: buildstream-sdk.bst
   type: build
-- filename: toolchain/android-ndk-r29.bst
+- filename: toolchains/android-ndk-r29.bst
+  junction: buildstream-sdk.bst
   type: build
 
 config:

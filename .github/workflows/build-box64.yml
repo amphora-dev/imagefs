@@ -25,7 +25,7 @@ on:
       - "lib/util.sh"
       - "vendor/box64-patches/**"
       - "buildstream/elements/l1/box64-wcp.bst"
-      - "buildstream/elements/base/host-sdk-autotools.bst"
+      - "buildstream/elements/buildstream-sdk.bst"
       - "project.conf"
       - "ci/setup/install-buildstream.sh"
       - ".github/workflows/build-box64.yml"
@@ -57,7 +57,7 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ~/.cache/buildstream
-          key: buildstream-box64-v1-${{ runner.os }}-${{ hashFiles('project.conf', 'buildstream/elements/l1/box64-wcp.bst', 'buildstream/elements/base/host-sdk-autotools.bst', 'vendor/box64-patches/**') }}
+          key: buildstream-box64-v2-${{ runner.os }}-${{ hashFiles('project.conf', 'buildstream/elements/l1/box64-wcp.bst', 'buildstream/elements/buildstream-sdk.bst', 'vendor/box64-patches/**') }}
           restore-keys: |
             buildstream-box64-v1-${{ runner.os }}-
 

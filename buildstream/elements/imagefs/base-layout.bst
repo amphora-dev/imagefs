@@ -4,7 +4,8 @@ description: |
   merged-usr imagefs skeleton and Android system-library pointers.
 
 depends:
-- filename: base/host-sdk-autotools.bst
+- filename: host/noble-amd64.bst
+  junction: buildstream-sdk.bst
   type: build
 
 config:

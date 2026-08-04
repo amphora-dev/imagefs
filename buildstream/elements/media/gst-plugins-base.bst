@@ -4,9 +4,16 @@ description: |
   GStreamer Base 1.26.1 libraries required by Wine, with GLES2/EGL and ALSA.
 
 depends:
-- filename: base/host-sdk-autotools.bst
+- filename: profiles/android-cross-files.bst
+  junction: buildstream-sdk.bst
   type: build
-- filename: toolchain/android-ndk-r29.bst
+  config:
+    location: /opt/amphora-sdk/profiles
+- filename: host/noble-amd64.bst
+  junction: buildstream-sdk.bst
+  type: build
+- filename: toolchains/android-ndk-r29.bst
+  junction: buildstream-sdk.bst
   type: build
 - filename: media/gstreamer.bst
   type: all
@@ -29,9 +36,6 @@ sources:
 - kind: tar
   url: gstreamer:gst-plugins-base/gst-plugins-base-1.26.1.tar.xz
   ref: 659553636f84dcf388cad5cf6530e02b0b2d3dc450e76199287ba9db6a6c5226
-- kind: local
-  path: buildstream/files/meson-aarch64-android26.ini
-  directory: .bst
 
 variables:
   meson-local: >-

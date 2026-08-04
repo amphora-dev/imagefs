@@ -4,7 +4,8 @@ description: |
   Assert host Autotools and Android target artifacts occupy separate roots.
 
 depends:
-- filename: base/host-sdk-autotools.bst
+- filename: host/noble-amd64.bst
+  junction: buildstream-sdk.bst
   type: build
 - filename: compress/zlib.bst
   type: build

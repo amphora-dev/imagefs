@@ -3,9 +3,11 @@ kind: autotools
 description: libXext 1.3.6 for Android/Bionic.
 
 depends:
-- filename: base/host-sdk-autotools.bst
+- filename: host/noble-amd64.bst
+  junction: buildstream-sdk.bst
   type: build
-- filename: toolchain/android-ndk-r29.bst
+- filename: toolchains/android-ndk-r29.bst
+  junction: buildstream-sdk.bst
   type: build
 - filename: x11/xorgproto.bst
   type: build

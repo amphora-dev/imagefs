@@ -4,9 +4,16 @@ description: |
   GStreamer 1.26.1 core runtime for Wine's winegstreamer bridge.
 
 depends:
-- filename: base/host-sdk-autotools.bst
+- filename: profiles/android-cross-files.bst
+  junction: buildstream-sdk.bst
   type: build
-- filename: toolchain/android-ndk-r29.bst
+  config:
+    location: /opt/amphora-sdk/profiles
+- filename: host/noble-amd64.bst
+  junction: buildstream-sdk.bst
+  type: build
+- filename: toolchains/android-ndk-r29.bst
+  junction: buildstream-sdk.bst
   type: build
 - filename: text/glib.bst
   type: all
@@ -21,9 +28,6 @@ sources:
 - kind: tar
   url: gstreamer:gstreamer/gstreamer-1.26.1.tar.xz
   ref: 30a4c4a5e48345583eb596aa265d0f53c0feb93011d93a6aaa70dd6e3c519dc4
-- kind: local
-  path: buildstream/files/meson-aarch64-android26.ini
-  directory: .bst
 
 variables:
   meson-local: >-

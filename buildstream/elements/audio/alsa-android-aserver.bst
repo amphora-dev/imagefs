@@ -4,9 +4,11 @@ description: |
   Winlator Android audio-server ALSA PCM plugin and runtime configuration.
 
 depends:
-- filename: base/host-sdk-autotools.bst
+- filename: host/noble-amd64.bst
+  junction: buildstream-sdk.bst
   type: build
-- filename: toolchain/android-ndk-r29.bst
+- filename: toolchains/android-ndk-r29.bst
+  junction: buildstream-sdk.bst
   type: build
 - filename: audio/alsa-lib.bst
   type: all

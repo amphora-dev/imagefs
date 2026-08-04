@@ -4,18 +4,22 @@ description: |
   libdrm 2.4.124 minimal Android/Bionic build.
 
 depends:
-- filename: base/host-sdk-autotools.bst
+- filename: profiles/android-cross-files.bst
+  junction: buildstream-sdk.bst
   type: build
-- filename: toolchain/android-ndk-r29.bst
+  config:
+    location: /opt/amphora-sdk/profiles
+- filename: host/noble-amd64.bst
+  junction: buildstream-sdk.bst
+  type: build
+- filename: toolchains/android-ndk-r29.bst
+  junction: buildstream-sdk.bst
   type: build
 
 sources:
 - kind: tar
   url: dri:libdrm/libdrm-2.4.124.tar.xz
   ref: ac36293f61ca4aafaf4b16a2a7afff312aa4f5c37c9fbd797de9e3c0863ca379
-- kind: local
-  path: buildstream/files/meson-aarch64-android26.ini
-  directory: .bst
 
 variables:
   meson-local: >-

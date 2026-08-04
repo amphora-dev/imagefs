@@ -31,7 +31,7 @@ on:
       - "vendor/wrapper-patches/**"
       - "vendor/zstd-patches/**"
       - "buildstream/elements/l1/wrapper-tzst.bst"
-      - "buildstream/elements/base/host-sdk-autotools.bst"
+      - "buildstream/elements/buildstream-sdk.bst"
       - "project.conf"
       - "ci/setup/install-buildstream.sh"
       - "packages/x11/**"
@@ -80,7 +80,7 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ~/.cache/buildstream
-          key: buildstream-wrapper-v1-${{ runner.os }}-${{ hashFiles('project.conf', 'buildstream/elements/l1/wrapper-tzst.bst', 'buildstream/elements/base/host-sdk-autotools.bst', 'ci/wrapper/**', 'vendor/wrapper-patches/**') }}
+          key: buildstream-wrapper-v2-${{ runner.os }}-${{ hashFiles('project.conf', 'buildstream/elements/l1/wrapper-tzst.bst', 'buildstream/elements/buildstream-sdk.bst', 'ci/wrapper/**', 'vendor/wrapper-patches/**') }}
           restore-keys: |
             buildstream-wrapper-v1-${{ runner.os }}-
 

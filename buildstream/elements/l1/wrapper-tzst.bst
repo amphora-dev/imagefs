@@ -5,9 +5,11 @@ description: |
   7eae6442f5d8a7414e66adc0d42857c143f20fa9.
 
 depends:
-- filename: base/host-sdk-autotools.bst
+- filename: host/noble-amd64.bst
+  junction: buildstream-sdk.bst
   type: build
-- filename: toolchain/android-ndk-r29.bst
+- filename: toolchains/android-ndk-r29.bst
+  junction: buildstream-sdk.bst
   type: build
 - { filename: compress/zlib.bst, type: build, config: { location: /tmp/imagefs-build/staging } }
 - { filename: compress/zstd.bst, type: build, config: { location: /tmp/imagefs-build/staging } }

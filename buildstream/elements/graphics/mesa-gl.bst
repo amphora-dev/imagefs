@@ -7,9 +7,16 @@ description: |
   normal API26 Android packages and fails closed on driver/TLS/stub ABI drift.
 
 depends:
-- filename: base/host-sdk-autotools.bst
+- filename: profiles/android-cross-files.bst
+  junction: buildstream-sdk.bst
   type: build
-- filename: toolchain/android-ndk-r29.bst
+  config:
+    location: /opt/amphora-sdk/profiles
+- filename: host/noble-amd64.bst
+  junction: buildstream-sdk.bst
+  type: build
+- filename: toolchains/android-ndk-r29.bst
+  junction: buildstream-sdk.bst
   type: build
 - filename: compress/zlib.bst
   type: all
@@ -64,17 +71,11 @@ sources:
 - kind: local
   path: vendor/mesa-gl-patches
   directory: .bst/mesa-patches
-- kind: local
-  path: buildstream/files/meson-mesa-api30.ini
-  directory: .bst
-- kind: local
-  path: buildstream/files/meson-native-x86_64.ini
-  directory: .bst
 
 variables:
   meson-global: >-
-    --cross-file=%{build-root}/.bst/meson-mesa-api30.ini
-    --native-file=%{build-root}/.bst/meson-native-x86_64.ini
+    --cross-file=/opt/amphora-sdk/profiles/meson-mesa-api30.ini
+    --native-file=/opt/amphora-sdk/profiles/meson-native-x86_64.ini
     --buildtype=release
   meson-local: >-
     -Db_ndebug=true

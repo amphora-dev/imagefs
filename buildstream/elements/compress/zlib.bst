@@ -7,9 +7,11 @@ description: |
   BuildStream can cache and reuse the package as an isolated artifact.
 
 depends:
-- filename: base/ubuntu.bst
+- filename: host/noble-amd64.bst
+  junction: buildstream-sdk.bst
   type: build
-- filename: toolchain/android-ndk-r29.bst
+- filename: toolchains/android-ndk-r29.bst
+  junction: buildstream-sdk.bst
   type: build
 
 sources:

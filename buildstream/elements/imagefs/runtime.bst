@@ -3,7 +3,8 @@ kind: manual
 description: Runtime-pruned imagefs root assembled from all package artifacts.
 
 depends:
-- filename: base/host-sdk-autotools.bst
+- filename: host/noble-amd64.bst
+  junction: buildstream-sdk.bst
   type: build
 - filename: imagefs/staging.bst
   type: build

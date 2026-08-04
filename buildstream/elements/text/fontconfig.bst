@@ -4,9 +4,16 @@ description: |
   Fontconfig 2.15.0 for Android/Bionic with imagefs runtime paths.
 
 depends:
-- filename: base/host-sdk-autotools.bst
+- filename: profiles/android-cross-files.bst
+  junction: buildstream-sdk.bst
   type: build
-- filename: toolchain/android-ndk-r29.bst
+  config:
+    location: /opt/amphora-sdk/profiles
+- filename: host/noble-amd64.bst
+  junction: buildstream-sdk.bst
+  type: build
+- filename: toolchains/android-ndk-r29.bst
+  junction: buildstream-sdk.bst
   type: build
 - filename: text/freetype.bst
   type: all
@@ -25,9 +32,6 @@ sources:
 - kind: tar
   url: fontconfig:fontconfig-2.15.0.tar.xz
   ref: 63a0658d0e06e0fa886106452b58ef04f21f58202ea02a94c39de0d3335d7c0e
-- kind: local
-  path: buildstream/files/meson-aarch64-android26.ini
-  directory: .bst
 
 variables:
   sysconfdir: /usr/etc

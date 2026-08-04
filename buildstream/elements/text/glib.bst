@@ -7,9 +7,16 @@ description: |
   Bionic result, matching the production MiceWine-derived recipe.
 
 depends:
-- filename: base/host-sdk-autotools.bst
+- filename: profiles/android-cross-files.bst
+  junction: buildstream-sdk.bst
   type: build
-- filename: toolchain/android-ndk-r29.bst
+  config:
+    location: /opt/amphora-sdk/profiles
+- filename: host/noble-amd64.bst
+  junction: buildstream-sdk.bst
+  type: build
+- filename: toolchains/android-ndk-r29.bst
+  junction: buildstream-sdk.bst
   type: build
 - filename: compress/zlib.bst
   type: all
@@ -36,9 +43,6 @@ sources:
   url: proxy-libintl:0.4.tar.gz
   ref: 13ef3eea0a3bc0df55293be368dfbcff5a8dd5f4759280f28e030d1494a5dffb
   directory: subprojects/proxy-libintl
-- kind: local
-  path: buildstream/files/meson-aarch64-android26.ini
-  directory: .bst
 
 variables:
   meson-local: >-

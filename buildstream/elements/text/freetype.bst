@@ -4,9 +4,16 @@ description: |
   FreeType 2.13.3 for Android/Bionic with target zlib, libpng and Brotli.
 
 depends:
-- filename: base/host-sdk-autotools.bst
+- filename: profiles/android-cross-files.bst
+  junction: buildstream-sdk.bst
   type: build
-- filename: toolchain/android-ndk-r29.bst
+  config:
+    location: /opt/amphora-sdk/profiles
+- filename: host/noble-amd64.bst
+  junction: buildstream-sdk.bst
+  type: build
+- filename: toolchains/android-ndk-r29.bst
+  junction: buildstream-sdk.bst
   type: build
 - filename: compress/zlib.bst
   type: all
@@ -25,9 +32,6 @@ sources:
 - kind: tar
   url: freetype:freetype-2.13.3.tar.xz
   ref: 0550350666d427c74daeb85d5ac7bb353acba5f76956395995311a9c6f063289
-- kind: local
-  path: buildstream/files/meson-aarch64-android26.ini
-  directory: .bst
 
 variables:
   meson-local: >-

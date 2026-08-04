@@ -6,8 +6,7 @@ an isolated, content-addressed artifact without restoring shared `staging`,
 
 ## Scope
 
-- Ubuntu Base 24.04.4: glibc sandbox runtime, pinned by SHA-256
-- Android NDK r29: toolchain artifact, pinned by SHA-256
+- shared Amphora Host SDK and Android NDK r29 through a commit-pinned junction
 - zlib 1.3.1 and zstd 1.5.6: independent `aarch64-linux-android26`
   artifacts
 - NDK libc++ runtime plus Winlator shm/spawn/semaphore compatibility artifacts
@@ -45,7 +44,7 @@ The package outputs contain only their own:
 /usr/lib/pkgconfig/{zlib,libzstd}.pc
 ```
 
-The Ubuntu build runtime and NDK are build dependencies and are not copied into
+The shared Host SDK and NDK are build dependencies and are not copied into
 package artifacts.
 
 The project is rooted at the repository `project.conf`, allowing `kind: local`
@@ -70,9 +69,9 @@ buildstream/bst artifact checkout compress/zlib.bst \
   --directory /tmp/buildstream-zlib
 ```
 
-The first run downloads Ubuntu Base (~29 MB) and NDK r29 (~783 MB). Later runs
-reuse source and artifact objects from `~/.cache/buildstream`; if the zlib
-element, source, NDK or base runtime changes, BuildStream computes a different
+The first run downloads the shared Host SDK and NDK r29. Later runs reuse source
+and artifact objects from `~/.cache/buildstream`; if the junction commit,
+package source, NDK or Host SDK changes, BuildStream computes a different
 artifact key instead of mutating an old sysroot.
 
 GitHub runners often have an NDK preinstalled, but bind-mounting it would make
@@ -82,11 +81,11 @@ verified content from CAS.
 
 ## Host SDK and target sysroot
 
-Autotools/CMake/Meson packages use one complete host rootfs from the fixed
-`buildstream-host-sdk` Release. It contains GCC/G++, Autotools, CMake,
-Meson/Ninja, Perl/Python/Mako and graph support tools. BuildStream imports the
-single tar source pinned by SHA-256; the earlier 14-`.deb` bootstrap has been
-removed.
+Autotools/CMake/Meson packages use the complete host rootfs exported by the
+commit-pinned `amphora-dev/buildstream-sdk` junction. It contains GCC/G++,
+Autotools, CMake, Meson/Ninja, Perl/Python/Mako and graph support tools. The same
+junction exports NDK r29 and the Meson cross/native profiles, removing their
+product-local definitions.
 
 We evaluated importing `buildpack-deps:bookworm` first, but the released
 BuildStream 2.7 docker source rejects the modern OCI index/manifest media types;
@@ -94,19 +93,12 @@ upstream support is still an unmerged change. The generated host SDK tar uses
 released core capabilities instead of vendoring that patch or maintaining a
 converted registry image.
 
-`ci/buildstream/build-host-sdk.sh` starts from the SHA-pinned Ubuntu Base, uses
-apt in a separate
-networked bubblewrap generation step, records the complete dpkg manifest and
-exports a deterministic `imagefs-host-sdk-noble-amd64.tar.xz`. The fixed
-`buildstream-host-sdk` Release is published only from `main`.
-
-The generator is reproducible across the local Cloud VM and GitHub runner:
-both produced a 131 MB archive with SHA-256
-`942776693e88cdc95a93e2e9b351e75f3a8be1fddfa1b85d3081787946852af3`.
-`host-sdk.lock` enforces this result, so an apt repository update fails closed
-until the package manifest and lock are reviewed together.
-Meson 1.11.2 is installed from a pinned PyPI version and recorded separately in
-the SDK pip manifest.
+The SDK repository owns generation and publication. Its lock pins Ubuntu Base,
+an Ubuntu package snapshot, the Meson wheel and final archive. The current
+immutable Release is `host-sdk-noble-amd64-20260804`, SHA-256
+`8fc9db6a51633409728a5cb0caa3b0d9e9685e7167c15a2987b3da021eb94918`.
+imagefs pins the SDK repository commit as well, so SDK updates require an
+explicit junction ref change and invalidate affected BuildStream keys.
 
 Host tools remain at sandbox `/`. Android package dependencies are relocated
 with BuildStream's dependency `config.location` to `/opt/android-sysroot`;

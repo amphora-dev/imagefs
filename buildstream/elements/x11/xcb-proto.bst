@@ -7,7 +7,8 @@ description: |
   project-wide Android --host configure argument.
 
 depends:
-- filename: base/host-sdk-autotools.bst
+- filename: host/noble-amd64.bst
+  junction: buildstream-sdk.bst
   type: build
 
 sources:

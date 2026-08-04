@@ -4,9 +4,11 @@ description: |
   API-26 compatibility stubs for posix_spawn and glob.
 
 depends:
-- filename: base/ubuntu.bst
+- filename: host/noble-amd64.bst
+  junction: buildstream-sdk.bst
   type: build
-- filename: toolchain/android-ndk-r29.bst
+- filename: toolchains/android-ndk-r29.bst
+  junction: buildstream-sdk.bst
   type: build
 
 config:
