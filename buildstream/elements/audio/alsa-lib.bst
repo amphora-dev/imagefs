@@ -46,4 +46,6 @@ config:
       ln -s libasound.so "$libdir/libasound.so.2"
     fi
     find "%{install-root}" -type f -name '*.la' -delete
-    find "$libdir" -type f -name 'libasound.so*' -exec "$STRIP" {} +
+    find "$libdir" -type f \
+      \( -name 'libasound.so*' -o -name 'libatopology.so*' \) \
+      -exec "$STRIP" {} +
