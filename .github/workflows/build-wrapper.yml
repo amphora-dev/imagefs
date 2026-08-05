@@ -17,10 +17,18 @@ on:
       - "ci/wrapper/**"
       - "ci/gate/wrapper-build.sh"
       - "vendor/wrapper-patches/**"
+      - "vendor/winlator-bionic/**"
       - "buildstream/elements/**"
+      - "buildstream/recipes/**"
+      - "buildstream/arch-recipes.txt"
+      - "buildstream/sync-arch-elements.py"
       - "project.conf"
       - "ci/setup/install-buildstream.sh"
       - ".github/workflows/build-wrapper.yml"
+    paths-ignore:
+      # Wine x86_64 graph is owned by build-proton-wine; do not rebuild the ICD
+      # when only guest-side packages change.
+      - "buildstream/elements/wine/**"
 
 permissions:
   contents: write
