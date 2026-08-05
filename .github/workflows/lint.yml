@@ -34,10 +34,11 @@ jobs:
       - name: executable bit on entrypoints
         run: |
           test -x buildstream/bst
-          test -x buildstream/sync-wine-x86_64.py
+          test -x buildstream/sync-arch-elements.py
 
-      - name: wine/x86_64 element sync
+      - name: arch recipe sync
         run: |
-          # Shared proto/header packages must not be duplicated under wine/,
-          # and generated leaf wine elements must match their canonical recipes.
-          python3 buildstream/sync-wine-x86_64.py --check
+          # Dual-arch packages are edited under buildstream/recipes/; generated
+          # elements/ and wine/x86_64/ trees must match. Shared proto/header
+          # packages must not be duplicated under wine/.
+          python3 buildstream/sync-arch-elements.py --check

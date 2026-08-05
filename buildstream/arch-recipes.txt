@@ -1,0 +1,25 @@
+# Platform-agnostic recipes under buildstream/recipes/.
+# sync-arch-elements.py emits both:
+#   buildstream/elements/<path>              (imagefs aarch64 / project defaults)
+#   buildstream/elements/wine/x86_64/<path>  (Proton Wine x86_64 overrides)
+compress/brotli.bst
+compress/libpng.bst
+compress/zlib.bst
+crypto/gmp.bst
+crypto/gnutls.bst
+crypto/nettle.bst
+text/libexpat.bst
+text/libffi.bst
+text/libiconv.bst
+text/pcre2.bst
+x11/libx11.bst
+x11/libxau.bst
+x11/libxcb.bst
+x11/libxcursor.bst
+x11/libxdmcp.bst
+x11/libxext.bst
+x11/libxfixes.bst
+x11/libxi.bst
+x11/libxrender.bst
+x11/libxshmfence.bst
+x11/libxxf86vm.bst

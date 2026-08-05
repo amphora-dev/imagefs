@@ -1,0 +1,37 @@
+# Platform-agnostic package recipe. Not a BuildStream element.
+# Edit this file, then run: python3 buildstream/sync-arch-elements.py
+kind: autotools
+
+description: |
+  libXdmcp 1.1.5 for Android/Bionic.
+
+depends:
+- filename: host/noble-amd64.bst
+  junction: buildstream-sdk.bst
+  type: build
+- filename: toolchains/android-ndk-r29.bst
+  junction: buildstream-sdk.bst
+  type: build
+- filename: x11/xorgproto.bst
+  type: build
+  config:
+    location: /opt/android-sysroot
+
+sources:
+- kind: tar
+  url: xorg:lib/libXdmcp-1.1.5.tar.xz
+  ref: d8a5222828c3adab70adf69a5583f1d32eb5ece04304f7f8392b6a353aa2228c
+
+variables:
+  conf-root: "%{build-root}"
+  command-subdir: _build
+  conf-local: >-
+    --enable-shared
+    --disable-static
+
+config:
+  strip-commands:
+  - |
+    find "%{install-root}" -type f -name '*.la' -delete
+    find "%{install-root}%{prefix}/lib" -type f -name 'libXdmcp.so*' \
+      -exec "$STRIP" {} +

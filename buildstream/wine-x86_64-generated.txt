@@ -1,6 +1,0 @@
-# Leaf / near-leaf packages whose wine/x86_64 elements are generated from the
-# canonical aarch64 recipes by buildstream/sync-wine-x86_64.py. Edit the
-# canonical path only, then re-run the sync script.
-compress/brotli.bst
-text/libexpat.bst
-text/pcre2.bst

@@ -33,8 +33,10 @@ stamp。
 
 ```text
 project.conf                         # BuildStream project 与交叉编译默认值
+buildstream/recipes/                 # 平台无关包配方（编辑入口，非 element）
 buildstream/elements/                # package、runtime、L1 artifact 图
 buildstream/elements/buildstream-sdk.bst
+buildstream/sync-arch-elements.py    # recipes → elements + wine/x86_64
 ci/setup/install-buildstream.sh      # 固定 BuildStream/BuildBox 工具
 ci/{gate,publish,verify}/            # 发布门禁与 artifact 验证
 ci/wrapper/build-tzst.sh             # wrapper 元素的 sandbox 内打包器
