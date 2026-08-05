@@ -38,7 +38,7 @@ jobs:
 
       - name: arch recipe sync
         run: |
-          # Dual-arch packages are edited under buildstream/recipes/; generated
-          # elements/ and wine/x86_64/ trees must match. Shared proto/header
-          # packages must not be duplicated under wine/.
+          # Simple dual-arch recipes under buildstream/recipes/; generated
+          # elements must match. Shared proto/header packages must not be
+          # duplicated under wine/. Complex packages are hand-maintained.
           python3 buildstream/sync-arch-elements.py --check
