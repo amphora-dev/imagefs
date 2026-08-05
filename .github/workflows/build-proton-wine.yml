@@ -13,6 +13,8 @@ on:
     - "buildstream/elements/l1/proton-wine-wcp.bst"
     - "buildstream/elements/wine/**"
     - "buildstream/elements/buildstream-sdk.bst"
+    - "vendor/wrapper-patches/**"
+    - "vendor/mesa-gl-patches/**"
     - "ci/wine/**"
     - "ci/gate/wine-build.sh"
     - "ci/verify/proton-wcp.sh"
