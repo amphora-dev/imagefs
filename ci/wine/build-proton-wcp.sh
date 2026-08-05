@@ -59,7 +59,13 @@ export ACLOCAL_PATH="$DEPS/lib/aclocal:$DEPS/share/aclocal"
 export CPPFLAGS="-I$DEPS/include --sysroot=$NDK_TOOLCHAIN/sysroot"
 export CFLAGS="-march=x86-64 -mtune=generic -fPIC -DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES -Wno-declaration-after-statement -Wno-implicit-function-declaration -Wno-int-conversion"
 export CXXFLAGS="$CFLAGS"
-export LDFLAGS="-L$DEPS/lib -Wl,-rpath,/usr/lib -Wl,-z,max-page-size=16384"
+# NDK lld defaults to Android's private DT_ANDROID_RELR tags.  Box64's ELF
+# loader understands the standard DT_RELR tags but not the Android aliases;
+# leaving the default in place silently skips relative relocations and crashes
+# Wine in virtual_init (for example ntdll's free_areas remains 0xd6978 instead
+# of being rebased).  Standard RELR is supported by both Android API 35 and the
+# pinned Box64, while retaining the packed-relocation size benefit.
+export LDFLAGS="-L$DEPS/lib -Wl,-rpath,/usr/lib -Wl,-z,max-page-size=16384 -Wl,--pack-dyn-relocs=relr"
 export FREETYPE_CFLAGS="-I$DEPS/include/freetype2"
 export SDL2_CFLAGS="-I$DEPS/include/SDL2"
 export SDL2_LIBS="-L$DEPS/lib -lSDL2"
