@@ -1,0 +1,56 @@
+kind: autotools
+
+description: |
+  libxcb 1.17.0 for Android/Bionic.
+
+  Protocol XML/Python data and Xau/Xdmcp target libraries are separate,
+  content-addressed dependencies composed under /opt/android-sysroot.
+
+depends:
+- filename: host/noble-amd64.bst
+  junction: buildstream-sdk.bst
+  type: build
+- filename: toolchains/android-ndk-r29.bst
+  junction: buildstream-sdk.bst
+  type: build
+- filename: wine/x86_64/x11/xorgproto.bst
+  type: build
+  config:
+    location: /opt/android-sysroot
+- filename: wine/x86_64/x11/xcb-proto.bst
+  type: build
+  config:
+    location: /opt/android-sysroot
+- filename: wine/x86_64/x11/libxau.bst
+  type: all
+  config:
+    location: /opt/android-sysroot
+- filename: wine/x86_64/x11/libxdmcp.bst
+  type: all
+  config:
+    location: /opt/android-sysroot
+
+sources:
+- kind: tar
+  url: xorg:lib/libxcb-1.17.0.tar.xz
+  ref: 599ebf9996710fea71622e6e184f3a8ad5b43d0e5fa8c4e407123c88a59a6d55
+
+variables:
+  target-triple: x86_64-linux-android35
+  conf-global: --host=x86_64-linux-android
+  conf-root: "%{build-root}"
+  command-subdir: _build
+  conf-local: >-
+    --enable-shared
+    --disable-static
+    --without-xcb-proto-datadir
+
+environment:
+  PYTHON: python3
+
+config:
+  strip-commands:
+  - |
+    find "%{install-root}" -type f -name '*.la' -delete
+    find "%{install-root}%{prefix}/lib" -type f -name 'libxcb*.so*' \
+      -exec "$STRIP" {} +

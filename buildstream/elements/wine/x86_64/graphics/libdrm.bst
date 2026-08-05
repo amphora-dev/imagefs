@@ -1,0 +1,45 @@
+kind: meson
+
+description: |
+  libdrm 2.4.124 minimal Android/Bionic build.
+
+depends:
+- filename: profiles/android-cross-files.bst
+  junction: buildstream-sdk.bst
+  type: build
+  config:
+    location: /opt/amphora-sdk/profiles
+- filename: host/noble-amd64.bst
+  junction: buildstream-sdk.bst
+  type: build
+- filename: toolchains/android-ndk-r29.bst
+  junction: buildstream-sdk.bst
+  type: build
+
+sources:
+- kind: tar
+  url: dri:libdrm/libdrm-2.4.124.tar.xz
+  ref: ac36293f61ca4aafaf4b16a2a7afff312aa4f5c37c9fbd797de9e3c0863ca379
+
+variables:
+  target-triple: x86_64-linux-android35
+  meson-global: "--cross-file=/opt/amphora-sdk/profiles/meson-x86_64-android35.ini --buildtype=release"
+  meson-local: >-
+    -Ddefault_library=shared
+    -Dintel=disabled
+    -Dradeon=disabled
+    -Damdgpu=disabled
+    -Dexynos=disabled
+    -Dfreedreno=disabled
+    -Dvc4=disabled
+    -Dvmwgfx=disabled
+    -Dnouveau=disabled
+    -Dman-pages=disabled
+    -Dvalgrind=disabled
+    -Dtests=false
+
+config:
+  strip-commands:
+  - |
+    find "%{install-root}%{prefix}/lib" -type f -name 'libdrm*.so*' \
+      -exec "$STRIP" {} +

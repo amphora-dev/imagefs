@@ -1,0 +1,50 @@
+kind: meson
+
+description: |
+  FreeType 2.13.3 for Android/Bionic with target zlib, libpng and Brotli.
+
+depends:
+- filename: profiles/android-cross-files.bst
+  junction: buildstream-sdk.bst
+  type: build
+  config:
+    location: /opt/amphora-sdk/profiles
+- filename: host/noble-amd64.bst
+  junction: buildstream-sdk.bst
+  type: build
+- filename: toolchains/android-ndk-r29.bst
+  junction: buildstream-sdk.bst
+  type: build
+- filename: wine/x86_64/compress/zlib.bst
+  type: all
+  config:
+    location: /opt/android-sysroot
+- filename: wine/x86_64/compress/libpng.bst
+  type: all
+  config:
+    location: /opt/android-sysroot
+- filename: wine/x86_64/compress/brotli.bst
+  type: all
+  config:
+    location: /opt/android-sysroot
+
+sources:
+- kind: tar
+  url: freetype:freetype-2.13.3.tar.xz
+  ref: 0550350666d427c74daeb85d5ac7bb353acba5f76956395995311a9c6f063289
+
+variables:
+  target-triple: x86_64-linux-android35
+  meson-global: "--cross-file=/opt/amphora-sdk/profiles/meson-x86_64-android35.ini --buildtype=release"
+  meson-local: >-
+    -Dbrotli=enabled
+    -Dbzip2=disabled
+    -Dharfbuzz=disabled
+    -Dpng=enabled
+    -Dzlib=enabled
+
+config:
+  strip-commands:
+  - |
+    find "%{install-root}%{prefix}/lib" -type f -name 'libfreetype.so*' \
+      -exec "$STRIP" {} +

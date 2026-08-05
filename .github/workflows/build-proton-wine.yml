@@ -92,7 +92,13 @@ jobs:
 
     - name: Verify Proton Wine WCP
       if: steps.gate.outputs.should_build == 'true'
-      run: bash ci/verify/proton-wcp.sh
+      run: |
+        rm -rf /tmp/wine-sysroot
+        buildstream/bst artifact checkout wine/sysroot-x86_64.bst \
+          --deps none \
+          --directory /tmp/wine-sysroot
+        SYSROOT=/tmp/wine-sysroot bash ci/verify/wine-sysroot.sh
+        bash ci/verify/proton-wcp.sh
 
     - uses: actions/upload-artifact@v4
       if: steps.gate.outputs.should_build == 'true'
