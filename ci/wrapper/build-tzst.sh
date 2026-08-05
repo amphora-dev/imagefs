@@ -10,8 +10,9 @@
 # Do NOT mix Termux headers with foreign libs — that produced runtime
 # VK_ERROR_INCOMPATIBLE_DRIVER (-9) in earlier experiments.
 #
-# Link / pack profile (must match a working Termux-style ICD):
-#   - -D__TERMUX__ + patch 0003 → DETECT_OS_ANDROID off (no stub DT_NEEDED)
+# Link / pack profile (Amphora Bionic/Linux ICD):
+#   - -D__AMPHORA__ + patch 0003 → DETECT_OS_ANDROID off (no stub DT_NEEDED)
+#   - -D__TERMUX__ kept as Pipetto compatibility alias for upstream AHB/WSI ifdefs
 #   - never pack android-stub libcutils/liblog/libsync into usr/lib
 #   - self-build libadrenotools + hooks from Mesa subproject (pinned revision;
 #     keep C++ exceptions enabled in the cross file — -fno-exceptions produced
@@ -195,16 +196,17 @@ strip = '$tc/bin/llvm-strip'
 pkg-config = 'pkg-config'
 
 [built-in options]
-# __TERMUX__ unlocks Pipetto AHardwareBuffer / X11 WSI fields and (with patch
-# 0003) keeps DETECT_OS_ANDROID off so we do not DT_NEEDED android-stub libs.
-c_args = ['-I$prefix/include', '-Wno-error', '-D__USE_GNU', '-D__TERMUX__']
-cpp_args = ['-I$prefix/include', '-Wno-error', '-D__USE_GNU', '-D__TERMUX__']
+# __AMPHORA__ is the Amphora-owned NDK+Linux Mesa switch. __TERMUX__ remains as
+# a Pipetto compatibility alias for upstream AHardwareBuffer / X11 WSI gates.
+# Patch 0003 keeps DETECT_OS_ANDROID off so we do not DT_NEEDED android-stub libs.
+c_args = ['-I$prefix/include', '-Wno-error', '-D__USE_GNU', '-D__AMPHORA__', '-D__TERMUX__']
+cpp_args = ['-I$prefix/include', '-Wno-error', '-D__USE_GNU', '-D__AMPHORA__', '-D__TERMUX__']
 c_link_args = ['-L$prefix/lib', '-landroid-sysvshm', '-lc++_shared', '-Wl,-rpath,$RPATH_USR', '-Wl,--as-needed']
 cpp_link_args = ['-L$prefix/lib', '-landroid-sysvshm', '-lc++_shared', '-Wl,-rpath,$RPATH_USR', '-Wl,--as-needed']
 
 [host_machine]
-# Termux-style: NDK clang triple is still aarch64-linux-android*, but meson
-# host system is linux (platforms=x11, not android).
+# Amphora Bionic/Linux: NDK clang triple is still aarch64-linux-android*, but
+# meson host system is linux (platforms=x11, not android).
 system = 'linux'
 cpu_family = 'aarch64'
 cpu = 'aarch64'

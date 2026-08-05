@@ -1,0 +1,16 @@
+diff --git a/include/vulkan/vk_android_native_buffer.h b/include/vulkan/vk_android_native_buffer.h
+--- a/include/vulkan/vk_android_native_buffer.h
++++ b/include/vulkan/vk_android_native_buffer.h
+@@ -17,7 +17,11 @@
+  * system rather the build target.
+  */
+ 
+-#if defined(__ANDROID__) || defined(ANDROID)
++/* Amphora Bionic/Linux builds use the NDK toolchain (__ANDROID__) but are not
++ * AOSP: there is no <cutils/native_handle.h> and no gralloc buffer sharing, so
++ * use the generic definition (same rationale as util/detect_os.h __AMPHORA__).
++ * __TERMUX__ remains accepted as a Pipetto compatibility alias. */
++#if (defined(__ANDROID__) || defined(ANDROID)) && !defined(__AMPHORA__) && !defined(__TERMUX__)
+ 
+ #include <cutils/native_handle.h>
+ #if ANDROID_API_LEVEL < 28

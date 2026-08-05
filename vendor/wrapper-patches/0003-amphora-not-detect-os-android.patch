@@ -1,0 +1,19 @@
+diff --git a/src/util/detect_os.h b/src/util/detect_os.h
+index 86286df..a03e0af 100644
+--- a/src/util/detect_os.h
++++ b/src/util/detect_os.h
+@@ -23,8 +23,14 @@
+ /*
+  * Android defines __linux__, so DETECT_OS_LINUX and DETECT_OS_POSIX will
+  * also be defined.
++ *
++ * Amphora Bionic/Linux builds define __AMPHORA__ (and keep __TERMUX__ as a
++ * Pipetto compatibility alias). They want Linux Mesa paths (inline sync_merge,
++ * getenv options, no liblog/libcutils DT_NEEDED): NDK toolchain + android-stub
++ * headers for AHardwareBuffer, but not AOSP DETECT_OS_ANDROID.
+  */
+-#if defined(__ANDROID__)
++#if defined(__ANDROID__) && !defined(__AMPHORA__) && !defined(__TERMUX__)
+ #define DETECT_OS_ANDROID 1
+ #endif
+ 

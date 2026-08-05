@@ -3,8 +3,9 @@ kind: meson
 description: |
   Mesa 25.3.6 desktop GL/EGL with Zink + softpipe DRI frontends.
 
-  This element keeps the production API30 Termux/Linux profile separate from
-  normal API26 Android packages and fails closed on driver/TLS/stub ABI drift.
+  This element keeps the production API30 Amphora Bionic/Linux profile separate
+  from normal API26 Android packages and fails closed on driver/TLS/stub ABI
+  drift.
 
 depends:
 - filename: profiles/android-cross-files.bst
@@ -66,7 +67,7 @@ sources:
   url: mesa:mesa-25.3.6.tar.xz
   ref: 59217efeac3b64e7ced958324b9db7494f1e0741aeb22d780276514cc1b8f206
 - kind: local
-  path: vendor/wrapper-patches/0003-termux-not-detect-os-android.patch
+  path: vendor/wrapper-patches/0003-amphora-not-detect-os-android.patch
   directory: .bst/wrapper-patches
 - kind: local
   path: vendor/mesa-gl-patches
@@ -107,7 +108,7 @@ environment:
 config:
   configure-commands:
   - |
-    patch -p1 < .bst/wrapper-patches/0003-termux-not-detect-os-android.patch
+    patch -p1 < .bst/wrapper-patches/0003-amphora-not-detect-os-android.patch
     for patch_file in .bst/mesa-patches/*.patch; do
       patch -p1 < "$patch_file"
     done
