@@ -8,15 +8,17 @@ package dependencies 都是 artifact key 的显式输入。
 ```text
 ci/
   setup/install-buildstream.sh
-  gate/{imagefs-publish,box64-build,wrapper-build,wine-build}.sh
+  gate/{imagefs-publish,box64-build,wrapper-build,wine-build,dxvk-build,vkd3d-build}.sh
   publish/{fixed-release,prune-assets,bump-manifest}.sh
-  verify/{imagefs-artifact,wine-deps}.sh
+  verify/{imagefs-artifact,wine-deps,dxvk-wcp,vkd3d-wcp}.sh
   wrapper/build-tzst.sh
+  dxvk/build-dxvk-wcp.sh
+  vkd3d/build-vkd3d-wcp.sh
 ```
 
-Box64 和 wrapper gate 直接读取对应 `.bst` 中固定的源码 commit。构建器与 gate
-因此不会使用不同 ref。更新 upstream 时只修改元素 source ref，并检查元素内的
-版本元数据。
+L1 gate（Box64 / wrapper / Wine / DXVK / VKD3D）直接读取对应 `.bst` 中固定的
+源码 commit。构建器与 gate 因此不会使用不同 ref。更新 upstream 时只修改元素
+source ref，并检查元素内的版本元数据。
 
 ## Toolchains
 
@@ -35,7 +37,7 @@ Host SDK 和 NDK 均由 `buildstream-sdk.bst` junction 提供，不读取 GitHub
 
 ## Publish
 
-- 固定 Release tags：`amphora`、`box64`、`wrapper`、`wine`
+- 固定 Release tags：`amphora`、`box64`、`wrapper`、`wine`、`dxvk`、`vkd3d`
 - `fixed-release.sh` 上传或替换当前产物
 - `prune-assets.sh` 删除同一固定 tag 下的旧 L1 assets
 - `bump-manifest` action 更新 `amphora-dev/content_manifest`

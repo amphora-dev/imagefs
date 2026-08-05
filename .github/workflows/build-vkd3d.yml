@@ -1,0 +1,142 @@
+# Build Vkd3d-*.wcp → Release tag `vkd3d` → content_manifest.vkd3d
+# Contracts: ci/README.md
+name: build-vkd3d
+
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Build even if this VKD3D commit was already published"
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    paths:
+      - "ci/gate/vkd3d-build.sh"
+      - "ci/vkd3d/**"
+      - "ci/verify/vkd3d-wcp.sh"
+      - "buildstream/elements/l1/vkd3d-wcp.bst"
+      - "buildstream/elements/host/glslang.bst"
+      - "buildstream/elements/buildstream-sdk.bst"
+      - "project.conf"
+      - "ci/setup/install-buildstream.sh"
+      - ".github/workflows/build-vkd3d.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install BuildStream sandbox dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            apparmor-profiles apparmor-utils bubblewrap fuse3 lzip patch \
+            python3-venv xz-utils
+          sudo install -m 0644 \
+            /usr/share/apparmor/extra-profiles/bwrap-userns-restrict \
+            /etc/apparmor.d/bwrap-userns-restrict
+          sudo apparmor_parser -r /etc/apparmor.d/bwrap-userns-restrict
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/buildstream
+          key: buildstream-vkd3d-v1-${{ runner.os }}-${{ hashFiles('project.conf', 'buildstream/elements/l1/vkd3d-wcp.bst', 'buildstream/elements/host/glslang.bst', 'buildstream/elements/buildstream-sdk.bst', 'ci/vkd3d/**') }}
+          restore-keys: |
+            buildstream-vkd3d-v1-${{ runner.os }}-
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/imagefs-buildstream/tools
+          key: buildstream-tools-v3-${{ runner.os }}-bst-2.7.0-core-plugins-2.7.0-community-2.3.1-buildbox-1.4.15
+
+      - run: bash ci/setup/install-buildstream.sh
+
+      - id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force || false }}
+          EVENT_NAME: ${{ github.event_name }}
+          REPO: ${{ github.repository }}
+        run: bash ci/gate/vkd3d-build.sh
+
+      - name: Build VKD3D WCP
+        if: steps.gate.outputs.should_build == 'true'
+        run: |
+          rm -rf /tmp/buildstream-vkd3d artifacts
+          buildstream/bst build l1/vkd3d-wcp.bst
+          buildstream/bst artifact checkout l1/vkd3d-wcp.bst \
+            --deps none \
+            --directory /tmp/buildstream-vkd3d
+          mkdir -p artifacts
+          cp /tmp/buildstream-vkd3d/artifacts/* artifacts/
+          # shellcheck disable=SC1091
+          source artifacts/vkd3d-wcp.env
+          {
+            echo "WCP_NAME=$WCP_NAME"
+            echo "FULL_VERSION=$FULL_VERSION"
+            echo "SHA256=$SHA256"
+            echo "SIZE=$SIZE"
+            echo "COMMIT_FULL=$COMMIT_FULL"
+          } >> "$GITHUB_ENV"
+
+      - name: Verify VKD3D WCP
+        if: steps.gate.outputs.should_build == 'true'
+        run: bash ci/verify/vkd3d-wcp.sh
+
+      - uses: actions/upload-artifact@v4
+        if: steps.gate.outputs.should_build == 'true'
+        with:
+          name: vkd3d-wcp
+          path: artifacts/Vkd3d-*
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish Release vkd3d
+        if: steps.gate.outputs.should_build == 'true' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TARGET_REF: ${{ github.sha }}
+        run: |
+          BODY=$(cat <<EOF
+          VKD3D-Proton \`${{ env.FULL_VERSION }}\`
+          https://github.com/HansKristian-Work/vkd3d-proton/commit/${{ env.COMMIT_FULL }}
+          x86_64 + i686 PE.
+          EOF
+          )
+          bash ci/publish/fixed-release.sh \
+            --tag vkd3d \
+            --title vkd3d \
+            --body "$BODY" \
+            -- "artifacts/${{ env.WCP_NAME }}" "artifacts/${{ env.WCP_NAME }}.sha256sum"
+
+      - name: Prune old VKD3D assets
+        if: steps.gate.outputs.should_build == 'true' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          bash ci/publish/prune-assets.sh \
+            --tag vkd3d \
+            --match 'Vkd3d-*' \
+            --keep "${{ env.WCP_NAME }}" "${{ env.WCP_NAME }}.sha256sum"
+
+      - name: Pin content_manifest vkd3d
+        if: steps.gate.outputs.should_build == 'true' && github.ref == 'refs/heads/main'
+        uses: ./.github/actions/bump-manifest
+        with:
+          component: vkd3d
+          sha256: ${{ env.SHA256 }}
+          size: ${{ env.SIZE }}
+          asset_path: ${{ env.WCP_NAME }}
+          ver_name: ${{ env.FULL_VERSION }}
+          remote_url: https://github.com/${{ github.repository }}/releases/download/vkd3d/${{ env.WCP_NAME }}
+          kind: WCP
+          content_type: VKD3D
+          token: ${{ secrets.AMPHORA_REPO_TOKEN }}

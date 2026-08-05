@@ -25,6 +25,8 @@ buildstream/bst artifact checkout imagefs/package.bst \
 buildstream/bst build l1/box64-wcp.bst
 buildstream/bst build l1/wrapper-tzst.bst
 buildstream/bst build l1/proton-wine-wcp.bst
+buildstream/bst build l1/dxvk-wcp.bst
+buildstream/bst build l1/vkd3d-wcp.bst
 ```
 
 BuildStream 的 CAS 位于 `~/.cache/buildstream`。元素、源码、patch、junction
@@ -53,6 +55,8 @@ vendor/                              # BuildStream local sources/patches
 | `build-box64.yml` | `l1/box64-wcp.bst` | `box64/Box64-*.wcp` |
 | `build-wrapper.yml` | `l1/wrapper-tzst.bst` | `wrapper/wrapper-*.tzst` |
 | `build-proton-wine.yml` | `l1/proton-wine-wcp.bst` | `wine/Proton-*.wcp` |
+| `build-dxvk.yml` | `l1/dxvk-wcp.bst` | `dxvk/Dxvk-*.wcp` |
+| `build-vkd3d.yml` | `l1/vkd3d-wcp.bst` | `vkd3d/Vkd3d-*.wcp` |
 
 所有 upstream ref 都固定在对应 `.bst` 元素中。手动 workflow 仅支持
 `force`，不接受绕过 BuildStream 的自定义源码 ref。
@@ -62,6 +66,9 @@ vendor/                              # BuildStream local sources/patches
 
 - imagefs → `components.rootfs`
 - Box64 → `components.box64`
+- Proton Wine → `components.wine`
+- DXVK → `components.dxvk`
+- VKD3D → `components.vkd3d`
 - wrapper → `runtimeAssets[graphics_driver/wrapper.tzst]`
 
 运行时 ABI/SONAME、裁剪和 ELF alignment 断言位于
