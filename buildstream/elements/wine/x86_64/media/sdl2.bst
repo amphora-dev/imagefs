@@ -60,7 +60,7 @@ sources:
   ref: 8b8d4aef2038533da814965220f88f77d60dfa0f32685f80ead65e501337da7f
 
 variables:
-  target-triple: x86_64-linux-android35
+  target-triple: x86_64-linux-android30
   ndk-libdir-triple: x86_64-linux-android
   android-cpu: x86_64
   cmake-local: >-

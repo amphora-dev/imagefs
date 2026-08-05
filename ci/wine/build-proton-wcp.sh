@@ -11,7 +11,7 @@ set -euo pipefail
 
 JOBS="${JOBS:-$(nproc)}"
 SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-0}"
-TARGET=x86_64-linux-android35
+TARGET=x86_64-linux-android30
 NDK_TOOLCHAIN="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64"
 TOOLCHAIN="$NDK_TOOLCHAIN/bin"
 DEPS="$ANDROID_X86_64_SYSROOT/usr"
@@ -199,7 +199,7 @@ with open(path, "w", encoding="utf-8") as stream:
             "type": "Proton",
             "versionName": version,
             "versionCode": 0,
-            "description": f"Amphora Proton {version}, Android API35/16KB, commit {commit}",
+            "description": f"Amphora Proton {version}, Android API30/16KB, commit {commit}",
             "files": [],
             "wine": {
                 "binPath": "bin",

@@ -23,7 +23,7 @@ sources:
   ref: 48e80a854df55dd8eb2a5026cb3cc90a10165aae68c591acdabad24488ce621f
 
 variables:
-  target-triple: x86_64-linux-android35
+  target-triple: x86_64-linux-android30
   ndk-libdir-triple: x86_64-linux-android
   android-cpu: x86_64
 

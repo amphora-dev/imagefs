@@ -37,7 +37,7 @@ Box64 是独立 CMake/WCP artifact。wrapper 元素将固定 Mesa 与
 libadrenotools source、目标依赖和 NDK 放入同一 sandbox，再调用
 `ci/wrapper/build-tzst.sh` 完成 ABI 校验与 TZST 打包。
 
-Proton Wine 是独立 x86_64 L1 artifact：Unix ELF 使用 NDK r29/API35，
+Proton Wine 是独立 x86_64 L1 artifact：Unix ELF 使用 NDK r29/API30，
 x86_64/i386 PE 使用 LLVM-MinGW；其开发 sysroot 由独立 x86_64 package 子图
 从源码构建，prefixPack 作为 SHA-pinned source 参与 artifact key。API 水位
 总表见 [`docs/API-LEVELS.md`](../docs/API-LEVELS.md)。

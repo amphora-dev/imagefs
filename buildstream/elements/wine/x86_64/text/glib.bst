@@ -45,10 +45,10 @@ sources:
   directory: subprojects/proxy-libintl
 
 variables:
-  target-triple: x86_64-linux-android35
+  target-triple: x86_64-linux-android30
   ndk-libdir-triple: x86_64-linux-android
   android-cpu: x86_64
-  meson-global: "--cross-file=/opt/amphora-sdk/profiles/meson-x86_64-android35.ini --buildtype=release"
+  meson-global: "--cross-file=/opt/amphora-sdk/profiles/meson-x86_64-android30.ini --buildtype=release"
   meson-local: >-
     -Dintrospection=disabled
     -Druntime_dir=/usr/var/run

@@ -5,5 +5,5 @@ description: Pinned shared Amphora host SDK, Android NDK and build profiles.
 sources:
 - kind: git
   url: amphora:buildstream-sdk.git
-  ref: ec5fc4b78ad5233e427ec5b2f6b6db0eac741667
+  ref: 01d5e491520e8cbfa079fcf9a948b37865ea118b
   checkout-submodules: false

@@ -25,7 +25,7 @@ sources:
 variables:
   notparallel: true
   cmake-local: >-
-    -DCMAKE_C_COMPILER=%{ndk-toolchain}/bin/aarch64-linux-android31-clang
+    -DCMAKE_C_COMPILER=%{ndk-toolchain}/bin/aarch64-linux-android30-clang
     -DCMAKE_C_FLAGS=-Wno-int-conversion\ -Wno-incompatible-pointer-types\ -Wno-implicit-function-declaration
     -DANDROID=1
     -DBIONIC=1

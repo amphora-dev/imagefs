@@ -1,6 +1,6 @@
 kind: compose
 
-description: Self-built x86_64 Android API35 development sysroot for Proton Wine.
+description: Self-built x86_64 Android API30 development sysroot for Proton Wine.
 
 depends:
 - { filename: wine/x86_64/compress/zlib.bst, type: build }

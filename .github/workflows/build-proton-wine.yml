@@ -118,7 +118,7 @@ jobs:
         BODY=$(cat <<EOF
         Amphora Proton Wine \`${{ env.FULL_VERSION }}\`
         https://github.com/amphora-dev/proton-wine/commit/${{ env.COMMIT_FULL }}
-        x86_64 Android API35/flexible-16KB Unix side with LLVM-MinGW WoW64 PE.
+        x86_64 Android API30/flexible-16KB Unix side with LLVM-MinGW WoW64 PE.
         EOF
         )
         bash ci/publish/fixed-release.sh \

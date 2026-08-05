@@ -35,10 +35,10 @@ sources:
   ref: 63a0658d0e06e0fa886106452b58ef04f21f58202ea02a94c39de0d3335d7c0e
 
 variables:
-  target-triple: x86_64-linux-android35
+  target-triple: x86_64-linux-android30
   ndk-libdir-triple: x86_64-linux-android
   android-cpu: x86_64
-  meson-global: "--cross-file=/opt/amphora-sdk/profiles/meson-x86_64-android35.ini --buildtype=release"
+  meson-global: "--cross-file=/opt/amphora-sdk/profiles/meson-x86_64-android30.ini --buildtype=release"
   sysconfdir: /usr/etc
   meson-local: >-
     -Ddefault-fonts-dirs=/usr/share/fonts

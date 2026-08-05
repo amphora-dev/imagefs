@@ -30,10 +30,10 @@ sources:
   ref: 30a4c4a5e48345583eb596aa265d0f53c0feb93011d93a6aaa70dd6e3c519dc4
 
 variables:
-  target-triple: x86_64-linux-android35
+  target-triple: x86_64-linux-android30
   ndk-libdir-triple: x86_64-linux-android
   android-cpu: x86_64
-  meson-global: "--cross-file=/opt/amphora-sdk/profiles/meson-x86_64-android35.ini --buildtype=release"
+  meson-global: "--cross-file=/opt/amphora-sdk/profiles/meson-x86_64-android30.ini --buildtype=release"
   meson-local: >-
     -Dintrospection=disabled
     -Ddoc=disabled

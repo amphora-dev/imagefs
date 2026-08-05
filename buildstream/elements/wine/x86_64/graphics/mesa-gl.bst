@@ -3,7 +3,7 @@ kind: meson
 description: |
   Mesa 25.3.6 desktop GL/EGL with Zink + softpipe DRI frontends.
 
-  Wine x86_64 API35 Mesa GL/EGL development stack. Fails closed on
+  Wine x86_64 API30 Mesa GL/EGL development stack. Fails closed on
   driver/TLS/stub ABI drift.
 
 depends:
@@ -70,11 +70,11 @@ sources:
   directory: .bst/mesa-patches
 
 variables:
-  target-triple: x86_64-linux-android35
+  target-triple: x86_64-linux-android30
   ndk-libdir-triple: x86_64-linux-android
   android-cpu: x86_64
   meson-global: >-
-    --cross-file=/opt/amphora-sdk/profiles/meson-mesa-x86_64-api35.ini
+    --cross-file=/opt/amphora-sdk/profiles/meson-mesa-x86_64-api30.ini
     --native-file=/opt/amphora-sdk/profiles/meson-native-x86_64.ini
     --buildtype=release
   meson-local: >-

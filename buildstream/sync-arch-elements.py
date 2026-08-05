@@ -29,12 +29,12 @@ WINE = ELEMENTS / "wine" / "x86_64"
 RECIPE_LIST = ROOT / "arch-recipes.txt"
 SHARED_LIST = ROOT / "wine-x86_64-shared.txt"
 
-WINE_TRIPLE = "x86_64-linux-android35"
+WINE_TRIPLE = "x86_64-linux-android30"
 WINE_CONF_GLOBAL = "--host=x86_64-linux-android"
 WINE_NDK_LIBDIR = "x86_64-linux-android"
 WINE_CPU = "x86_64"
 WINE_MESON_GLOBAL = (
-    "--cross-file=/opt/amphora-sdk/profiles/meson-x86_64-android35.ini "
+    "--cross-file=/opt/amphora-sdk/profiles/meson-x86_64-android30.ini "
     "--buildtype=release"
 )
 
