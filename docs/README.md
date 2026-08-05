@@ -2,7 +2,7 @@
 
 | Path | Contents |
 |------|----------|
-| [API-LEVELS.md](API-LEVELS.md) | Why API 26 / 30 coexist; 16KB is linker flags, not API 35 |
+| [API-LEVELS.md](API-LEVELS.md) | Why API 26 / 30 coexist; Wine 16KB is linker flags |
 | `evidence/` | ELF dumps kept from earlier analysis |
 
 Older `analysis/` and `meson/` trees were removed when the BuildStream-only
