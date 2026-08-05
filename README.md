@@ -1,8 +1,10 @@
 # imagefs
 
-Amphora 的 Bionic imagefs 构建项目，目标为
-`aarch64-linux-android26`。构建系统只有 BuildStream 一条路径；Host SDK、
-Android NDK r29 和 Meson profiles 来自 commit-pinned
+Amphora 的 Bionic imagefs 构建项目。默认包图目标为
+`aarch64-linux-android26`（与 app `minSdk=26` 对齐）。Mesa/wrapper、Box64、
+Proton Wine 使用更高或不同 arch 的 API 水位——见
+[`docs/API-LEVELS.md`](docs/API-LEVELS.md)。构建系统只有 BuildStream 一条路径；
+Host SDK、Android NDK r29 和 Meson profiles 来自 commit-pinned
 [`amphora-dev/buildstream-sdk`](https://github.com/amphora-dev/buildstream-sdk)
 junction。
 

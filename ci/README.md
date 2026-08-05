@@ -20,10 +20,15 @@ Box64 和 wrapper gate 直接读取对应 `.bst` 中固定的源码 commit。构
 
 ## Toolchains
 
-- imagefs package graph：AArch64 Bionic API 26
-- Box64：AArch64 Bionic API 31
-- wrapper：imagefs target sysroot + Mesa API 30
-- Proton Wine：x86_64 Bionic API35 + LLVM-MinGW x86_64/i386 PE
+多 API 水位是按产物角色拆开的，不要随意统一。完整说明见
+[`docs/API-LEVELS.md`](../docs/API-LEVELS.md)。
+
+| API | 产物 |
+|-----|------|
+| 26 | imagefs package graph（AArch64 Bionic，minSdk 地板） |
+| 30 | Mesa GL + Vulkan wrapper（Amphora Bionic/Linux 画像） |
+| 31 | Box64 WCP（独立 L1） |
+| 35 | Proton Wine x86_64 Unix ELF + LLVM-MinGW PE |
 
 Host SDK 和 NDK 均由 `buildstream-sdk.bst` junction 提供，不读取 GitHub runner
 预装 NDK。
