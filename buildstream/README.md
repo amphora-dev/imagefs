@@ -55,7 +55,9 @@ python3 buildstream/sync-arch-elements.py
 python3 buildstream/sync-arch-elements.py --check
 ```
 
-名单见 `arch-recipes.txt`。
+名单见 `arch-recipes.txt`。目前仍手写维护的 Wine 特例只有
+`audio/alsa-lib.bst`（PCM plugin 集不同）和 `graphics/mesa-gl.bst`
+（API30 wrapper profile vs API35 开发栈）。
 ## Commands
 
 ```bash

@@ -19,6 +19,8 @@ sources:
 
 variables:
   target-triple: x86_64-linux-android35
+  ndk-libdir-triple: x86_64-linux-android
+  android-cpu: x86_64
   cmake-local: >-
     -DBUILD_SHARED_LIBS=ON
     -DBROTLI_DISABLE_TESTS=ON

@@ -19,6 +19,8 @@ sources:
 
 variables:
   target-triple: x86_64-linux-android35
+  ndk-libdir-triple: x86_64-linux-android
+  android-cpu: x86_64
   cmake-local: >-
     -DEXPAT_BUILD_SHARED=ON
     -DEXPAT_BUILD_STATIC=OFF

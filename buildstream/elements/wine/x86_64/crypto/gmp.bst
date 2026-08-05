@@ -22,6 +22,8 @@ sources:
 
 variables:
   target-triple: x86_64-linux-android35
+  ndk-libdir-triple: x86_64-linux-android
+  android-cpu: x86_64
   conf-global: --host=x86_64-linux-android
   conf-root: "%{build-root}"
   command-subdir: _build

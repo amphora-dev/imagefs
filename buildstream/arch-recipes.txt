@@ -2,12 +2,23 @@
 # sync-arch-elements.py emits both:
 #   buildstream/elements/<path>              (imagefs aarch64 / project defaults)
 #   buildstream/elements/wine/x86_64/<path>  (Proton Wine x86_64 overrides)
+android/android-sysvshm.bst
+android/libandroid-shmem.bst
+android/libcxx-shared.bst
 compress/brotli.bst
 compress/libpng.bst
 compress/zlib.bst
+compress/zstd.bst
 crypto/gmp.bst
 crypto/gnutls.bst
 crypto/nettle.bst
+graphics/libdrm.bst
+media/gst-plugins-base.bst
+media/gstreamer.bst
+media/sdl2.bst
+text/fontconfig.bst
+text/freetype.bst
+text/glib.bst
 text/libexpat.bst
 text/libffi.bst
 text/libiconv.bst
