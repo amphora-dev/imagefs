@@ -5,6 +5,7 @@
 android/android-sysvshm.bst
 android/libandroid-shmem.bst
 android/libcxx-shared.bst
+audio/alsa-lib.bst
 compress/brotli.bst
 compress/libpng.bst
 compress/zlib.bst
@@ -13,6 +14,7 @@ crypto/gmp.bst
 crypto/gnutls.bst
 crypto/nettle.bst
 graphics/libdrm.bst
+graphics/mesa-gl.bst
 media/gst-plugins-base.bst
 media/gstreamer.bst
 media/sdl2.bst

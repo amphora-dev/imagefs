@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+from collections import defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -27,11 +28,13 @@ ELEMENTS = ROOT / "elements"
 WINE = ELEMENTS / "wine" / "x86_64"
 RECIPE_LIST = ROOT / "arch-recipes.txt"
 SHARED_LIST = ROOT / "wine-x86_64-shared.txt"
+OMIT_DEPENDS_LIST = ROOT / "wine-omit-depends.txt"
 
 WINE_TRIPLE = "x86_64-linux-android35"
 WINE_CONF_GLOBAL = "--host=x86_64-linux-android"
 WINE_NDK_LIBDIR = "x86_64-linux-android"
 WINE_CPU = "x86_64"
+WINE_MESA_CROSS = "meson-mesa-x86_64-api35.ini"
 WINE_MESON_GLOBAL = (
     "--cross-file=/opt/amphora-sdk/profiles/meson-x86_64-android35.ini "
     "--buildtype=release"
@@ -53,6 +56,21 @@ def read_list(path: Path) -> list[str]:
     return entries
 
 
+def read_omit_depends(path: Path) -> dict[str, set[str]]:
+    mapping: dict[str, set[str]] = defaultdict(set)
+    if not path.is_file():
+        return mapping
+    for raw in path.read_text().splitlines():
+        line = raw.split("#", 1)[0].strip()
+        if not line:
+            continue
+        parts = line.split()
+        if len(parts) != 2:
+            raise SystemExit(f"wine-omit-depends.txt: expected 2 fields: {raw!r}")
+        mapping[parts[0]].add(parts[1])
+    return mapping
+
+
 def strip_recipe_header(text: str) -> str:
     """Drop human recipe banners; generated elements get their own marker."""
     lines = text.splitlines(True)
@@ -71,33 +89,20 @@ def strip_recipe_header(text: str) -> str:
     return body
 
 
-def drop_wine_overrides(text: str) -> str:
-    """Remove previously injected wine-only variable lines before re-injecting."""
-    patterns = [
-        r"(?m)^  target-triple:.*\n",
-        rf"(?m)^  conf-global: {re.escape(WINE_CONF_GLOBAL)}\n",
-        r"(?m)^  ndk-libdir-triple:.*\n",
-        r"(?m)^  android-cpu:.*\n",
-        r"(?m)^  meson-global:.*\n",
-    ]
-    for pattern in patterns:
-        text = re.sub(pattern, "", text)
-    return text
-
-
 def inject_variables(text: str, kind: str, *, wine: bool) -> str:
     if not wine:
         return text
 
-    text = drop_wine_overrides(text)
+    has_meson_global = bool(re.search(r"(?m)^  meson-global:", text))
     wine_vars = [
         f"  target-triple: {WINE_TRIPLE}",
         f"  ndk-libdir-triple: {WINE_NDK_LIBDIR}",
         f"  android-cpu: {WINE_CPU}",
+        f"  mesa-cross-file: {WINE_MESA_CROSS}",
     ]
     if kind == "autotools":
         wine_vars.append(f"  conf-global: {WINE_CONF_GLOBAL}")
-    if kind == "meson":
+    if kind == "meson" and not has_meson_global:
         wine_vars.append(f'  meson-global: "{WINE_MESON_GLOBAL}"')
 
     if re.search(r"(?m)^variables:\s*$", text):
@@ -111,35 +116,57 @@ def inject_variables(text: str, kind: str, *, wine: bool) -> str:
     return text.rstrip() + "\n\n" + block
 
 
-def rewrite_depends(text: str, shared: set[str], recipes: set[str], *, wine: bool) -> str:
-    if not wine:
-        return text
+def rewrite_depends(
+    text: str,
+    shared: set[str],
+    recipes: set[str],
+    omit: set[str],
+    *,
+    wine: bool,
+) -> str:
+    if wine:
+        for dep in sorted(omit):
+            text = re.sub(
+                rf"(?m)^- filename: {re.escape(dep)}\n(?:  .*\n)*",
+                "",
+                text,
+            )
 
-    def repl(match: re.Match[str]) -> str:
-        name = match.group(1)
-        if (
-            name.startswith("host/")
-            or name.startswith("toolchains/")
-            or name.startswith("profiles/")
-            or name.startswith("wine/")
-            or name in shared
-        ):
+        def repl(match: re.Match[str]) -> str:
+            name = match.group(1)
+            if (
+                name.startswith("host/")
+                or name.startswith("toolchains/")
+                or name.startswith("profiles/")
+                or name.startswith("wine/")
+                or name in shared
+            ):
+                return match.group(0)
+            if (WINE / name).exists() or name in recipes:
+                return f"filename: wine/x86_64/{name}"
             return match.group(0)
-        if (WINE / name).exists() or name in recipes:
-            return f"filename: wine/x86_64/{name}"
-        return match.group(0)
 
-    return re.sub(r"filename:\s*([^\s]+)", repl, text)
+        text = re.sub(r"filename:\s*([^\s]+)", repl, text)
+    return text
 
 
-def render(rel: str, shared: set[str], recipes: set[str], *, wine: bool) -> str:
+def render(
+    rel: str,
+    shared: set[str],
+    recipes: set[str],
+    omit_map: dict[str, set[str]],
+    *,
+    wine: bool,
+) -> str:
     recipe_path = RECIPES / rel
     if not recipe_path.is_file():
         raise SystemExit(f"missing recipe: {recipe_path}")
     body = strip_recipe_header(recipe_path.read_text())
     kind_match = re.match(r"kind:\s*(\S+)", body)
     kind = kind_match.group(1) if kind_match else ""
-    body = rewrite_depends(body, shared, recipes, wine=wine)
+    body = rewrite_depends(
+        body, shared, recipes, omit_map.get(rel, set()), wine=wine
+    )
     body = inject_variables(body, kind, wine=wine)
     return (WINE_MARKER if wine else IMAGEFS_MARKER) + body
 
@@ -176,14 +203,28 @@ def main() -> int:
 
     shared = read_list(SHARED_LIST)
     recipes = read_list(RECIPE_LIST)
+    omit_map = read_omit_depends(OMIT_DEPENDS_LIST)
     shared_set = set(shared)
     recipe_set = set(recipes)
 
     errors = check_shared(shared)
+    for rel, deps in omit_map.items():
+        if rel not in recipe_set:
+            errors.append(f"wine-omit-depends refers to unknown recipe: {rel}")
+        for dep in deps:
+            if not (ELEMENTS / dep).is_file() and dep not in recipe_set:
+                # depend may only exist on imagefs graph; warn softly via existence on either side
+                if not (ELEMENTS / dep).exists():
+                    errors.append(f"wine-omit-depends unknown depend {dep} for {rel}")
+
     planned: dict[tuple[str, str], str] = {}
     for rel in recipes:
-        planned[("imagefs", rel)] = render(rel, shared_set, recipe_set, wine=False)
-        planned[("wine", rel)] = render(rel, shared_set, recipe_set, wine=True)
+        planned[("imagefs", rel)] = render(
+            rel, shared_set, recipe_set, omit_map, wine=False
+        )
+        planned[("wine", rel)] = render(
+            rel, shared_set, recipe_set, omit_map, wine=True
+        )
 
     if args.check:
         for (kind, rel), content in planned.items():

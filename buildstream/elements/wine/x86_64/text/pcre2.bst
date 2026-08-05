@@ -21,6 +21,7 @@ variables:
   target-triple: x86_64-linux-android35
   ndk-libdir-triple: x86_64-linux-android
   android-cpu: x86_64
+  mesa-cross-file: meson-mesa-x86_64-api35.ini
   cmake-local: >-
     -DBUILD_SHARED_LIBS=ON
     -DBUILD_STATIC_LIBS=OFF
