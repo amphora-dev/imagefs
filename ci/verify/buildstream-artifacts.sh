@@ -149,6 +149,12 @@ readelf -dW "$shmem" | grep -q 'SONAME.*libandroid-shmem.so'
 for symbol in libandroid_shmget libandroid_shmat libandroid_shmdt libandroid_shmctl; do
   readelf -Ws "$shmem" | grep -q "GLOBAL.* $symbol$"
 done
+# Fail closed: Termux app paths must not leak into imagefs DSOs.
+if strings "$shmem" | grep -Fq '/data/data/com.termux'; then
+  echo "FAIL: Termux path leaked into libandroid-shmem.so" >&2
+  exit 1
+fi
+strings "$shmem" | grep -Fq '/usr/tmp/'
 test ! -e artifacts/buildstream-libandroid-shmem/usr/include/sys/shm.h
 
 test -f artifacts/buildstream-vulkan-headers/usr/include/vulkan/vulkan.h

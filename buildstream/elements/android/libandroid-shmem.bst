@@ -5,7 +5,8 @@ description: |
 
   The full upstream commit and GitHub archive SHA-256 are pinned. Only the
   runtime DSO is published; shm.h is deliberately omitted because its macro
-  redirects would contaminate downstream package builds.
+  redirects would contaminate downstream package builds. _PATH_TMP matches
+  imagefs base-layout (/usr/tmp), not Termux app data paths.
 
 depends:
 - filename: host/noble-amd64.bst
@@ -25,7 +26,7 @@ config:
   - |
     set -eu
     "$CC" -O2 -std=c11 -fPIC -shared \
-      -D_PATH_TMP='"/data/data/com.termux/files/usr/tmp/"' \
+      -D_PATH_TMP='"/usr/tmp/"' \
       -Wl,--version-script=exports.txt \
       -Wl,--undefined-version \
       -Wl,-soname,libandroid-shmem.so \
