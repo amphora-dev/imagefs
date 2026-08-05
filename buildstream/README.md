@@ -55,9 +55,9 @@ python3 buildstream/sync-arch-elements.py
 python3 buildstream/sync-arch-elements.py --check
 ```
 
-名单见 `arch-recipes.txt`。目前仍手写维护的 Wine 特例只有
-`audio/alsa-lib.bst`（PCM plugin 集不同）和 `graphics/mesa-gl.bst`
-（API30 wrapper profile vs API35 开发栈）。
+名单见 `arch-recipes.txt`。Wine 侧省略的依赖见 `wine-omit-depends.txt`
+（例如 mesa 不拉 `vulkan-loader`）。Mesa 的 cross file 由
+`%{mesa-cross-file}` 选择（`project.conf` 默认 API30；Wine 注入 API35）。
 ## Commands
 
 ```bash
