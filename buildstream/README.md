@@ -41,6 +41,16 @@ Proton Wine 是独立 x86_64 L1 artifact：Unix ELF 使用 NDK r29/API35，
 x86_64/i386 PE 使用 LLVM-MinGW；其 132MB 开发 sysroot 由独立 x86_64
 package 子图从源码构建，prefixPack 作为 SHA-pinned source 参与 artifact key。
 
+架构无关的协议/头文件包（`wine-x86_64-shared.txt`）由 aarch64 与 Wine
+sysroot 共用同一 element，不要再复制到 `wine/x86_64/`。近叶编译包的 Wine
+副本由 `sync-wine-x86_64.py` 从 canonical recipe 生成
+（名单见 `wine-x86_64-generated.txt`）：
+
+```bash
+python3 buildstream/sync-wine-x86_64.py
+python3 buildstream/sync-wine-x86_64.py --check
+```
+
 ## Commands
 
 ```bash

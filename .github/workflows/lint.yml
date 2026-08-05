@@ -34,3 +34,10 @@ jobs:
       - name: executable bit on entrypoints
         run: |
           test -x buildstream/bst
+          test -x buildstream/sync-wine-x86_64.py
+
+      - name: wine/x86_64 element sync
+        run: |
+          # Shared proto/header packages must not be duplicated under wine/,
+          # and generated leaf wine elements must match their canonical recipes.
+          python3 buildstream/sync-wine-x86_64.py --check

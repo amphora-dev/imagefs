@@ -21,9 +21,9 @@ depends:
 - { filename: wine/x86_64/android/android-sysvshm.bst, type: build }
 - { filename: wine/x86_64/android/libandroid-shmem.bst, type: build }
 - { filename: wine/x86_64/android/libcxx-shared.bst, type: build }
-- { filename: wine/x86_64/x11/xorgproto.bst, type: build }
-- { filename: wine/x86_64/x11/xtrans.bst, type: build }
-- { filename: wine/x86_64/x11/xcb-proto.bst, type: build }
+- { filename: x11/xorgproto.bst, type: build }
+- { filename: x11/xtrans.bst, type: build }
+- { filename: x11/xcb-proto.bst, type: build }
 - { filename: wine/x86_64/x11/libxau.bst, type: build }
 - { filename: wine/x86_64/x11/libxdmcp.bst, type: build }
 - { filename: wine/x86_64/x11/libxcb.bst, type: build }
@@ -35,7 +35,7 @@ depends:
 - { filename: wine/x86_64/x11/libxi.bst, type: build }
 - { filename: wine/x86_64/x11/libxxf86vm.bst, type: build }
 - { filename: wine/x86_64/x11/libxshmfence.bst, type: build }
-- { filename: wine/x86_64/graphics/vulkan-headers.bst, type: build }
+- { filename: graphics/vulkan-headers.bst, type: build }
 - { filename: wine/x86_64/graphics/libdrm.bst, type: build }
 - { filename: wine/x86_64/graphics/mesa-gl.bst, type: build }
 - { filename: wine/x86_64/media/sdl2.bst, type: build }

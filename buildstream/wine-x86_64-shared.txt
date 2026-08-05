@@ -1,0 +1,7 @@
+# Architecture-independent elements shared by the aarch64 imagefs graph and the
+# Proton Wine x86_64 sysroot. Do not recreate wine/x86_64 copies of these paths;
+# wine elements must depend on the canonical filenames below.
+x11/xcb-proto.bst
+x11/xorgproto.bst
+x11/xtrans.bst
+graphics/vulkan-headers.bst

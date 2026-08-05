@@ -17,11 +17,11 @@ depends:
   type: all
   config:
     location: /opt/android-sysroot
-- filename: wine/x86_64/graphics/vulkan-headers.bst
+- filename: graphics/vulkan-headers.bst
   type: build
   config:
     location: /opt/android-sysroot
-- filename: wine/x86_64/x11/xorgproto.bst
+- filename: x11/xorgproto.bst
   type: build
   config:
     location: /opt/android-sysroot

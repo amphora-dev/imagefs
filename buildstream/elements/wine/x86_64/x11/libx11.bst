@@ -14,11 +14,11 @@ depends:
 - filename: toolchains/android-ndk-r29.bst
   junction: buildstream-sdk.bst
   type: build
-- filename: wine/x86_64/x11/xorgproto.bst
+- filename: x11/xorgproto.bst
   type: build
   config:
     location: /opt/android-sysroot
-- filename: wine/x86_64/x11/xtrans.bst
+- filename: x11/xtrans.bst
   type: build
   config:
     location: /opt/android-sysroot
