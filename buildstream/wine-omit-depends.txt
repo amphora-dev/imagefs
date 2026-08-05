@@ -1,3 +1,0 @@
-# Per-element depends that must not appear in the wine/x86_64 generated graph.
-# Format: <recipe-path> <depend-filename>
-graphics/mesa-gl.bst graphics/vulkan-loader.bst

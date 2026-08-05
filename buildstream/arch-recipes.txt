@@ -1,26 +1,23 @@
-# Platform-agnostic recipes under buildstream/recipes/.
-# sync-arch-elements.py emits both:
-#   buildstream/elements/<path>              (imagefs aarch64 / project defaults)
-#   buildstream/elements/wine/x86_64/<path>  (Proton Wine x86_64 overrides)
+# Simple dual-arch recipes under buildstream/recipes/.
+# Only near-pure packages belong here (triple / meson profile / depend rewrite).
+# Complex packages (Mesa, GLib, SDL2, ALSA, libpng, GStreamer, …) are
+# hand-maintained under elements/ and elements/wine/x86_64/.
+#
+# sync-arch-elements.py emits:
+#   buildstream/elements/<path>
+#   buildstream/elements/wine/x86_64/<path>
 android/android-sysvshm.bst
 android/libandroid-shmem.bst
 android/libcxx-shared.bst
-audio/alsa-lib.bst
 compress/brotli.bst
-compress/libpng.bst
 compress/zlib.bst
 compress/zstd.bst
 crypto/gmp.bst
 crypto/gnutls.bst
 crypto/nettle.bst
 graphics/libdrm.bst
-graphics/mesa-gl.bst
-media/gst-plugins-base.bst
-media/gstreamer.bst
-media/sdl2.bst
 text/fontconfig.bst
 text/freetype.bst
-text/glib.bst
 text/libexpat.bst
 text/libffi.bst
 text/libiconv.bst

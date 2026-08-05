@@ -44,8 +44,9 @@ package 子图从源码构建，prefixPack 作为 SHA-pinned source 参与 artif
 架构无关的协议/头文件包（`wine-x86_64-shared.txt`）由 aarch64 与 Wine
 sysroot 共用同一 element，不要再复制到 `wine/x86_64/`。
 
-双 ABI 编译包的**唯一编辑入口**是 `buildstream/recipes/`（不在
-`element-path` 下，BST 不会直接构建）。`sync-arch-elements.py` 从配方生成：
+双 ABI 的**简单包**编辑入口是 `buildstream/recipes/`（不在
+`element-path` 下，BST 不会直接构建）。`sync-arch-elements.py` 只处理
+近纯配方（triple / meson profile / depend 改写），从配方生成：
 
 - `elements/<path>` — imagefs（跟随 `project.conf` 的 aarch64 默认）
 - `elements/wine/x86_64/<path>` — Proton Wine x86_64 覆盖
@@ -55,9 +56,8 @@ python3 buildstream/sync-arch-elements.py
 python3 buildstream/sync-arch-elements.py --check
 ```
 
-名单见 `arch-recipes.txt`。Wine 侧省略的依赖见 `wine-omit-depends.txt`
-（例如 mesa 不拉 `vulkan-loader`）。Mesa 的 cross file 由
-`%{mesa-cross-file}` 选择（`project.conf` 默认 API30；Wine 注入 API35）。
+名单见 `arch-recipes.txt`。Mesa / GLib / SDL2 / ALSA / libpng / GStreamer
+等复杂包不走 sync，直接手改 `elements/` 与 `elements/wine/x86_64/`。
 ## Commands
 
 ```bash
