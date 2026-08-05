@@ -2,7 +2,7 @@ diff --git a/src/util/detect_os.h b/src/util/detect_os.h
 index 86286df..a03e0af 100644
 --- a/src/util/detect_os.h
 +++ b/src/util/detect_os.h
-@@ -23,8 +23,14 @@
+@@ -23,8 +23,13 @@
  /*
   * Android defines __linux__, so DETECT_OS_LINUX and DETECT_OS_POSIX will
   * also be defined.
