@@ -18,6 +18,10 @@ DEPS="$ANDROID_X86_64_SYSROOT/usr"
 DESTDIR=/tmp/proton-wine-dest
 PACKAGE_ROOT=/tmp/proton-wine-package
 WINE_PREFIX=/opt/wine
+# Increment when packaging changes without changing PROTON_COMMIT. The WCP
+# install identity includes this revision, so existing devices replace a
+# same-source package instead of treating its old directory as current.
+PACKAGE_REVISION=1
 
 for tool in autoconf autoreconf bison file flex make meson patch pkg-config \
             python3 tar zstd; do
@@ -193,17 +197,17 @@ commit_short="${PROTON_COMMIT:0:9}"
 full_version="${version}-${commit_short}-x86_64"
 wcp_name="Proton-${full_version}.wcp"
 
-python3 - "$PACKAGE_ROOT/profile.json" "$full_version" "$PROTON_COMMIT" <<'PY'
+python3 - "$PACKAGE_ROOT/profile.json" "$full_version" "$PROTON_COMMIT" "$PACKAGE_REVISION" <<'PY'
 import json
 import sys
 
-path, version, commit = sys.argv[1:]
+path, version, commit, revision = sys.argv[1:]
 with open(path, "w", encoding="utf-8") as stream:
     json.dump(
         {
             "type": "Proton",
             "versionName": version,
-            "versionCode": 0,
+            "versionCode": int(revision),
             "description": f"Amphora Proton {version}, Android API30/16KB, commit {commit}",
             "files": [],
             "wine": {
@@ -239,6 +243,7 @@ cat > "$OUTPUT_DIR/proton-wine-wcp.env" <<EOF
 FULL_VERSION=$full_version
 COMMIT_FULL=$PROTON_COMMIT
 COMMIT_SHORT=$commit_short
+VER_CODE=$PACKAGE_REVISION
 WCP_NAME=$wcp_name
 SHA256=$sha
 SIZE=$size

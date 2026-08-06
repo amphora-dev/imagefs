@@ -97,6 +97,7 @@ jobs:
           echo "SIZE=$SIZE"
           echo "COMMIT_FULL=$COMMIT_FULL"
           echo "COMMIT_SHORT=$COMMIT_SHORT"
+          echo "VER_CODE=$VER_CODE"
         } >> "$GITHUB_ENV"
 
     - name: Verify Proton Wine WCP
@@ -156,6 +157,7 @@ jobs:
         size: ${{ env.SIZE }}
         asset_path: ${{ env.WCP_NAME }}
         ver_name: ${{ env.FULL_VERSION }}
+        ver_code: ${{ env.VER_CODE }}
         remote_url: https://github.com/${{ github.repository }}/releases/download/wine/${{ env.WCP_NAME }}
         kind: WCP
         content_type: Proton

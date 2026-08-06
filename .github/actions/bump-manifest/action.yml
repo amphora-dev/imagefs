@@ -22,6 +22,9 @@ inputs:
   ver_name:
     required: false
     default: ""
+  ver_code:
+    required: false
+    default: "0"
   remote_url:
     required: false
     default: ""
@@ -44,6 +47,7 @@ runs:
         SIZE: ${{ inputs.size }}
         ASSET_PATH: ${{ inputs.asset_path }}
         VER_NAME: ${{ inputs.ver_name }}
+        VER_CODE: ${{ inputs.ver_code }}
         REMOTE_URL: ${{ inputs.remote_url }}
         KIND: ${{ inputs.kind }}
         CONTENT_TYPE: ${{ inputs.content_type }}
