@@ -57,6 +57,7 @@ import sys
 
 root = sys.argv[1]
 checked = 0
+standard_relr = 0
 for directory, _, names in os.walk(root):
     for name in names:
         path = os.path.join(directory, name)
@@ -87,9 +88,19 @@ for directory, _, names in os.walk(root):
             raise SystemExit(f"{path}: contains Termux runtime path")
         if "libpulse.so" in dynamic:
             raise SystemExit(f"{path}: unexpectedly depends on PulseAudio")
+        android_relr_tags = ("6fffe000", "6fffe001", "6fffe003")
+        if any(tag in dynamic.lower() for tag in android_relr_tags):
+            raise SystemExit(f"{path}: contains Android-private RELR dynamic tags")
+        if "(RELR)" in dynamic and "(RELRSZ)" in dynamic and "(RELRENT)" in dynamic:
+            standard_relr += 1
 if checked == 0:
     raise SystemExit("no x86_64 Unix ELF files checked")
-print(f"validated {checked} x86_64 Unix ELF files")
+if standard_relr == 0:
+    raise SystemExit("no x86_64 Unix ELF uses standard DT_RELR tags")
+print(
+    f"validated {checked} x86_64 Unix ELF files "
+    f"({standard_relr} with standard DT_RELR)"
+)
 PY
 
 echo "Proton WCP verified: $WCP_NAME"
