@@ -30,7 +30,7 @@ test -f "$work/lib/wine/x86_64-windows/ntdll.dll"
 test -f "$work/lib/wine/i386-windows/ntdll.dll"
 test -f "$work/prefixPack.txz"
 
-python3 - "$work/profile.json" "$FULL_VERSION" <<'PY'
+python3 - "$work/profile.json" "$FULL_VERSION" "$VER_CODE" <<'PY'
 import json
 import sys
 
@@ -38,7 +38,7 @@ with open(sys.argv[1], encoding="utf-8") as stream:
     profile = json.load(stream)
 assert profile["type"] == "Proton"
 assert profile["versionName"] == sys.argv[2]
-assert profile["versionCode"] == 0
+assert profile["versionCode"] == int(sys.argv[3])
 assert profile["wine"] == {
     "binPath": "bin",
     "libPath": "lib",
