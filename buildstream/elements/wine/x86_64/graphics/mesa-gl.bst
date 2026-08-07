@@ -1,7 +1,7 @@
 kind: meson
 
 description: |
-  Mesa 25.3.6 desktop GL/EGL with Zink + softpipe DRI frontends.
+  Mesa 26.2.0 desktop GL/EGL with Zink + softpipe DRI frontends.
 
   Wine x86_64 API30 Mesa GL/EGL development stack. Fails closed on
   driver/TLS/stub ABI drift.
@@ -60,8 +60,8 @@ depends:
 
 sources:
 - kind: tar
-  url: mesa:mesa-25.3.6.tar.xz
-  ref: 59217efeac3b64e7ced958324b9db7494f1e0741aeb22d780276514cc1b8f206
+  url: mesa:mesa-26.2.0.tar.xz
+  ref: efd4bb08cdb7c365a812cd4e6c9202ab55b2f22cdcd13c7d6c4f9647b799a4ef
 - kind: local
   path: vendor/wrapper-patches/0003-amphora-not-detect-os-android.patch
   directory: .bst/wrapper-patches
