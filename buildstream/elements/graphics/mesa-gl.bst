@@ -65,7 +65,7 @@ depends:
 sources:
 - kind: git
   url: https://gitlab.freedesktop.org/mesa/mesa.git
-  ref: 58cbb4a343c96a5c214a60bea9870160ddd64ed0
+  ref: 1f544e5f3179f4b3d9666aa41ed81cf0352dfa8a
   checkout-submodules: false
 - kind: local
   path: vendor/wrapper-patches/0003-amphora-not-detect-os-android.patch
