@@ -33,9 +33,10 @@ required=(
   "libgio-2.0.so:多个 unix 模块"
   # 图形栈的 NEEDED。这几项缺了不是降级, 是 Vulkan/OpenGL 驱动直接加载失败,
   # 表现为黑屏而非报错, 所以必须断言。
-  # 自建 Mesa GL (graphics/mesa-gl.bst): Wine opengl32 → EGL → zink.
-  # DirectDraw is handled by Amphora's native wrapper → D3D9/DXVK path.
-  # 的入口, 缺了 OpenGL/DX7 直接黑屏。Wine >=10.17 走 libEGL, 更早走 libGL。
+  # 自建 Mesa GL (graphics/mesa-gl.bst): Wine opengl32 → EGL → zink。
+  # PE32 DirectDraw 可由 wrapper → D3D9/DXVK；x86_64 无对应 wrapper，
+  # 会回退 builtin ddraw → WineD3D → OpenGL/Zink。
+  # 缺了这些库，OpenGL/x64 DX7 会直接黑屏。Wine >=10.17 走 libEGL，更早走 libGL。
   "libEGL.so.1:Wine >=10.17 win32u → EGL x11 → zink"
   "libGL.so.1:旧 Wine opengl32/ddraw → GLX → zink"
   "libzstd.so.1:Mesa GL + Turnip (Mesa shader cache)"
