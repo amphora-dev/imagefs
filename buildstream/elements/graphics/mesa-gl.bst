@@ -1,7 +1,7 @@
 kind: meson
 
 description: |
-  Mesa 26.1.6 desktop GL/EGL with Zink + softpipe DRI frontends.
+  Mesa 26.2.0 desktop GL/EGL with Zink + softpipe DRI frontends.
 
   This element keeps the production API30 Amphora Bionic/Linux profile separate
   from normal API26 Android packages and fails closed on driver/TLS/stub ABI
@@ -64,8 +64,8 @@ depends:
 
 sources:
 - kind: tar
-  url: mesa:mesa-26.1.6.tar.xz
-  ref: 5296b88a0f1e012e2cb9ada150a2bbadf728ca81e5a4fb2ab43c83a4d2158606
+  url: mesa:mesa-26.2.0.tar.xz
+  ref: efd4bb08cdb7c365a812cd4e6c9202ab55b2f22cdcd13c7d6c4f9647b799a4ef
 - kind: local
   path: vendor/wrapper-patches/0003-amphora-not-detect-os-android.patch
   directory: .bst/wrapper-patches
