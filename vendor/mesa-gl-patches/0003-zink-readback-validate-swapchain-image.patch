@@ -1,0 +1,20 @@
+diff --git a/src/gallium/drivers/zink/zink_kopper.c b/src/gallium/drivers/zink/zink_kopper.c
+--- a/src/gallium/drivers/zink/zink_kopper.c
++++ b/src/gallium/drivers/zink/zink_kopper.c
+@@ -949,8 +949,15 @@ void
+ zink_kopper_set_readback_needs_update(struct zink_resource *res)
+ {
+    struct kopper_displaytarget *cdt = res->obj->dt;
++   uint32_t idx = res->obj->dt_idx;
++
++   /* Present resets dt_idx to UINT32_MAX until the next acquire.  WineD3D
++    * front-buffer writes can reach this helper in that interval. */
++   if (!cdt || !cdt->swapchain || idx >= cdt->swapchain->num_images)
++      return;
++
+    struct kopper_swapchain *cswap = cdt->swapchain;
+-   cswap->images[res->obj->dt_idx].readback_needs_update = true;
++   cswap->images[idx].readback_needs_update = true;
+ }
+ 
+ static bool

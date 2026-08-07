@@ -8,6 +8,8 @@ with the Vulkan wrapper build.
 | Patch | Why |
 |-------|-----|
 | `0001-amphora-no-android-native-handle.patch` | NDK clang defines `__ANDROID__`, so `include/vulkan/vk_android_native_buffer.h` includes AOSP's `<cutils/native_handle.h>`, which does not exist outside an AOSP tree. Mesa's own escape hatch (`-Dandroid-stub=true`) is rejected since 25.3 unless `platforms=android`, and `platforms=android` is exactly what the Amphora Bionic/Linux profile avoids. Under `__AMPHORA__` (or legacy `__TERMUX__`) take the generic `buffer_handle_t` instead. |
+| `0003-zink-readback-validate-swapchain-image.patch` | WineD3D front-buffer writes can run after present reset `dt_idx` and before the next acquire. Validate the index against `num_images` before marking the image for readback, preventing `images[UINT32_MAX]` and other out-of-range writes. |
+| `0004-zink-acquire-swapchain-on-write-barrier.patch` | A write barrier needs a real swapchain `VkImage`. Acquire it immediately before the write/readback path and verify that an index was assigned. Read-only barriers deliberately do not acquire or wait. |
 
 The recipe explicitly selects native ELF TLS for every GL frontend and the
 megadriver. This is not implied by API 30 in our `system=linux`,
@@ -17,3 +19,7 @@ megadriver. This is not implied by API 30 in our `system=linux`,
 
 Keep this set minimal: everything else must come from upstream sources so the
 build stays a plain "download release tarball → cross-compile" recipe.
+
+The Zink patches remain necessary even when PE32 DirectDraw wrappers are
+enabled: x86_64 applications cannot load those wrappers and fall back to
+Proton's builtin ddraw → WineD3D → OpenGL/Zink.

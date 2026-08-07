@@ -1,0 +1,21 @@
+diff --git a/src/gallium/drivers/zink/zink_synchronization.cpp b/src/gallium/drivers/zink/zink_synchronization.cpp
+--- a/src/gallium/drivers/zink/zink_synchronization.cpp
++++ b/src/gallium/drivers/zink/zink_synchronization.cpp
+@@ -417,7 +417,16 @@ zink_resource_image_barrier(struct zink_context *ctx, struct zink_resource *res,
+ {
+    bool is_write = zink_resource_access_is_write(flags);
+-   if (is_write && zink_is_swapchain(res))
++   if (is_write && zink_is_swapchain(res)) {
++      /* A swapchain resource has no current VkImage after present.  Acquire
++       * only when a write barrier actually needs the image; read-only
++       * barriers must not introduce an unbounded wait. */
++      if (res->obj->dt_idx == UINT32_MAX &&
++          (!zink_kopper_acquire(ctx, res, UINT64_MAX) ||
++           res->obj->dt_idx == UINT32_MAX))
++         return;
++
+       zink_kopper_set_readback_needs_update(res);
++   }
+    if (!GENERAL && !res->obj->needs_zs_evaluate && !zink_resource_image_needs_barrier(res, new_layout, flags, pipeline) &&
+        (res->queue == zink_screen(ctx->base.screen)->gfx_queue || res->queue == VK_QUEUE_FAMILY_IGNORED))
+       return;
