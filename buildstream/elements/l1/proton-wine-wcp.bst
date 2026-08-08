@@ -2,7 +2,7 @@ kind: manual
 
 description: |
   Proton Wine 11 WCP from proton_11.0 commit
-  e6a370ff7db61c230df94996f00131e22f9165cf.
+  d12a5634aa4d8832761f2d968d5a3d9170034910.
 
 depends:
 - filename: host/noble-amd64.bst
@@ -28,7 +28,7 @@ depends:
 sources:
 - kind: git
   url: amphora:proton-wine.git
-  ref: e6a370ff7db61c230df94996f00131e22f9165cf
+  ref: d12a5634aa4d8832761f2d968d5a3d9170034910
   track: proton_11.0
   checkout-submodules: true
 - kind: local
@@ -41,7 +41,7 @@ environment:
   LLVM_MINGW_ROOT: /opt/llvm-mingw
   ANDROID_X86_64_SYSROOT: /opt/android-x86_64-sysroot
   PREFIX_PACK: /opt/proton-assets/prefixPack.txz
-  PROTON_COMMIT: e6a370ff7db61c230df94996f00131e22f9165cf
+  PROTON_COMMIT: d12a5634aa4d8832761f2d968d5a3d9170034910
   OUTPUT_DIR: "%{install-root}/artifacts"
 
 config:
