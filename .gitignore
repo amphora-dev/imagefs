@@ -8,6 +8,7 @@ patches/
 
 # Don't commit archives / checksums produced by packaging
 *.txz
+!vendor/proton-prefix/*.txz
 *.tar.xz
 *.tar.bz2
 *.tar.gz
