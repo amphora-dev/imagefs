@@ -25,7 +25,7 @@ fi
 
 if gh release view wine --repo "${REPO}" >/dev/null 2>&1; then
   if gh release view wine --repo "${REPO}" --json assets \
-    --jq '.assets[].name' | grep -Eq -- "-${SHORT}-x86_64-[0-9]+\\.wcp\$"; then
+    --jq '.assets[].name' | grep -q -- "-${SHORT}-x86_64\\.wcp\$"; then
     echo "should_build=false" >> "$GITHUB_OUTPUT"
     echo "Already published for $SHORT"
     exit 0
