@@ -138,6 +138,17 @@ jobs:
           --body "$BODY" \
           -- "artifacts/${{ env.WCP_NAME }}" "artifacts/${{ env.WCP_NAME }}.sha256sum"
 
+    - name: Remove superseded Proton assets
+      if: steps.gate.outputs.should_build == 'true' && github.ref == 'refs/heads/main'
+      env:
+        GH_TOKEN: ${{ github.token }}
+        REPO: ${{ github.repository }}
+      run: |
+        bash ci/publish/prune-assets.sh \
+          --tag wine \
+          --match 'Proton-*' \
+          --keep "${{ env.WCP_NAME }}" "${{ env.WCP_NAME }}.sha256sum"
+
     - name: Pin content_manifest wine
       if: steps.gate.outputs.should_build == 'true' && github.ref == 'refs/heads/main'
       uses: ./.github/actions/bump-manifest
