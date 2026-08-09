@@ -1,0 +1,14 @@
+{
+  "wineVersion": "Proton-11.0-d12a5634a-x86_64-1",
+  "profileVersionName": "11.0-d12a5634a-x86_64",
+  "versionCode": 1,
+  "architecture": "x86_64",
+  "wineSourceCommit": "d12a5634aa4",
+  "winePackageSha256": "766ac2fab8ef9d2cfe1b242fb445bb1565747a52a2083e31343c5aefe829703f",
+  "generatorRepository": "amphora-dev/amphora",
+  "generatorCommit": "2fc8004b52e6ca39c1fddf06a1e730ffedcbe71b",
+  "generationRuns": 2,
+  "prefixPackSha256": "21492b41aad110331449cb410bda62d8004466beff684b7903367657b972f775",
+  "prefixPackSize": 7919920,
+  "sourceFileCount": 309
+}

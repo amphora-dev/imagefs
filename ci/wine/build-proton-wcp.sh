@@ -21,7 +21,7 @@ WINE_PREFIX=/opt/wine
 # Increment when packaging changes without changing PROTON_COMMIT. The WCP
 # install identity includes this revision, so existing devices replace a
 # same-source package instead of treating its old directory as current.
-PACKAGE_REVISION=1
+PACKAGE_REVISION=2
 
 for tool in autoconf autoreconf bison file flex make meson patch pkg-config \
             python3 tar zstd; do

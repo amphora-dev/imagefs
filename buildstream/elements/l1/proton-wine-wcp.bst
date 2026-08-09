@@ -40,7 +40,7 @@ environment:
   ANDROID_NDK_HOME: "%{ndk-root}"
   LLVM_MINGW_ROOT: /opt/llvm-mingw
   ANDROID_X86_64_SYSROOT: /opt/android-x86_64-sysroot
-  PREFIX_PACK: /opt/proton-assets/prefixPack.txz
+  PREFIX_PACK: /opt/proton-assets/prefixPack-11.0-d12a5634a-x86_64-1.txz
   PROTON_COMMIT: d12a5634aa4d8832761f2d968d5a3d9170034910
   OUTPUT_DIR: "%{install-root}/artifacts"
 
