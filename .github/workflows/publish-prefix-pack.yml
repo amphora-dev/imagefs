@@ -1,0 +1,79 @@
+name: publish-prefix-pack
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+    - "vendor/proton-prefix/**"
+    - "ci/publish/fixed-release.sh"
+    - "ci/publish/prune-assets.sh"
+    - ".github/workflows/publish-prefix-pack.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    env:
+      PREFIX_ID: 11.0-d12a5634a-x86_64-1
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Verify PrefixPack and provenance
+      run: |
+        set -euo pipefail
+        root="vendor/proton-prefix"
+        pack="$root/prefixPack-$PREFIX_ID.txz"
+        metadata="$root/prefixPack-$PREFIX_ID.json"
+        test -f "$pack"
+        test -f "$metadata"
+        python3 - "$pack" "$metadata" "$PREFIX_ID" <<'PY'
+        import hashlib
+        import json
+        import pathlib
+        import sys
+        import tarfile
+
+        pack = pathlib.Path(sys.argv[1])
+        metadata = json.loads(pathlib.Path(sys.argv[2]).read_text())
+        assert metadata["wineVersion"] == f"Proton-{sys.argv[3]}"
+        assert metadata["architecture"] == "x86_64"
+        digest = hashlib.sha256(pack.read_bytes()).hexdigest()
+        assert digest == metadata["prefixPackSha256"], (digest, metadata["prefixPackSha256"])
+        assert pack.stat().st_size == metadata["prefixPackSize"]
+        with tarfile.open(pack, "r:xz") as archive:
+            names = {member.name for member in archive.getmembers()}
+            assert ".wine/system.reg" in names
+            assert ".wine/drive_c/windows/system32/kernel32.dll" not in names
+            assert not any(".wineserver" in name or "/drive_d" in name for name in names)
+        PY
+        sha256sum "$pack" > "$pack.sha256sum"
+
+    - name: Publish fixed PrefixPack release
+      env:
+        GH_TOKEN: ${{ github.token }}
+        REPO: ${{ github.repository }}
+        TARGET_REF: ${{ github.sha }}
+      run: |
+        set -euo pipefail
+        root="vendor/proton-prefix"
+        name="prefixPack-$PREFIX_ID"
+        bash ci/publish/fixed-release.sh \
+          --tag proton-prefix \
+          --title "Amphora Proton PrefixPack" \
+          --body "Deterministic PrefixPack for Proton-$PREFIX_ID." \
+          -- "$root/$name.txz" "$root/$name.txz.sha256sum" "$root/$name.json"
+
+    - name: Prune superseded PrefixPack assets
+      env:
+        GH_TOKEN: ${{ github.token }}
+        REPO: ${{ github.repository }}
+      run: |
+        root="vendor/proton-prefix"
+        name="prefixPack-$PREFIX_ID"
+        bash ci/publish/prune-assets.sh \
+          --tag proton-prefix \
+          --match 'prefixPack-*' \
+          --keep "$name.txz" "$name.txz.sha256sum" "$name.json"
