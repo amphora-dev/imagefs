@@ -22,6 +22,7 @@ on:
     - "vendor/wrapper-patches/**"
     - "vendor/mesa-gl-patches/**"
     - "vendor/winlator-bionic/**"
+    - "vendor/proton-prefix/**"
     - "ci/wine/**"
     - "ci/gate/wine-build.sh"
     - "ci/verify/proton-wcp.sh"

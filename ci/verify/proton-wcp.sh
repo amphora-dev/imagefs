@@ -29,6 +29,28 @@ test -f "$work/lib/wine/x86_64-unix/wine"
 test -f "$work/lib/wine/x86_64-windows/ntdll.dll"
 test -f "$work/lib/wine/i386-windows/ntdll.dll"
 test -f "$work/prefixPack.txz"
+metadata="vendor/proton-prefix/prefixPack-11.0-d12a5634a-x86_64-1.json"
+test -f "$metadata"
+expected_prefix_sha="$(python3 -c \
+  'import json,sys; print(json.load(open(sys.argv[1]))["prefixPackSha256"])' \
+  "$metadata")"
+test "$(sha256sum "$work/prefixPack.txz" | awk '{print $1}')" = "$expected_prefix_sha"
+python3 - "$work/prefixPack.txz" <<'PY'
+import pathlib
+import tarfile
+import sys
+
+path = pathlib.Path(sys.argv[1])
+with tarfile.open(path, "r:xz") as archive:
+    members = archive.getmembers()
+    names = {member.name for member in members}
+    assert ".wine/system.reg" in names
+    assert ".wine/drive_c/windows/system32/kernel32.dll" not in names
+    assert not any(".wineserver" in name or "/drive_d" in name for name in names)
+    for member in members:
+        if member.issym():
+            assert not pathlib.PurePosixPath(member.linkname).is_absolute()
+PY
 
 python3 - "$work/profile.json" "$FULL_VERSION" "$VER_CODE" <<'PY'
 import json
