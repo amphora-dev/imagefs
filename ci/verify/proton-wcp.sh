@@ -74,6 +74,8 @@ PY
 file "$work/lib/wine/x86_64-unix/wine" | grep -q 'ELF 64-bit.*x86-64'
 file "$work/lib/wine/x86_64-windows/ntdll.dll" | grep -q 'PE32+.*x86-64'
 file "$work/lib/wine/i386-windows/ntdll.dll" | grep -q 'PE32.*Intel 80386'
+readelf -dW "$work/lib/wine/x86_64-unix/winepulse.so" |
+  grep -q 'Shared library: \[libpulse\.so\]'
 
 python3 - "$work/lib/wine/x86_64-unix" <<'PY'
 import os

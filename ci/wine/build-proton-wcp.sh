@@ -105,11 +105,13 @@ mkdir wine-tools
   export LDFLAGS=-L/opt/host-freetype/lib
   export FREETYPE_CFLAGS=-I/opt/host-freetype/include/freetype2
   export FREETYPE_LIBS="-L/opt/host-freetype/lib -lfreetype"
+  unset PULSE_CFLAGS PULSE_LIBS
   unset CFLAGS CXXFLAGS
   ../configure \
     --enable-archs=x86_64 \
     --without-x \
     --without-gstreamer \
+    --without-pulse \
     --without-vulkan \
     --without-wayland
   make -j"$JOBS" __tooldeps__ nls/all
