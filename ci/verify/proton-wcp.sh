@@ -26,8 +26,11 @@ tar -I zstd -xf "$wcp" -C "$work"
 test "$(readlink "$work/bin/wine")" = ../lib/wine/x86_64-unix/wine
 test "$(readlink "$work/bin/wine-preloader")" = ../lib/wine/x86_64-unix/wine-preloader
 test -f "$work/lib/wine/x86_64-unix/wine"
+test -f "$work/lib/wine/x86_64-unix/winepulse.so"
 test -f "$work/lib/wine/x86_64-windows/ntdll.dll"
+test -f "$work/lib/wine/x86_64-windows/winepulse.drv"
 test -f "$work/lib/wine/i386-windows/ntdll.dll"
+test -f "$work/lib/wine/i386-windows/winepulse.drv"
 test -f "$work/prefixPack.txz"
 metadata="vendor/proton-prefix/prefixPack-11.0-d12a5634a-x86_64-1.json"
 test -f "$metadata"
@@ -108,8 +111,8 @@ for directory, _, names in os.walk(root):
         ).stdout
         if "/data/data/com.termux" in dynamic:
             raise SystemExit(f"{path}: contains Termux runtime path")
-        if "libpulse.so" in dynamic:
-            raise SystemExit(f"{path}: unexpectedly depends on PulseAudio")
+        if "libpulse.so" in dynamic and name != "winepulse.so":
+            raise SystemExit(f"{path}: unexpected PulseAudio dependency outside winepulse.so")
         android_relr_tags = ("6fffe000", "6fffe001", "6fffe003")
         if any(tag in dynamic.lower() for tag in android_relr_tags):
             raise SystemExit(f"{path}: contains Android-private RELR dynamic tags")
