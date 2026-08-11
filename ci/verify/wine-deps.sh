@@ -157,7 +157,7 @@ fi
 unused=(
   "libXrandr.so" "libXcomposite.so" "libXinerama.so"
   "libharfbuzz.so" "libxml2.so" "libcurl.so"
-  "libpulse.so" "libGLdispatch.so" "libavcodec.so"
+  "libGLdispatch.so" "libavcodec.so"
 )
 
 section "验证必需依赖"
@@ -221,6 +221,14 @@ for name in "${unused[@]}"; do
   fi
 done
 [ "$extra" -eq 0 ] && echo "  (无)"
+
+section "PulseAudio 客户端由 Box64 包装到 APK PA13"
+if [ -e "$LIB/libpulse.so" ] || [ -e "$LIB/libpulse.so.0" ]; then
+  echo "  UNEXPECTED imagefs 内不应提供 guest libpulse；会绕过 APK 内匹配的 PA13" >&2
+  fail=1
+else
+  echo "  OK      imagefs 无 guest libpulse，winepulse 只能走 Box64 native wrap"
+fi
 
 section "libzstd SONAME (Turnip NEEDED libzstd.so.1)"
 zstd="$LIB/libzstd.so"
