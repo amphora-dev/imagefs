@@ -21,7 +21,7 @@ PACKAGE_ROOT=/tmp/proton-wine-package
 WINE_PREFIX=/opt/wine
 
 for tool in autoconf autoreconf bison dpkg-deb file flex make meson patch pkg-config \
-            python3 tar zstd; do
+            python3 readelf tar zstd; do
   command -v "$tool" >/dev/null || {
     echo "missing build tool: $tool" >&2
     exit 1
@@ -51,7 +51,12 @@ mkdir -p "$PULSE_DEV_ROOT"
 dpkg-deb -x "$PULSE_DEV_DEB" "$PULSE_DEV_ROOT"
 PULSE_DEV_PREFIX="$PULSE_DEV_ROOT/data/data/com.termux/files/usr"
 test -f "$PULSE_DEV_PREFIX/include/pulse/pulseaudio.h"
+test -f "$PULSE_DEV_PREFIX/include/pulse/version.h"
 test -f "$PULSE_DEV_PREFIX/lib/libpulse.so"
+grep -Eq '^#define PA_MAJOR +13$' "$PULSE_DEV_PREFIX/include/pulse/version.h"
+grep -Eq '^#define PA_PROTOCOL_VERSION +33$' "$PULSE_DEV_PREFIX/include/pulse/version.h"
+readelf -dW "$PULSE_DEV_PREFIX/lib/libpulse.so" |
+  grep -q 'Shared library: \[libpulsecommon-13\.0\.so\]'
 
 export PATH="$LLVM_MINGW_ROOT/bin:$TOOLCHAIN:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 export LD_LIBRARY_PATH=/opt/host-freetype/lib
@@ -77,7 +82,7 @@ export CXXFLAGS="$CFLAGS"
 export LDFLAGS="-L$DEPS/lib -Wl,-rpath,/usr/lib -Wl,-z,max-page-size=16384 -Wl,--pack-dyn-relocs=relr -Wl,--no-use-android-relr-tags"
 export FREETYPE_CFLAGS="-I$DEPS/include/freetype2"
 export PULSE_CFLAGS="-I$PULSE_DEV_PREFIX/include"
-export PULSE_LIBS="-L$PULSE_DEV_PREFIX/lib -lpulse"
+export PULSE_LIBS="-L$PULSE_DEV_PREFIX/lib -lpulse -pthread"
 export SDL2_CFLAGS="-I$DEPS/include/SDL2"
 export SDL2_LIBS="-L$DEPS/lib -lSDL2"
 export FONTCONFIG_LIBS="-L$DEPS/lib -lfontconfig -lfreetype -lexpat"

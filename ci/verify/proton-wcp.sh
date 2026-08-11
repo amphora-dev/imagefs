@@ -72,10 +72,15 @@ assert profile["wine"] == {
 PY
 
 file "$work/lib/wine/x86_64-unix/wine" | grep -q 'ELF 64-bit.*x86-64'
+file "$work/lib/wine/x86_64-unix/winepulse.so" | grep -q 'ELF 64-bit.*x86-64'
 file "$work/lib/wine/x86_64-windows/ntdll.dll" | grep -q 'PE32+.*x86-64'
+file "$work/lib/wine/x86_64-windows/winepulse.drv" | grep -q 'PE32+.*x86-64'
 file "$work/lib/wine/i386-windows/ntdll.dll" | grep -q 'PE32.*Intel 80386'
-readelf -dW "$work/lib/wine/x86_64-unix/winepulse.so" |
-  grep -q 'Shared library: \[libpulse\.so\]'
+file "$work/lib/wine/i386-windows/winepulse.drv" | grep -q 'PE32.*Intel 80386'
+pulse_dynamic="$(readelf -dW "$work/lib/wine/x86_64-unix/winepulse.so")"
+test "$(grep -c 'Shared library: \[libpulse\.so\]' <<<"$pulse_dynamic")" -eq 1
+! grep -q 'Shared library: \[libpulse\.so\.0\]' <<<"$pulse_dynamic"
+! grep -q 'libpulsecommon-17' <<<"$pulse_dynamic"
 
 python3 - "$work/lib/wine/x86_64-unix" <<'PY'
 import os
