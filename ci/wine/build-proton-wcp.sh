@@ -6,6 +6,7 @@ set -euo pipefail
 : "${LLVM_MINGW_ROOT:?BuildStream must provide LLVM_MINGW_ROOT}"
 : "${ANDROID_X86_64_SYSROOT:?BuildStream must provide ANDROID_X86_64_SYSROOT}"
 : "${PREFIX_PACK:?BuildStream must provide PREFIX_PACK}"
+: "${PULSE_DEV_DEB:?BuildStream must provide PULSE_DEV_DEB}"
 : "${OUTPUT_DIR:?BuildStream must provide OUTPUT_DIR}"
 : "${PROTON_COMMIT:?BuildStream must provide PROTON_COMMIT}"
 
@@ -19,7 +20,7 @@ DESTDIR=/tmp/proton-wine-dest
 PACKAGE_ROOT=/tmp/proton-wine-package
 WINE_PREFIX=/opt/wine
 
-for tool in autoconf autoreconf bison file flex make meson patch pkg-config \
+for tool in autoconf autoreconf bison dpkg-deb file flex make meson patch pkg-config \
             python3 tar zstd; do
   command -v "$tool" >/dev/null || {
     echo "missing build tool: $tool" >&2
@@ -41,7 +42,16 @@ done
 test -d "$DEPS/lib"
 test -d "$DEPS/include"
 test -f "$PREFIX_PACK"
+test -f "$PULSE_DEV_DEB"
 test -f VERSION
+
+PULSE_DEV_ROOT=/tmp/termux-pulse-dev
+rm -rf "$PULSE_DEV_ROOT"
+mkdir -p "$PULSE_DEV_ROOT"
+dpkg-deb -x "$PULSE_DEV_DEB" "$PULSE_DEV_ROOT"
+PULSE_DEV_PREFIX="$PULSE_DEV_ROOT/data/data/com.termux/files/usr"
+test -f "$PULSE_DEV_PREFIX/include/pulse/pulseaudio.h"
+test -f "$PULSE_DEV_PREFIX/lib/libpulse.so"
 
 export PATH="$LLVM_MINGW_ROOT/bin:$TOOLCHAIN:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 export LD_LIBRARY_PATH=/opt/host-freetype/lib
@@ -66,6 +76,8 @@ export CXXFLAGS="$CFLAGS"
 # remains the raw 0xd6978 file address and Wine crashes in virtual_init.
 export LDFLAGS="-L$DEPS/lib -Wl,-rpath,/usr/lib -Wl,-z,max-page-size=16384 -Wl,--pack-dyn-relocs=relr -Wl,--no-use-android-relr-tags"
 export FREETYPE_CFLAGS="-I$DEPS/include/freetype2"
+export PULSE_CFLAGS="-I$PULSE_DEV_PREFIX/include"
+export PULSE_LIBS="-L$PULSE_DEV_PREFIX/lib -lpulse"
 export SDL2_CFLAGS="-I$DEPS/include/SDL2"
 export SDL2_LIBS="-L$DEPS/lib -lSDL2"
 export FONTCONFIG_LIBS="-L$DEPS/lib -lfontconfig -lfreetype -lexpat"
@@ -143,7 +155,7 @@ mkdir wine-tools
   --without-pcsclite \
   --without-piper \
   --with-pthread \
-  --without-pulse \
+  --with-pulse \
   --without-sane \
   --with-sdl \
   --without-udev \
@@ -170,6 +182,9 @@ installed="$DESTDIR$WINE_PREFIX"
 test -d "$installed/lib/wine/x86_64-unix"
 test -d "$installed/lib/wine/x86_64-windows"
 test -d "$installed/lib/wine/i386-windows"
+test -f "$installed/lib/wine/x86_64-unix/winepulse.so"
+test -f "$installed/lib/wine/x86_64-windows/winepulse.drv"
+test -f "$installed/lib/wine/i386-windows/winepulse.drv"
 mkdir -p "$PACKAGE_ROOT/bin" "$PACKAGE_ROOT/lib" "$PACKAGE_ROOT/share"
 cp -a "$installed/bin/." "$PACKAGE_ROOT/bin/"
 cp -a "$installed/lib/wine" "$PACKAGE_ROOT/lib/"

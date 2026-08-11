@@ -31,6 +31,10 @@ sources:
   ref: d12a5634aa4d8832761f2d968d5a3d9170034910
   track: proton_11.0
   checkout-submodules: true
+- kind: remote
+  url: termux-packages:pool/main/p/pulseaudio/pulseaudio_17.0-4_x86_64.deb
+  ref: 51ce7cc0559e9c0ee0513c5bf2018a2b626f593fd03265f7dbd18c8cd3b0d0fa
+  filename: pulseaudio_17.0-4_x86_64.deb
 - kind: local
   path: ci/wine
   directory: .bst/ci/wine
@@ -41,6 +45,7 @@ environment:
   LLVM_MINGW_ROOT: /opt/llvm-mingw
   ANDROID_X86_64_SYSROOT: /opt/android-x86_64-sysroot
   PREFIX_PACK: /opt/proton-assets/prefixPack-11.0-d12a5634a-x86_64-1.txz
+  PULSE_DEV_DEB: pulseaudio_17.0-4_x86_64.deb
   PROTON_COMMIT: d12a5634aa4d8832761f2d968d5a3d9170034910
   OUTPUT_DIR: "%{install-root}/artifacts"
 
