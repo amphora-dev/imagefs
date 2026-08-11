@@ -48,7 +48,8 @@ test -f VERSION
 PULSE_DEV_ROOT=/tmp/termux-pulse-dev
 rm -rf "$PULSE_DEV_ROOT"
 mkdir -p "$PULSE_DEV_ROOT"
-dpkg-deb -x "$PULSE_DEV_DEB" "$PULSE_DEV_ROOT"
+dpkg-deb --fsys-tarfile "$PULSE_DEV_DEB" |
+  tar --no-same-owner -xf - -C "$PULSE_DEV_ROOT"
 PULSE_DEV_PREFIX="$PULSE_DEV_ROOT/data/data/com.termux/files/usr"
 test -f "$PULSE_DEV_PREFIX/include/pulse/pulseaudio.h"
 test -f "$PULSE_DEV_PREFIX/include/pulse/version.h"
