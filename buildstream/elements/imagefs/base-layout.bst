@@ -18,7 +18,7 @@ config:
       "$usr/bin" "$usr/lib/pkgconfig" "$usr/etc" "$usr/share" \
       "$usr/tmp/.X11-unix" "$usr/tmp/.sound" "$usr/tmp/.sysvshm" \
       "$usr/include" "$usr/var/cache" "$usr/var/run" \
-      "$root/home/xuser" "$root/opt" "$root/storage" \
+      "$root/home" "$root/opt" "$root/storage" \
       "$root/proc" "$root/sys" "$root/dev"
     ln -s usr/bin "$root/bin"
     ln -s usr/etc "$root/etc"

@@ -24,6 +24,10 @@ if tar -tJf "$OUTPUT_DIR/imagefs.txz" | grep -Eq '^(\./)?usr/include/'; then
   echo "FAIL: usr/include in imagefs.txz" >&2
   exit 1
 fi
+if tar -tJf "$OUTPUT_DIR/imagefs.txz" | grep -Eq '^(\./)?home/xuser/?$'; then
+  echo "FAIL: home/xuser must not exist in imagefs.txz; Amphora owns the active-container symlink" >&2
+  exit 1
+fi
 
 export IMAGEFS_RUNTIME_STAGE="${IMAGEFS_RUNTIME_STAGE:-$BUILD_DIR/target}"
 bash "$SCRIPT_DIR/wine-deps.sh"
