@@ -187,6 +187,8 @@ test -n "$mesa_gallium"
 test -f artifacts/buildstream-mesa-gl/usr/lib/.libgl-zink
 strings "$mesa_gallium" | grep -q 'ZINK:'
 strings "$mesa_gallium" | grep -qx 'libvulkan.so.1'
+test -f artifacts/buildstream-mesa-gl/usr/lib/.libgl-virgl
+strings "$mesa_gallium" | grep -qx 'virpipe'
 test ! -e artifacts/buildstream-mesa-gl/usr/lib/libvulkan.so
 
 ffi=artifacts/buildstream-libffi/usr/lib/libffi.so

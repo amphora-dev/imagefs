@@ -1,7 +1,13 @@
 kind: meson
 
 description: |
-  Mesa 26.2.0 desktop GL/EGL with Zink + softpipe DRI frontends.
+  Mesa 26.2.0 desktop GL/EGL with Zink + softpipe + virgl DRI frontends.
+
+  Zink is the hardware path wherever the Vulkan driver carries what it needs.
+  Mali blobs do not (no VK_KHR_dynamic_rendering, no VK_EXT_robustness2), so
+  virgl is built alongside as the second hardware path: the guest serialises GL
+  over vtest and the Android side replays it on the native GLES driver. softpipe
+  stays as the last resort. virgl needs no LLVM, so it costs build time only.
 
   This element keeps the production API30 Amphora Bionic/Linux profile separate
   from normal API26 Android packages and fails closed on driver/TLS/stub ABI
@@ -87,7 +93,7 @@ variables:
     -Dgles1=disabled
     -Dgles2=disabled
     -Dgbm=disabled
-    -Dgallium-drivers=zink,softpipe
+    -Dgallium-drivers=zink,softpipe,virgl
     -Dvulkan-drivers=
     -Dllvm=disabled
     -Dshared-llvm=disabled
@@ -152,6 +158,10 @@ config:
     done
 
     grep -q 'ZINK:' "$gallium"
+    # "virpipe" is the name sw_screen_create_named matches on, and it only
+    # survives compilation under GALLIUM_VIRGL, so its presence is proof the
+    # driver is in rather than silently dropped by meson.
+    grep -q 'virpipe' "$gallium"
     for frontend in "$gl_real" "$egl_real"; do
       readelf -Ws "$frontend" |
         awk '$4 == "TLS" && $7 == "UND" && $8 == "_mesa_glapi_tls_Dispatch" { found=1 } END { exit !found }'
@@ -159,3 +169,4 @@ config:
     readelf -Ws "$gallium" |
       awk '$4 == "TLS" && $7 != "UND" && $8 == "_mesa_glapi_tls_Dispatch" { found=1 } END { exit !found }'
     : > "$libdir/.libgl-zink"
+    : > "$libdir/.libgl-virgl"
