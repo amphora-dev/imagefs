@@ -28,7 +28,7 @@ depends:
 sources:
 - kind: git
   url: amphora:proton-wine.git
-  ref: f3cd8536b9ee154759065beebe4d30a621d940a6
+  ref: 9ee49ffbe52ed5b17e48052c832cef4c71574a5d
   track: proton_11.0
   checkout-submodules: true
 - kind: remote
