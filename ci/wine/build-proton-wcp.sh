@@ -136,7 +136,7 @@ mkdir wine-tools
   --disable-win16 \
   --enable-nls \
   --disable-amd_ags_x64 \
-  --enable-wineandroid_drv=no \
+  --enable-wineandroid_drv=yes \
   --disable-tests \
   --with-alsa \
   --without-capi \
@@ -193,6 +193,8 @@ test -d "$installed/lib/wine/i386-windows"
 test -f "$installed/lib/wine/x86_64-unix/winepulse.so"
 test -f "$installed/lib/wine/x86_64-windows/winepulse.drv"
 test -f "$installed/lib/wine/i386-windows/winepulse.drv"
+test -f "$installed/lib/wine/x86_64-unix/wineandroid.so"
+test -f "$installed/lib/wine/x86_64-windows/wineandroid.drv"
 mkdir -p "$PACKAGE_ROOT/bin" "$PACKAGE_ROOT/lib" "$PACKAGE_ROOT/share"
 cp -a "$installed/bin/." "$PACKAGE_ROOT/bin/"
 cp -a "$installed/lib/wine" "$PACKAGE_ROOT/lib/"
