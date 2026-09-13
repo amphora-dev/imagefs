@@ -2,7 +2,7 @@ kind: manual
 
 description: |
   Proton Wine 11 WCP from proton_11.0 commit
-  d12a5634aa4d8832761f2d968d5a3d9170034910.
+  bca43b7941fb438968d9b015baa387ef06f1c2b3.
 
 depends:
 - filename: host/noble-amd64.bst
@@ -28,7 +28,7 @@ depends:
 sources:
 - kind: git
   url: amphora:proton-wine.git
-  ref: d12a5634aa4d8832761f2d968d5a3d9170034910
+  ref: bca43b7941fb438968d9b015baa387ef06f1c2b3
   track: proton_11.0
   checkout-submodules: true
 - kind: remote
@@ -46,7 +46,7 @@ environment:
   ANDROID_X86_64_SYSROOT: /opt/android-x86_64-sysroot
   PREFIX_PACK: /opt/proton-assets/prefixPack-11.0-d12a5634a-x86_64-1.txz
   PULSE_DEV_DEB: pulseaudio_13.0-1_x86_64.deb
-  PROTON_COMMIT: d12a5634aa4d8832761f2d968d5a3d9170034910
+  PROTON_COMMIT: bca43b7941fb438968d9b015baa387ef06f1c2b3
   OUTPUT_DIR: "%{install-root}/artifacts"
 
 config:
