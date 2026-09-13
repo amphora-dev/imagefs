@@ -2,8 +2,8 @@ kind: manual
 
 description: |
   Proton Wine 11 WCP from proton_11.0 commit
-  2f78c7fcbfad5863a32126b9db242ce6fe414152
-  (Amphora CreateDesktop uses explorer WxH; no Java surface wait).
+  f480c236757ef0db82ae214f182dc6f3e4fa2264
+  (Amphora CreateDesktop returns TRUE so explorer keeps the desktop).
 
 depends:
 - filename: host/noble-amd64.bst
@@ -29,7 +29,7 @@ depends:
 sources:
 - kind: git
   url: amphora:proton-wine.git
-  ref: 2f78c7fcbfad5863a32126b9db242ce6fe414152
+  ref: f480c236757ef0db82ae214f182dc6f3e4fa2264
   track: proton_11.0
   checkout-submodules: true
 - kind: remote
@@ -47,7 +47,7 @@ environment:
   ANDROID_X86_64_SYSROOT: /opt/android-x86_64-sysroot
   PREFIX_PACK: /opt/proton-assets/prefixPack-11.0-d12a5634a-x86_64-1.txz
   PULSE_DEV_DEB: pulseaudio_13.0-1_x86_64.deb
-  PROTON_COMMIT: 2f78c7fcbfad5863a32126b9db242ce6fe414152
+  PROTON_COMMIT: f480c236757ef0db82ae214f182dc6f3e4fa2264
   OUTPUT_DIR: "%{install-root}/artifacts"
 
 config:
