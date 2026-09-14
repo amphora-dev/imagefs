@@ -2,8 +2,8 @@ kind: manual
 
 description: |
   Proton Wine 11 WCP from proton_11.0 commit
-  122b97943147c29703cd5d2a9a4fcf8c891d3fa1
-  (AHB-import HWND Present; fs_hack off under Amphora WSI; HostVk Present dropped).
+  732b649ee15482a34ff872efa4253c3846d18b80
+  (AHB Present + amphora_wsi_bridge linked into wineandroid.so; fs_hack off; HostVk Present dropped).
 
 depends:
 - filename: host/noble-amd64.bst
@@ -29,7 +29,7 @@ depends:
 sources:
 - kind: git
   url: amphora:proton-wine.git
-  ref: 122b97943147c29703cd5d2a9a4fcf8c891d3fa1
+  ref: 732b649ee15482a34ff872efa4253c3846d18b80
   track: proton_11.0
   checkout-submodules: true
 - kind: remote
@@ -47,7 +47,7 @@ environment:
   ANDROID_X86_64_SYSROOT: /opt/android-x86_64-sysroot
   PREFIX_PACK: /opt/proton-assets/prefixPack-11.0-d12a5634a-x86_64-1.txz
   PULSE_DEV_DEB: pulseaudio_13.0-1_x86_64.deb
-  PROTON_COMMIT: 122b97943147c29703cd5d2a9a4fcf8c891d3fa1
+  PROTON_COMMIT: 732b649ee15482a34ff872efa4253c3846d18b80
   OUTPUT_DIR: "%{install-root}/artifacts"
 
 config:
