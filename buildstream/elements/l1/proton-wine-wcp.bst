@@ -2,7 +2,7 @@ kind: manual
 
 description: |
   Proton Wine 11 WCP from proton_11.0 commit
-  56b520543355d4ec423792e926918250da653cae
+  806f870f08054621354a91606308b0664e30a99c
   (AHB Present + amphora_wsi_bridge linked into wineandroid.so; fs_hack off; HostVk Present dropped).
 
 depends:
@@ -29,7 +29,7 @@ depends:
 sources:
 - kind: git
   url: amphora:proton-wine.git
-  ref: 56b520543355d4ec423792e926918250da653cae
+  ref: 806f870f08054621354a91606308b0664e30a99c
   track: proton_11.0
   checkout-submodules: true
 - kind: remote
@@ -47,7 +47,7 @@ environment:
   ANDROID_X86_64_SYSROOT: /opt/android-x86_64-sysroot
   PREFIX_PACK: /opt/proton-assets/prefixPack-11.0-d12a5634a-x86_64-1.txz
   PULSE_DEV_DEB: pulseaudio_13.0-1_x86_64.deb
-  PROTON_COMMIT: 56b520543355d4ec423792e926918250da653cae
+  PROTON_COMMIT: 806f870f08054621354a91606308b0664e30a99c
   OUTPUT_DIR: "%{install-root}/artifacts"
 
 config:
