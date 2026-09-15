@@ -22,6 +22,7 @@ jobs:
         sudo apt-get install -y apparmor-profiles apparmor-utils bubblewrap fuse3 lzip patch python3-venv xz-utils zstd
         sudo install -m 0644 /usr/share/apparmor/extra-profiles/bwrap-userns-restrict /etc/apparmor.d/bwrap-userns-restrict
         sudo apparmor_parser -r /etc/apparmor.d/bwrap-userns-restrict
+    # Same cache keys as build-proton-wine (exact key preferred; restore-keys fallback OK).
     - uses: actions/cache@v4
       id: bst_cache
       with:
@@ -34,7 +35,7 @@ jobs:
         path: ~/.cache/imagefs-buildstream/tools
         key: buildstream-tools-v3-${{ runner.os }}-bst-2.7.0-core-plugins-2.7.0-community-2.3.1-buildbox-1.4.15
     - run: bash ci/setup/install-buildstream.sh
-    - name: Pack CAS
+    - name: Pack CAS (split for Release 2GiB limit)
       run: |
         test -d "$HOME/.cache/buildstream"
         bash ci/cache/pack-buildstream-cas.sh
@@ -55,6 +56,7 @@ jobs:
         bash ci/publish/fixed-release.sh \
           --tag wine-dev-bst-cache \
           --title wine-dev-bst-cache \
-          --body "BuildStream CAS from Actions cache for local restore. Not a Proton WCP." \
-          -- artifacts/bst-cache/buildstream-cas-proton-wine.tar.zst \
-             artifacts/bst-cache/buildstream-cas-proton-wine.tar.zst.sha256sum
+          --body "BuildStream CAS from Actions cache (split parts; GitHub Release asset limit is 2GiB). Not a Proton WCP. Restore: bash ci/cache/restore-buildstream-cas.sh" \
+          -- artifacts/bst-cache/buildstream-cas-proton-wine.parts \
+             artifacts/bst-cache/buildstream-cas-proton-wine.tar.zst.sha256sum \
+             artifacts/bst-cache/buildstream-cas-proton-wine.tar.zst.part*

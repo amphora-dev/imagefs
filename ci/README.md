@@ -11,6 +11,7 @@ ci/
   gate/{imagefs-publish,box64-build,wrapper-build,wine-build,dxvk-build,vkd3d-build}.sh
   publish/{fixed-release,prune-assets,bump-manifest}.sh
   verify/{imagefs-artifact,wine-deps,dxvk-wcp,vkd3d-wcp}.sh
+  cache/{pack,restore}-buildstream-cas.sh   # sticky local CAS; see ci/cache/README.md
   wrapper/build-tzst.sh
   dxvk/build-dxvk-wcp.sh
   vkd3d/build-vkd3d-wcp.sh
@@ -45,3 +46,9 @@ Host SDK 和 NDK 均由 `buildstream-sdk.bst` junction 提供，不读取 GitHub
 
 Release 与 manifest 字段由 artifact 内生成的 `.env` 文件传递，workflow 不重新
 推断版本或摘要。
+
+## Local sticky BuildStream cache
+
+Dev machines can restore the Actions BuildStream CAS published under fixed tag
+`wine-dev-bst-cache` (see [`ci/cache/README.md`](cache/README.md)). This does
+not replace the `build-proton-wine` release path.
