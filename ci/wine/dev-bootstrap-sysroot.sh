@@ -70,7 +70,7 @@ fetch_ci_sysroot() {
     return 0
   fi
   echo "==> try CI wine-dev-sysroot release"
-  local tmp sha_file
+  local tmp
   tmp="$(mktemp -d)"
   # shellcheck disable=SC2064
   trap "rm -rf '$tmp'" RETURN
