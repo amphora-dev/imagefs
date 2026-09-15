@@ -2,7 +2,7 @@ kind: manual
 
 description: |
   Proton Wine 11 WCP from amphora/wineandroid-backport commit
-  08aced0d9984bafd8ba2858cb9884548333030a7
+  b8ca345602414c8ad466a140d0c82a70b29ceaff
   (wineandroid upstream backport; skip wine-debug.apk; p_surface_create BOOL raw ABI).
 
 depends:
@@ -29,7 +29,7 @@ depends:
 sources:
 - kind: git
   url: amphora:proton-wine.git
-  ref: 08aced0d9984bafd8ba2858cb9884548333030a7
+  ref: b8ca345602414c8ad466a140d0c82a70b29ceaff
   track: amphora/wineandroid-backport
   checkout-submodules: true
 - kind: remote
@@ -47,7 +47,7 @@ environment:
   ANDROID_X86_64_SYSROOT: /opt/android-x86_64-sysroot
   PREFIX_PACK: /opt/proton-assets/prefixPack-11.0-d12a5634a-x86_64-1.txz
   PULSE_DEV_DEB: pulseaudio_13.0-1_x86_64.deb
-  PROTON_COMMIT: 08aced0d9984bafd8ba2858cb9884548333030a7
+  PROTON_COMMIT: b8ca345602414c8ad466a140d0c82a70b29ceaff
   OUTPUT_DIR: "%{install-root}/artifacts"
 
 config:
