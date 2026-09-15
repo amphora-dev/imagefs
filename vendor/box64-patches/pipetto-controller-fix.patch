@@ -160,10 +160,10 @@ index 95473ce36f..07977de8d7 100644
  GO("libc.so.6", libc)
 diff --git a/src/wrapped/wrappedandroid.c b/src/wrapped/wrappedandroid.c
 new file mode 100644
-index 0000000000..91a4d20266
+index 0000000000..amphora001
 --- /dev/null
 +++ b/src/wrapped/wrappedandroid.c
-@@ -0,0 +1,19 @@
+@@ -0,0 +1,62 @@
 +#include <stdio.h>
 +#include <stdlib.h>
 +#include <string.h>
@@ -177,24 +177,89 @@ index 0000000000..91a4d20266
 +#include "bridge.h"
 +#include "librarian/library_private.h"
 +#include "x64emu.h"
++#include "callback.h"
++#include "librarian.h"
++#include "box64context.h"
 +
 +const char* androidName = "libandroid.so";
 +
 +#define LIBNAME android
 +
++#include "generated/wrappedandroidtypes.h"
++
++#include "wrappercallback.h"
++
++#define SUPER() \
++GO(0)   \
++GO(1)   \
++GO(2)   \
++GO(3)
++
++// ALooper_callbackFunc: int (*)(int fd, int events, void* data)
++#define GO(A)   \
++static uintptr_t my_ALooper_cb_fct_##A = 0;                                     \
++static int my_ALooper_cb_##A(int fd, int events, void* data)                    \
++{                                                                               \
++    return (int)RunFunctionFmt(my_ALooper_cb_fct_##A, "iip", fd, events, data); \
++}
++SUPER()
++#undef GO
++static void* findALooperCbFct(void* fct)
++{
++    if(!fct) return fct;
++    if(GetNativeFnc((uintptr_t)fct))  return GetNativeFnc((uintptr_t)fct);
++    #define GO(A) if(my_ALooper_cb_fct_##A == (uintptr_t)fct) return my_ALooper_cb_##A;
++    SUPER()
++    #undef GO
++    #define GO(A) if(my_ALooper_cb_fct_##A == 0) {my_ALooper_cb_fct_##A = (uintptr_t)fct; return my_ALooper_cb_##A; }
++    SUPER()
++    #undef GO
++    printf_log(LOG_NONE, "Warning, no more slot for ALooper_addFd callback\n");
++    return NULL;
++}
++#undef SUPER
++
++EXPORT int my_ALooper_addFd(x64emu_t* emu, void* looper, int fd, int ident, int events, void* callback, void* data)
++{
++    (void)emu;
++    return my->ALooper_addFd(looper, fd, ident, events, findALooperCbFct(callback), data);
++}
++
 +#include "wrappedlib_init.h"
 diff --git a/src/wrapped/wrappedandroid_private.h b/src/wrapped/wrappedandroid_private.h
 new file mode 100644
-index 0000000000..45ea7f3975
+index 0000000000..amphora002
 --- /dev/null
 +++ b/src/wrapped/wrappedandroid_private.h
-@@ -0,0 +1,6 @@
+@@ -0,0 +1,28 @@
 +#if !(defined(GO) && defined(GOM) && defined(GO2) && defined(DATA))
 +#error Meh...
 +#endif
 +
 +GO(android_res_nsend, iFLpLi)
++GO(android_res_nquery, iFLpiii)
 +GO(android_res_nresult, iFippL)
++
++// Amphora wineandroid.drv — load_android_libs() symbols under Box64 wrap
++GO(ANativeWindow_fromSurface, pFpp)
++GO(ANativeWindow_release, vFp)
++GO(AHardwareBuffer_describe, vFpp)
++GO(AHardwareBuffer_acquire, vFp)
++GO(AHardwareBuffer_release, vFp)
++GO(AHardwareBuffer_lock, iFpUipp)
++GO(AHardwareBuffer_unlock, iFpp)
++GO(AHardwareBuffer_sendHandleToUnixSocket, iFpi)
++GO(AHardwareBuffer_recvHandleFromUnixSocket, iFip)
++GO(ANativeWindowBuffer_getHardwareBuffer, pFp)
++GO(ALooper_acquire, vFp)
++GO(ALooper_forThread, pFv)
++GOM(ALooper_addFd, iFEpiiipp)
++GO(ALooper_removeFd, iFpi)
++GO(ALooper_release, vFp)
++
++GO(ASharedMemory_create, iFpL)
++GO(ASharedMemory_getSize, LFi)
++GO(ASharedMemory_setProt, iFii)
 
 From 33d4340e01358ca80fc09af1240400ea1c120142 Mon Sep 17 00:00:00 2001
 From: Pipetto-Crypto <pipetto-crypto@gmail.com>
@@ -223,26 +288,6 @@ index 7eb85b65f4..95156f94e4 100644
  #endif
  #ifdef STATICBUILD
  GO(dummy_pFLp, pFLp)
-
-From aab0ad16cb16285e4acefcc198193aeb6153752a Mon Sep 17 00:00:00 2001
-From: Pipetto-Crypto <pipetto-crypto@gmail.com>
-Date: Wed, 25 Jun 2025 10:50:48 +0200
-Subject: [PATCH 5/7] [WRAPPED] Wrap android_res_nquery
-
----
- src/wrapped/wrappedandroid_private.h | 1 +
- 1 file changed, 1 insertion(+)
-
-diff --git a/src/wrapped/wrappedandroid_private.h b/src/wrapped/wrappedandroid_private.h
-index 45ea7f3975..d1d86c98b8 100644
---- a/src/wrapped/wrappedandroid_private.h
-+++ b/src/wrapped/wrappedandroid_private.h
-@@ -3,4 +3,5 @@
- #endif
- 
- GO(android_res_nsend, iFLpLi)
-+GO(android_res_nquery, iFLpiii)
- GO(android_res_nresult, iFippL)
 
 From 1517ae125e90bf289ece96280c0bf32f2e24da55 Mon Sep 17 00:00:00 2001
 From: Pipetto-Crypto <pipetto-crypto@gmail.com>
