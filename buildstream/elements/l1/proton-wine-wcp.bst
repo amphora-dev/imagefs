@@ -1,9 +1,9 @@
 kind: manual
 
 description: |
-  Proton Wine 11 WCP from proton_11.0 commit
-  8e11ebfd95157df458c08c483e66622b0884fd40
-  (AHB Present + amphora_wsi_bridge; soft-fail desktop_tid for no-JNI/ReDroid; fs_hack off).
+  Proton Wine 11 WCP from amphora/wineandroid-backport commit
+  911b761c370f59205b716a790869ea2e578de5f7
+  (wineandroid upstream backport; p_surface_create BOOL raw ABI).
 
 depends:
 - filename: host/noble-amd64.bst
@@ -29,8 +29,8 @@ depends:
 sources:
 - kind: git
   url: amphora:proton-wine.git
-  ref: 8e11ebfd95157df458c08c483e66622b0884fd40
-  track: proton_11.0
+  ref: 911b761c370f59205b716a790869ea2e578de5f7
+  track: amphora/wineandroid-backport
   checkout-submodules: true
 - kind: remote
   url: termux-packages-legacy:pool/main/p/pulseaudio/pulseaudio_13.0-1_x86_64.deb
@@ -47,7 +47,7 @@ environment:
   ANDROID_X86_64_SYSROOT: /opt/android-x86_64-sysroot
   PREFIX_PACK: /opt/proton-assets/prefixPack-11.0-d12a5634a-x86_64-1.txz
   PULSE_DEV_DEB: pulseaudio_13.0-1_x86_64.deb
-  PROTON_COMMIT: 8e11ebfd95157df458c08c483e66622b0884fd40
+  PROTON_COMMIT: 911b761c370f59205b716a790869ea2e578de5f7
   OUTPUT_DIR: "%{install-root}/artifacts"
 
 config:
