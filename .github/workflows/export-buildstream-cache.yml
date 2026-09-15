@@ -1,0 +1,60 @@
+name: export-buildstream-cache
+on:
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        type: boolean
+        default: true
+permissions:
+  contents: write
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+    - name: Free disk space
+      run: |
+        sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost "$AGENT_TOOLSDIRECTORY" || true
+    - uses: actions/checkout@v4
+    - name: Install deps
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y apparmor-profiles apparmor-utils bubblewrap fuse3 lzip patch python3-venv xz-utils zstd
+        sudo install -m 0644 /usr/share/apparmor/extra-profiles/bwrap-userns-restrict /etc/apparmor.d/bwrap-userns-restrict
+        sudo apparmor_parser -r /etc/apparmor.d/bwrap-userns-restrict
+    - uses: actions/cache@v4
+      id: bst_cache
+      with:
+        path: ~/.cache/buildstream
+        key: buildstream-proton-wine-v1-${{ runner.os }}-${{ hashFiles('project.conf', 'buildstream/elements/buildstream-sdk.bst', 'buildstream/elements/l1/proton-wine-wcp.bst', 'buildstream/elements/wine/**', 'ci/wine/**') }}
+        restore-keys: |
+          buildstream-proton-wine-v1-${{ runner.os }}-
+    - uses: actions/cache@v4
+      with:
+        path: ~/.cache/imagefs-buildstream/tools
+        key: buildstream-tools-v3-${{ runner.os }}-bst-2.7.0-core-plugins-2.7.0-community-2.3.1-buildbox-1.4.15
+    - run: bash ci/setup/install-buildstream.sh
+    - name: Pack CAS
+      run: |
+        test -d "$HOME/.cache/buildstream"
+        bash ci/cache/pack-buildstream-cas.sh
+    - uses: actions/upload-artifact@v4
+      with:
+        name: buildstream-cas-proton-wine
+        path: artifacts/bst-cache/*
+        if-no-files-found: error
+        retention-days: 14
+        compression-level: 0
+    - name: Publish Release wine-dev-bst-cache
+      if: inputs.publish_release
+      env:
+        GH_TOKEN: ${{ github.token }}
+        REPO: ${{ github.repository }}
+        TARGET_REF: ${{ github.sha }}
+      run: |
+        bash ci/publish/fixed-release.sh \
+          --tag wine-dev-bst-cache \
+          --title wine-dev-bst-cache \
+          --body "BuildStream CAS from Actions cache for local restore. Not a Proton WCP." \
+          -- artifacts/bst-cache/buildstream-cas-proton-wine.tar.zst \
+             artifacts/bst-cache/buildstream-cas-proton-wine.tar.zst.sha256sum
