@@ -161,7 +161,7 @@ ENV
 # WARNING: ANDROID_X86_64_SYSROOT not populated yet.
 # Wait for /workspace/bst-sysroot-build.log to finish, then re-run:
 #   bash ci/wine/dev-bootstrap-sysroot.sh
-# or manually: buildstream/bst checkout wine/sysroot-x86_64.bst /home/box/src/bst-artifacts/android-x86_64-sysroot
+# or manually: buildstream/bst artifact checkout wine/sysroot-x86_64.bst /home/box/src/bst-artifacts/android-x86_64-sysroot
 ENV
   fi
   echo "wrote $ARTIFACTS/dev-env.sh (sysroot_ready=$sysroot_ready)"
@@ -208,7 +208,7 @@ start_or_resume_sysroot_build() {
       if buildstream/bst build wine/sysroot-x86_64.bst; then
         echo "=== build OK $(date -u) — checking out ==="
         rm -rf "$SYSROOT_CHECKOUT"
-        buildstream/bst checkout --force --hardlinks wine/sysroot-x86_64.bst "$SYSROOT_CHECKOUT"
+        buildstream/bst artifact checkout --force --hardlinks wine/sysroot-x86_64.bst "$SYSROOT_CHECKOUT"
         # also pull host-freetype artifact if present
         buildstream/bst build wine/host-freetype.bst || true
         echo "=== checkout done $(date -u) ==="
