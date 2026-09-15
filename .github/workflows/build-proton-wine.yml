@@ -11,6 +11,7 @@ on:
     branches: [main]
     paths:
     - "buildstream/elements/l1/proton-wine-wcp.bst"
+    - "buildstream/elements/tools/**"
     - "buildstream/elements/wine/**"
     - "buildstream/elements/buildstream-sdk.bst"
     # Arch-independent packages shared into the Wine sysroot (see wine-x86_64-shared.txt).
@@ -67,7 +68,7 @@ jobs:
     - uses: actions/cache@v4
       with:
         path: ~/.cache/imagefs-buildstream/tools
-        key: buildstream-tools-v3-${{ runner.os }}-bst-2.7.0-core-plugins-2.7.0-community-2.3.1-buildbox-1.4.15
+        key: buildstream-tools-v4-${{ runner.os }}-bst-2.7.0-core-plugins-2.7.0-community-2.3.1-buildbox-1.4.15-recc-1.4.15
 
     - run: bash ci/setup/install-buildstream.sh
 

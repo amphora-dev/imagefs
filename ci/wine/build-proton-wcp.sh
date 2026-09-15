@@ -11,6 +11,52 @@ set -euo pipefail
 : "${PROTON_COMMIT:?BuildStream must provide PROTON_COMMIT}"
 
 JOBS="${JOBS:-$(nproc)}"
+
+recc_wrap_compilers() {
+  # Cache-only recc against buildbox-casd (RECC_SERVER set by the element).
+  if ! command -v recc >/dev/null 2>&1; then
+    return 0
+  fi
+  if [ -z "${RECC_SERVER:-}" ]; then
+    return 0
+  fi
+  echo "recc: wrapping CC/CXX (server=${RECC_SERVER}, cache_only=${RECC_CACHE_ONLY:-0}, upload_local=${RECC_CACHE_UPLOAD_LOCAL_BUILD:-0})" >&2
+  CC="recc ${CC}"
+  CXX="recc ${CXX}"
+  export CC CXX
+}
+
+# Wine --with-mingw=clang invokes bare `clang` from PATH for PE objects, not $CC.
+# Install absolute-path shims so only llvm-mingw binaries are wrapped (not NDK *-android*-clang).
+recc_wrap_mingw_clang() {
+  if ! command -v recc >/dev/null 2>&1; then
+    return 0
+  fi
+  if [ -z "${RECC_SERVER:-}" ]; then
+    return 0
+  fi
+  local wrap_dir="${RECC_MINGW_WRAP_DIR:-/tmp/recc-mingw-wrap}"
+  mkdir -p "$wrap_dir"
+  local name real
+  for name in clang clang++ x86_64-w64-mingw32-clang i686-w64-mingw32-clang \
+              x86_64-w64-mingw32-clang++ i686-w64-mingw32-clang++; do
+    real="$LLVM_MINGW_ROOT/bin/$name"
+    if [ ! -x "$real" ]; then
+      continue
+    fi
+    cat >"$wrap_dir/$name" <<EOF
+#!/usr/bin/env bash
+exec recc $(printf '%q' "$real") "\$@"
+EOF
+    chmod +x "$wrap_dir/$name"
+  done
+  case ":$PATH:" in
+    *":$wrap_dir:"*) ;;
+    *) PATH="$wrap_dir:$PATH"; export PATH ;;
+  esac
+  echo "recc: mingw PATH wrap at $wrap_dir (bare clang -> recc llvm-mingw)" >&2
+}
+
 SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-0}"
 TARGET=x86_64-linux-android30
 NDK_TOOLCHAIN="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64"
@@ -105,6 +151,7 @@ mkdir wine-tools
   export LD=/usr/bin/ld
   export RANLIB=/usr/bin/ranlib
   export STRIP=/usr/bin/strip
+  recc_wrap_compilers
   unset DLLTOOL PKG_CONFIG_PATH ACLOCAL_PATH
   export PKG_CONFIG_LIBDIR=/opt/host-freetype/lib/pkgconfig
   export CPPFLAGS=-I/opt/host-freetype/include/freetype2
@@ -122,6 +169,9 @@ mkdir wine-tools
     --without-wayland
   make -j"$JOBS" __tooldeps__ nls/all
 )
+
+recc_wrap_compilers
+recc_wrap_mingw_clang
 
 ./configure \
   --enable-archs=x86_64,i386 \
