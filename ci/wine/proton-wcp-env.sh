@@ -22,7 +22,9 @@ PROTON_WCP_TOOLCHAIN="${PROTON_WCP_NDK_TOOLCHAIN}/bin"
 PROTON_WCP_DEPS="${ANDROID_X86_64_SYSROOT}/usr"
 PROTON_WCP_HOST_FREETYPE="${HOST_FREETYPE:-/opt/host-freetype}"
 PROTON_WCP_WINE_PREFIX="${WINE_PREFIX:-/opt/wine}"
+# Exported for build-proton-wcp.sh / dev-fast-build.sh (SC2034 in this file alone).
 PROTON_WCP_JOBS="${JOBS:-$(nproc)}"
+export PROTON_WCP_JOBS
 PROTON_WCP_SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-0}"
 
 # Extract Termux pulseaudio -dev tree once per process (idempotent).
@@ -301,7 +303,7 @@ PY
     -cf - bin lib share prefixPack.txz profile.json |
     zstd -T0 -19 -o "$output_dir/$wcp_name"
   (
-    cd "$output_dir"
+    cd "$output_dir" || exit 1
     sha256sum "$wcp_name" > "$wcp_name.sha256sum"
   )
   sha="$(awk '{print $1}' "$output_dir/$wcp_name.sha256sum")"
