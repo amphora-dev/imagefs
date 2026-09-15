@@ -2,8 +2,10 @@ kind: manual
 
 description: |
   Proton Wine 11 WCP from proton_11.0 commit
-  ab04edc49a7b8b2abf1194c3f0228569dd30fa08
-  (liblog soft-fail stub for Box64; wineandroid host protocol; Proton ABI).
+  ed592594a259167b430f600fea1fa0316096d413
+  (BGRA→RGBA GDI swizzle under AMPHORA_WINEANDROID=1; liblog soft-fail;
+  wineandroid host protocol; Proton ABI).
+
 
 depends:
 - filename: host/noble-amd64.bst
@@ -36,7 +38,7 @@ sandbox:
 sources:
 - kind: git
   url: amphora:proton-wine.git
-  ref: ab04edc49a7b8b2abf1194c3f0228569dd30fa08
+  ref: ed592594a259167b430f600fea1fa0316096d413
   track: proton_11.0
   checkout-submodules: true
 - kind: remote
@@ -54,7 +56,7 @@ environment:
   ANDROID_X86_64_SYSROOT: /opt/android-x86_64-sysroot
   PREFIX_PACK: /opt/proton-assets/prefixPack-11.0-d12a5634a-x86_64-1.txz
   PULSE_DEV_DEB: pulseaudio_13.0-1_x86_64.deb
-  PROTON_COMMIT: ab04edc49a7b8b2abf1194c3f0228569dd30fa08
+  PROTON_COMMIT: ed592594a259167b430f600fea1fa0316096d413
   OUTPUT_DIR: "%{install-root}/artifacts"
   # Local cache-only recc against buildbox-casd (no remote workers required).
   RECC_SERVER: unix:/tmp/reapi.sock
