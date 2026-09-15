@@ -34,6 +34,24 @@ release pin unless you intentionally promote it through CI.
 
 ## Quick start
 
+## Pull CI BuildStream deps (preferred)
+
+GitHub Actions **cache cannot be downloaded** outside runners. On each successful
+`build-proton-wine` gate, CI packs the CAS-backed sysroot and publishes:
+
+- Artifact: `proton-wine-dev-sysroot` (30-day retention)
+- Release tag: [`wine-dev-sysroot`](https://github.com/amphora-dev/imagefs/releases/tag/wine-dev-sysroot)
+  - `android-x86_64-sysroot.tar.zst`
+  - `host-freetype.tar.zst` (when available)
+
+Local bootstrap prefers that release:
+
+```bash
+bash ci/wine/dev-bootstrap-sysroot.sh
+# PREFER_CI_SYSROOT=0 bash ci/wine/dev-bootstrap-sysroot.sh   # force local bst
+```
+
+
 ```bash
 # One-time (sysroot may take many hours; script backgrounds bst and logs)
 bash ci/wine/dev-bootstrap-sysroot.sh

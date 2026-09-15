@@ -119,6 +119,52 @@ jobs:
         if-no-files-found: error
         retention-days: 14
 
+    # Actions cache cannot be downloaded outside runners. Pack the CAS-backed
+    # sysroot into artifacts/release so local ci/wine/dev-bootstrap-sysroot.sh
+    # can gh/curl it (drop-in with CI BuildStream deps).
+    - name: Pack wine sysroot for local fast path
+      # Gate success is enough: Actions cache restore usually has sysroot even when
+      # WCP itself is skipped. That is how the CAS becomes usable locally.
+      if: steps.gate.conclusion == 'success'
+      run: |
+        mkdir -p artifacts/dev
+        # Reuse verify checkout when present; otherwise pack-dev-sysroot builds.
+        if [ -d /tmp/wine-sysroot/usr/lib ]; then
+          export SYSROOT_DIR=/tmp/wine-sysroot
+        fi
+        bash ci/wine/pack-dev-sysroot.sh
+
+    - uses: actions/upload-artifact@v4
+      if: steps.gate.conclusion == 'success'
+      with:
+        name: proton-wine-dev-sysroot
+        path: artifacts/dev/*
+        if-no-files-found: error
+        retention-days: 30
+
+    - name: Publish Release wine-dev-sysroot
+      if: steps.gate.conclusion == 'success' && github.ref == 'refs/heads/main'
+      env:
+        GH_TOKEN: ${{ github.token }}
+        REPO: ${{ github.repository }}
+        TARGET_REF: ${{ github.sha }}
+      run: |
+        BODY=$(cat <<EOF
+        BuildStream \`wine/sysroot-x86_64\` (+ host-freetype) packed from the
+        Actions BuildStream CAS for local \`ci/wine/dev-fast-build.sh\`.
+        Not a Proton WCP — see the \`wine\` release for that.
+        EOF
+        )
+        FILES=(artifacts/dev/android-x86_64-sysroot.tar.zst artifacts/dev/android-x86_64-sysroot.tar.zst.sha256sum)
+        if [ -f artifacts/dev/host-freetype.tar.zst ]; then
+          FILES+=(artifacts/dev/host-freetype.tar.zst artifacts/dev/host-freetype.tar.zst.sha256sum)
+        fi
+        bash ci/publish/fixed-release.sh \
+          --tag wine-dev-sysroot \
+          --title wine-dev-sysroot \
+          --body "$BODY" \
+          -- "${FILES[@]}"
+
     - name: Publish Release wine
       if: steps.gate.outputs.should_build == 'true' && github.ref == 'refs/heads/main'
       env:

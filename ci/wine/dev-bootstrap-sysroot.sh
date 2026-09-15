@@ -55,6 +55,52 @@ echo "==> fetch pulse deb + prefixPack (CI-pinned)"
 fetch_sha "$PULSE_URL" "$ARTIFACTS/$PULSE_NAME" "$PULSE_SHA"
 fetch_sha "$PREFIX_URL" "$ARTIFACTS/$PREFIX_NAME" "$PREFIX_SHA"
 
+# Prefer CI-packed sysroot (Actions CAS → release). Falls back to local bst.
+PREFER_CI_SYSROOT="${PREFER_CI_SYSROOT:-1}"
+CI_SYSROOT_URL="${CI_SYSROOT_URL:-https://github.com/amphora-dev/imagefs/releases/download/wine-dev-sysroot/android-x86_64-sysroot.tar.zst}"
+CI_SYSROOT_SHA_URL="${CI_SYSROOT_SHA_URL:-${CI_SYSROOT_URL}.sha256sum}"
+CI_HOST_FT_URL="${CI_HOST_FT_URL:-https://github.com/amphora-dev/imagefs/releases/download/wine-dev-sysroot/host-freetype.tar.zst}"
+
+fetch_ci_sysroot() {
+  if [ "${PREFER_CI_SYSROOT}" != 1 ]; then
+    return 1
+  fi
+  if [ -d "$SYSROOT_CHECKOUT/usr/lib" ] && [ -d "$SYSROOT_CHECKOUT/usr/include" ]; then
+    echo "  sysroot already at $SYSROOT_CHECKOUT"
+    return 0
+  fi
+  echo "==> try CI wine-dev-sysroot release"
+  local tmp sha_file
+  tmp="$(mktemp -d)"
+  # shellcheck disable=SC2064
+  trap "rm -rf '$tmp'" RETURN
+  if ! curl -fL --retry 5 --retry-delay 2 -o "$tmp/sysroot.tar.zst" "$CI_SYSROOT_URL"; then
+    echo "  CI sysroot not published yet (ok — will bst locally)"
+    return 1
+  fi
+  if curl -fL --retry 3 -o "$tmp/sysroot.sha256sum" "$CI_SYSROOT_SHA_URL" 2>/dev/null; then
+    # sha file may list relative name — normalize
+    awk -v f="$tmp/sysroot.tar.zst" '{print $1"  "f}' "$tmp/sysroot.sha256sum" | sha256sum -c -
+  else
+    echo "  WARN: no sha256sum beside release asset; skipping verify"
+  fi
+  rm -rf "$SYSROOT_CHECKOUT"
+  mkdir -p "$SYSROOT_CHECKOUT"
+  zstd -d -c "$tmp/sysroot.tar.zst" | tar -x -C "$SYSROOT_CHECKOUT"
+  test -d "$SYSROOT_CHECKOUT/usr/lib"
+  echo "  unpacked CI sysroot → $SYSROOT_CHECKOUT"
+  # host-freetype from same release if missing
+  if [ ! -f "$HOST_FT_PREFIX/lib/libfreetype.so" ] && [ ! -f "$HOST_FT_PREFIX/lib/libfreetype.a" ]; then
+    if curl -fL --retry 3 -o "$tmp/host-freetype.tar.zst" "$CI_HOST_FT_URL"; then
+      mkdir -p "$HOST_FT_PREFIX"
+      zstd -d -c "$tmp/host-freetype.tar.zst" | tar -x -C "$HOST_FT_PREFIX"
+      echo "  unpacked CI host-freetype → $HOST_FT_PREFIX"
+    fi
+  fi
+  return 0
+}
+
+
 build_host_freetype() {
   if [ -f "$HOST_FT_PREFIX/lib/libfreetype.so" ] || \
      [ -f "$HOST_FT_PREFIX/lib/libfreetype.a" ]; then
@@ -88,6 +134,7 @@ build_host_freetype() {
   )
 }
 
+fetch_ci_sysroot || true
 build_host_freetype
 
 write_dev_env() {
@@ -136,6 +183,9 @@ checkout_sysroot_if_built() {
 start_or_resume_sysroot_build() {
   if [ -d "$SYSROOT_CHECKOUT/usr/lib" ]; then
     echo "sysroot already present at $SYSROOT_CHECKOUT"
+    return 0
+  fi
+  if fetch_ci_sysroot; then
     return 0
   fi
 
