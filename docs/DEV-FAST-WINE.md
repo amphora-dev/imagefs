@@ -122,3 +122,20 @@ Device smoke is optional; CI remains the release gate.
 | `TARGETS` | make targets (default `dlls/wineandroid.drv/all`) |
 | `BUILD_DIR` | default `/home/box/src/wine-bst-dev-build` |
 | `OUT_DIR` | default `/workspace/fast-wineandroid-bst` |
+
+## Remote BuildStream CAS (Actions cache → downloadable)
+
+Actions cache cannot be downloaded outside runners. Export it manually:
+
+```bash
+gh workflow run export-buildstream-cache.yml -R amphora-dev/imagefs
+```
+
+Then locally:
+
+```bash
+bash ci/cache/restore-buildstream-cas.sh
+# → ~/.cache/buildstream  (same CAS CI used)
+```
+
+Release tag: `wine-dev-bst-cache`. This does **not** rebuild or republish Proton WCP.
