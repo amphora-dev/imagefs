@@ -2,8 +2,8 @@ kind: manual
 
 description: |
   Proton Wine 11 WCP from wip/ahb-dxvk-from-knife-tip commit
-  65119895331899dc35d1d807be5f9699ddddbf9c
-  (WSI bridge size IPC + adapter geometry cache; AHB/DXVK ANW).
+  df643f5db06cb4345cf4d12fa6d41d396e95c408
+  (host AMPHORA_BUF sock via IOCTL_GET_BUFFER_SOCK; AHB/DXVK ANW).
 
 depends:
 - filename: host/noble-amd64.bst
@@ -36,7 +36,7 @@ sandbox:
 sources:
 - kind: git
   url: amphora:proton-wine.git
-  ref: 65119895331899dc35d1d807be5f9699ddddbf9c
+  ref: df643f5db06cb4345cf4d12fa6d41d396e95c408
   track: wip/ahb-dxvk-from-knife-tip
   checkout-submodules: true
 - kind: remote
@@ -54,7 +54,7 @@ environment:
   ANDROID_X86_64_SYSROOT: /opt/android-x86_64-sysroot
   PREFIX_PACK: /opt/proton-assets/prefixPack-11.0-d12a5634a-x86_64-1.txz
   PULSE_DEV_DEB: pulseaudio_13.0-1_x86_64.deb
-  PROTON_COMMIT: 65119895331899dc35d1d807be5f9699ddddbf9c
+  PROTON_COMMIT: df643f5db06cb4345cf4d12fa6d41d396e95c408
   OUTPUT_DIR: "%{install-root}/artifacts"
   # Local cache-only recc against buildbox-casd (no remote workers required).
   RECC_SERVER: unix:/tmp/reapi.sock
