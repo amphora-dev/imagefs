@@ -140,6 +140,9 @@ export GSTREAMER_LIBS="-L$DEPS/lib -lgstgl-1.0 -lgstapp-1.0 -lgstvideo-1.0 -lgst
 
 ./autogen.sh
 
+# Require PresentModes USER_DRIVER thunk (win32u advertises FIFO+MAILBOX+IMMEDIATE).
+python3 .bst/ci/wine/check-present-modes-thunk.py
+
 rm -rf wine-tools
 mkdir wine-tools
 (

@@ -1,9 +1,9 @@
 kind: manual
 
 description: |
-  Proton Wine 11 WCP from public proton_11.0 commit
-  0a64ebc8d695a530ea733834e2e5f1428a489012
-  (AHB Present; SET_BUFFER_COUNT ≥ MIN_UNDEQUEUED+1).
+  Proton Wine 11 WCP from wip/vk-present-modes-augment
+  068948b16efa58496acce8a5c3c4f68154415a22
+  (PresentModes FIFO+MAILBOX+IMMEDIATE; CreateSwapchain remap).
 
 
 depends:
@@ -37,8 +37,8 @@ sandbox:
 sources:
 - kind: git
   url: amphora:proton-wine.git
-  ref: 0a64ebc8d695a530ea733834e2e5f1428a489012
-  track: proton_11.0
+  ref: 068948b16efa58496acce8a5c3c4f68154415a22
+  track: wip/vk-present-modes-augment
   checkout-submodules: true
 - kind: remote
   url: termux-packages-legacy:pool/main/p/pulseaudio/pulseaudio_13.0-1_x86_64.deb
@@ -55,7 +55,7 @@ environment:
   ANDROID_X86_64_SYSROOT: /opt/android-x86_64-sysroot
   PREFIX_PACK: /opt/proton-assets/prefixPack-11.0-d12a5634a-x86_64-1.txz
   PULSE_DEV_DEB: pulseaudio_13.0-1_x86_64.deb
-  PROTON_COMMIT: 0a64ebc8d695a530ea733834e2e5f1428a489012
+  PROTON_COMMIT: 068948b16efa58496acce8a5c3c4f68154415a22
   OUTPUT_DIR: "%{install-root}/artifacts"
   # Local cache-only recc against buildbox-casd (no remote workers required).
   RECC_SERVER: unix:/tmp/reapi.sock
