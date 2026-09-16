@@ -36,7 +36,20 @@ def main() -> int:
             file=sys.stderr,
         )
         return 1
-    print("ok: PresentModesKHR thunk uses vk_funcs (win32u)")
+
+    hdr = Path("include/wine/vulkan_driver.h")
+    if not hdr.is_file():
+        print("missing include/wine/vulkan_driver.h", file=sys.stderr)
+        return 1
+    htext = hdr.read_text(encoding="utf-8", errors="replace")
+    if "p_vkGetPhysicalDeviceSurfacePresentModesKHR" not in htext:
+        print(
+            "vulkan_driver.h missing p_vkGetPhysicalDeviceSurfacePresentModesKHR "
+            "(struct vulkan_funcs field required for win32u table)",
+            file=sys.stderr,
+        )
+        return 1
+    print("ok: PresentModesKHR thunk uses vk_funcs (win32u); header has field")
     return 0
 
 
