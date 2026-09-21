@@ -37,7 +37,7 @@ sandbox:
 sources:
 - kind: git
   url: amphora:proton-wine.git
-  ref: 0dd995f491c1f5513eb9060b93f450293ac18c96
+  ref: e111a3ed79676e5f36ba14f993dd8dc15ecfc649
   track: wip/vk-present-modes-augment
   checkout-submodules: true
 - kind: remote
