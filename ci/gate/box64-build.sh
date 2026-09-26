@@ -18,8 +18,8 @@ FULL="$(awk '
 }
 SHORT="${FULL:0:9}"
 
-# WCP identity includes the patch fingerprint (see box64-wcp.bst
-# install-commands): `<maj>.<min>.<rev>-<commit9>-p<p8>`.
+# WCP identity includes the patch fingerprint (see ci/box64/build-box64-wcp.sh):
+# `<maj>.<min>.<rev>-<commit9>-p<p8>`.
 PATCH_FILE="vendor/box64-patches/pipetto-controller-fix.patch"
 PATCH_SHORT="$(sha256sum "$PATCH_FILE" | awk '{print $1}')"
 PATCH_SHORT="${PATCH_SHORT:0:8}"

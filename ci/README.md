@@ -21,6 +21,15 @@ L1 gate（Box64 / wrapper / Wine / DXVK / VKD3D）直接读取对应 `.bst` 中�
 源码 commit。构建器与 gate 因此不会使用不同 ref。更新 upstream 时只修改元素
 source ref，并检查元素内的版本元数据。
 
+## BuildStream 命令写法
+
+BuildStream 用 `sh -c -e` 执行元素里的 `*-commands`，而 SDK 基础镜像是 Ubuntu，
+`/bin/sh` 是 dash，所以 inline 命令只能写 POSIX sh。超过几行的逻辑放进
+`ci/<组件>/*.sh`（`#!/usr/bin/env bash` + `set -euo pipefail`），元素里用
+`bash .bst/ci/<组件>/<脚本>.sh` 调用，参数通过 `environment:` 传入；
+Box64 / DXVK / VKD3D / Proton 都按这个写。`ci/lint/check-bst-inline-sh.py`
+在 lint 工作流里对所有 inline 命令跑 `shellcheck -s sh`。
+
 ## WCP 命名
 
 WCP 产物名 = `profile.json` 的 `versionName`，amphora 端按
