@@ -29,7 +29,9 @@ buildstream/bst build l1/dxvk-wcp.bst
 buildstream/bst build l1/vkd3d-wcp.bst
 ```
 
-BuildStream 的 CAS 位于 `~/.cache/buildstream`。元素、源码、patch、junction
+BuildStream 的本地 CAS 位于 `~/.cache/buildstream`，共享远程缓存用
+`BST_REMOTE_CACHE_TOKEN=... bash ci/setup/configure-remote-cache.sh` 开启（见
+[`ci/README.md`](ci/README.md#remote-cache)）。元素、源码、patch、junction
 commit 或依赖发生变化时会生成新 artifact key，不恢复共享 staging、源码树或
 stamp。
 
@@ -42,6 +44,7 @@ buildstream/elements/                # package、runtime、L1 artifact 图
 buildstream/elements/buildstream-sdk.bst
 buildstream/sync-arch-elements.py    # recipes → elements + wine/x86_64
 ci/setup/install-buildstream.sh      # 固定 BuildStream/BuildBox 工具
+ci/setup/configure-remote-cache.sh   # 共享远程缓存 → ~/.config/buildstream.conf
 ci/{gate,publish,verify}/            # 发布门禁与 artifact 验证
 ci/wrapper/build-tzst.sh             # wrapper 元素的 sandbox 内打包器
 vendor/                              # BuildStream local sources/patches

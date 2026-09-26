@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Install pinned BuildStream/BuildBox tooling for production workflows.
+# Install pinned BuildStream + BuildBox on the host. recc runs inside the
+# sandbox and comes from buildstream/elements/tools/recc.bst.
 set -euo pipefail
 
 BST_VERSION="${BST_VERSION:-2.7.0}"
@@ -7,8 +8,6 @@ BST_CORE_PLUGINS_VERSION="${BST_CORE_PLUGINS_VERSION:-2.7.0}"
 BST_PLUGINS_VERSION="${BST_PLUGINS_VERSION:-2.3.1}"
 BUILDBOX_VERSION="${BUILDBOX_VERSION:-1.4.15}"
 BUILDBOX_SHA256="${BUILDBOX_SHA256:-07ce72be4a7a33534a1f31a7ebf28fb1d830686c6deff068ee6353e2fc811c0d}"
-RECC_VERSION="${RECC_VERSION:-1.4.15}"
-RECC_SHA256="${RECC_SHA256:-3e4ebe6ce1f33de5788d58343338bde9758297f458768d224671698f92c1bed3}"
 TOOLS_ROOT="${BST_TOOLS_ROOT:-$HOME/.cache/imagefs-buildstream/tools}"
 VENV="$TOOLS_ROOT/venv"
 BIN="$TOOLS_ROOT/bin"
@@ -43,19 +42,6 @@ if [ ! -x "$BIN/buildbox-casd" ] ||
     tar -xzf "$archive" -C "$BIN"
 fi
 ln -sfn "$BIN/buildbox-run-bubblewrap" "$BIN/buildbox-run"
-
-if [ ! -x "$BIN/recc" ] ||
-   ! "$BIN/recc" --help >/dev/null 2>&1; then
-    recc_archive="$(mktemp)"
-    curl -fsSL --retry 3 \
-        "https://gitlab.com/api/v4/projects/8347934/packages/generic/releases/$RECC_VERSION/recc-$RECC_VERSION-x86_64-linux-gnu.tgz" \
-        -o "$recc_archive"
-    printf '%s  %s\n' "$RECC_SHA256" "$recc_archive" | sha256sum -c -
-    tar -xzf "$recc_archive" -C "$BIN"
-    chmod +x "$BIN/recc"
-    rm -f "$recc_archive"
-fi
-
 
 if [ -n "${GITHUB_PATH:-}" ]; then
     printf '%s\n%s\n' "$VENV/bin" "$BIN" >> "$GITHUB_PATH"

@@ -8,10 +8,10 @@ package dependencies 都是 artifact key 的显式输入。
 ```text
 ci/
   setup/install-buildstream.sh
+  setup/configure-remote-cache.sh           # remote cache → ~/.config/buildstream.conf
   gate/{imagefs-publish,box64-build,wrapper-build,wine-build,dxvk-build,vkd3d-build}.sh
   publish/{fixed-release,prune-assets,bump-manifest}.sh
   verify/{imagefs-artifact,wine-deps,dxvk-wcp,vkd3d-wcp}.sh
-  cache/{pack,restore}-buildstream-cas.sh   # sticky local CAS; see ci/cache/README.md
   wrapper/build-tzst.sh
   dxvk/build-dxvk-wcp.sh
   vkd3d/build-vkd3d-wcp.sh
@@ -70,8 +70,12 @@ Host SDK 和 NDK 均由 `buildstream-sdk.bst` junction 提供，不读取 GitHub
 Release 与 manifest 字段由 artifact 内生成的 `.env` 文件传递，workflow 不重新
 推断版本或摘要。
 
-## Local sticky BuildStream cache
+## Remote cache
 
-Dev machines can restore the Actions BuildStream CAS published under fixed tag
-`wine-dev-bst-cache` (see [`ci/cache/README.md`](cache/README.md)). This does
-not replace the `build-proton-wine` release path.
+`ci/setup/configure-remote-cache.sh` writes `~/.config/buildstream.conf` so
+BuildStream uses `https://cas-arm.512.pub` for CAS, element artifacts, source
+cache and the action cache behind `remote-apis-socket` (recc compile results).
+Workflows get it through `.github/actions/setup-buildstream` with the
+`BST_REMOTE_CACHE_TOKEN` secret; fork PRs have no secret and build from the
+local cache. On a dev machine run the same script with `BST_REMOTE_CACHE_TOKEN`
+set.

@@ -60,7 +60,9 @@ environment:
   # ci/gate/wine-build.sh fails the build when they drift.
   PROTON_COMMIT: 0d7ffcb970eb2d2001d00752558e30644f2f95ca
   OUTPUT_DIR: "%{install-root}/artifacts"
-  # Local cache-only recc against buildbox-casd (no remote workers required).
+  # Cache-only recc against the sandbox remote-apis-socket. With
+  # remote-execution.action-cache-service in the user config, BuildStream backs
+  # this socket with the remote CAS + action cache, so .o results are shared.
   RECC_SERVER: unix:/tmp/reapi.sock
   RECC_CAS_SERVER: unix:/tmp/reapi.sock
   RECC_ACTION_CACHE_SERVER: unix:/tmp/reapi.sock

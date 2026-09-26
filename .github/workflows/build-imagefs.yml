@@ -19,6 +19,8 @@ on:
       - "buildstream/**"
       - "project.conf"
       - "ci/setup/install-buildstream.sh"
+      - "ci/setup/configure-remote-cache.sh"
+      - ".github/actions/setup-buildstream/**"
       - "ci/verify/**"
       - "ci/gate/imagefs-publish.sh"
       - ".github/workflows/build-imagefs.yml"
@@ -31,6 +33,8 @@ on:
       - "buildstream/**"
       - "project.conf"
       - "ci/setup/install-buildstream.sh"
+      - "ci/setup/configure-remote-cache.sh"
+      - ".github/actions/setup-buildstream/**"
       - "ci/verify/**"
       - "ci/gate/imagefs-publish.sh"
       - ".github/workflows/build-imagefs.yml"
@@ -49,33 +53,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install BuildStream sandbox dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            apparmor-profiles apparmor-utils bubblewrap fuse3 lzip patch \
-            python3-venv xz-utils
-          sudo install -m 0644 \
-            /usr/share/apparmor/extra-profiles/bwrap-userns-restrict \
-            /etc/apparmor.d/bwrap-userns-restrict
-          sudo apparmor_parser -r /etc/apparmor.d/bwrap-userns-restrict
-
-      - name: Restore BuildStream CAS
-        uses: actions/cache@v4
+      - uses: ./.github/actions/setup-buildstream
         with:
-          path: ~/.cache/buildstream
-          key: buildstream-imagefs-v1-${{ runner.os }}-${{ hashFiles('project.conf', 'buildstream/elements/**', 'buildstream/files/**') }}
-          restore-keys: |
-            buildstream-imagefs-v1-${{ runner.os }}-
-
-      - name: Restore pinned BuildStream tools
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/imagefs-buildstream/tools
-          key: buildstream-tools-v4-${{ runner.os }}-bst-2.7.0-core-plugins-2.7.0-community-2.3.1-buildbox-1.4.15-recc-1.4.15
-
-      - name: Install pinned BuildStream tools
-        run: bash ci/setup/install-buildstream.sh
+          remote-cache-token: ${{ secrets.BST_REMOTE_CACHE_TOKEN }}
 
       - name: Build imagefs with BuildStream
         run: |

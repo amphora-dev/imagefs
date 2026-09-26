@@ -28,6 +28,8 @@ on:
       - "buildstream/sync-arch-elements.py"
       - "project.conf"
       - "ci/setup/install-buildstream.sh"
+      - "ci/setup/configure-remote-cache.sh"
+      - ".github/actions/setup-buildstream/**"
       - ".github/workflows/build-wrapper.yml"
 
 permissions:
@@ -43,30 +45,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install BuildStream sandbox dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            apparmor-profiles apparmor-utils bubblewrap fuse3 lzip patch \
-            python3-venv xz-utils
-          sudo install -m 0644 \
-            /usr/share/apparmor/extra-profiles/bwrap-userns-restrict \
-            /etc/apparmor.d/bwrap-userns-restrict
-          sudo apparmor_parser -r /etc/apparmor.d/bwrap-userns-restrict
-
-      - uses: actions/cache@v4
+      - uses: ./.github/actions/setup-buildstream
         with:
-          path: ~/.cache/buildstream
-          key: buildstream-wrapper-v2-${{ runner.os }}-${{ hashFiles('project.conf', 'buildstream/elements/l1/wrapper-tzst.bst', 'buildstream/elements/buildstream-sdk.bst', 'ci/wrapper/**', 'vendor/wrapper-patches/**') }}
-          restore-keys: |
-            buildstream-wrapper-v1-${{ runner.os }}-
-
-      - uses: actions/cache@v4
-        with:
-          path: ~/.cache/imagefs-buildstream/tools
-          key: buildstream-tools-v4-${{ runner.os }}-bst-2.7.0-core-plugins-2.7.0-community-2.3.1-buildbox-1.4.15-recc-1.4.15
-
-      - run: bash ci/setup/install-buildstream.sh
+          remote-cache-token: ${{ secrets.BST_REMOTE_CACHE_TOKEN }}
 
       - id: gate
         env:

@@ -1,0 +1,40 @@
+name: setup-buildstream
+description: >-
+  Install the pinned BuildStream toolchain and point it at the shared remote
+  cache (CAS, element artifacts, source cache, and the action cache behind
+  remote-apis-socket used by recc).
+inputs:
+  remote-cache-token:
+    description: Bearer token for the remote cache. Empty means local cache only.
+    required: false
+    default: ""
+runs:
+  using: composite
+  steps:
+  - name: Install sandbox dependencies
+    shell: bash
+    run: |
+      sudo apt-get update
+      sudo apt-get install -y \
+        apparmor-profiles apparmor-utils bubblewrap fuse3 lzip patch \
+        python3-venv xz-utils
+      sudo install -m 0644 \
+        /usr/share/apparmor/extra-profiles/bwrap-userns-restrict \
+        /etc/apparmor.d/bwrap-userns-restrict
+      sudo apparmor_parser -r /etc/apparmor.d/bwrap-userns-restrict
+
+  - uses: actions/cache@v4
+    with:
+      path: ~/.cache/imagefs-buildstream/tools
+      key: buildstream-tools-${{ runner.os }}-${{ hashFiles('ci/setup/install-buildstream.sh') }}
+
+  - name: Install BuildStream
+    shell: bash
+    run: bash ci/setup/install-buildstream.sh
+
+  - name: Configure remote cache
+    shell: bash
+    env:
+      BST_REMOTE_CACHE_TOKEN: ${{ inputs.remote-cache-token }}
+      BST_REMOTE_CACHE_REQUIRED: ${{ github.event_name != 'pull_request' }}
+    run: bash ci/setup/configure-remote-cache.sh
