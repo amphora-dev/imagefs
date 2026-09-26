@@ -1,9 +1,9 @@
 kind: manual
 
 description: |
-  Proton Wine 11 WCP from wip/vk-present-modes-augment
-  05ca3a658dbc0b7be845465299a58a6b7ccd77a4
-  (PresentModes FIFO+MAILBOX+IMMEDIATE; CreateSwapchain remap).
+  Proton Wine 11 WCP from wip/wineandroid-drop-jni
+  0d7ffcb970eb2d2001d00752558e30644f2f95ca
+  (drop JNI bridge; NDK symbols via box64 wrappedandroid).
 
 
 depends:
@@ -37,8 +37,8 @@ sandbox:
 sources:
 - kind: git
   url: amphora:proton-wine.git
-  ref: 3e7519ef6f16c66ca7ead734649353a723becae2
-  track: wip/vk-present-modes-augment
+  ref: 0d7ffcb970eb2d2001d00752558e30644f2f95ca
+  track: wip/wineandroid-drop-jni
   checkout-submodules: true
 - kind: remote
   url: termux-packages-legacy:pool/main/p/pulseaudio/pulseaudio_13.0-1_x86_64.deb
@@ -55,7 +55,10 @@ environment:
   ANDROID_X86_64_SYSROOT: /opt/android-x86_64-sysroot
   PREFIX_PACK: /opt/proton-assets/prefixPack-11.0-d12a5634a-x86_64-1.txz
   PULSE_DEV_DEB: pulseaudio_13.0-1_x86_64.deb
-  PROTON_COMMIT: 05ca3a658dbc0b7be845465299a58a6b7ccd77a4
+  # WCP identity commit. MUST stay identical to the git source `ref` above
+  # (which BuildStream strips of .git, so the build cannot query it).
+  # ci/gate/wine-build.sh fails the build when they drift.
+  PROTON_COMMIT: 0d7ffcb970eb2d2001d00752558e30644f2f95ca
   OUTPUT_DIR: "%{install-root}/artifacts"
   # Local cache-only recc against buildbox-casd (no remote workers required).
   RECC_SERVER: unix:/tmp/reapi.sock

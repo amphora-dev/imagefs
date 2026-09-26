@@ -31,6 +31,10 @@ WCP 产物名 = `profile.json` 的 `versionName`，amphora 端按
   补丁变化 → 新 versionName → 设备不会与旧 profile 冲突；
   `ci/gate/box64-build.sh` 的去重 gate 同时匹配 commit 与补丁指纹。
 
+- Proton Wine：`Proton-<wine version>-<commit9>-x86_64.wcp`，commit 取自元素
+  `PROTON_COMMIT`；它必须与 sources 的 git `ref` 一致（BuildStream stage 不保留
+  `.git`，无法在沙箱内查询），`ci/gate/wine-build.sh` 校验两者，不一致即失败。
+
 ## Toolchains
 
 多 API 水位是按产物角色拆开的，不要随意统一。完整说明见

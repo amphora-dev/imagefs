@@ -13,6 +13,22 @@ FULL="$(awk '
   exit 1
 }
 SHORT="${FULL:0:9}"
+
+# The element's PROTON_COMMIT environment variable names the commit in the
+# produced WCP (asset name, profile.json). It must match the pinned source
+# ref, otherwise the published identity misrepresents the real source.
+PROTON_COMMIT="$(awk '
+  /PROTON_COMMIT:/ { print $2; exit }
+' "$ELEMENT")"
+[[ "$PROTON_COMMIT" =~ ^[0-9a-f]{40}$ ]] || {
+  echo "Invalid PROTON_COMMIT in $ELEMENT: $PROTON_COMMIT" >&2
+  exit 1
+}
+if [ "$PROTON_COMMIT" != "$FULL" ]; then
+  echo "$ELEMENT: PROTON_COMMIT ($PROTON_COMMIT) != sources ref ($FULL)" >&2
+  echo "Update PROTON_COMMIT to match the sources ref." >&2
+  exit 1
+fi
 {
   echo "upstream_short=$SHORT"
   echo "upstream_full=$FULL"
