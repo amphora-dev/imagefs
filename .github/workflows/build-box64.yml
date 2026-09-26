@@ -15,6 +15,7 @@ on:
     branches: [main]
     paths:
       - "ci/gate/box64-build.sh"
+      - "ci/box64/**"
       - "vendor/box64-patches/**"
       - "buildstream/elements/l1/box64-wcp.bst"
       - "buildstream/elements/buildstream-sdk.bst"

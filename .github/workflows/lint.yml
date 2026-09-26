@@ -36,6 +36,14 @@ jobs:
           test -x buildstream/bst
           test -x buildstream/sync-arch-elements.py
 
+      - name: BuildStream inline commands are POSIX sh
+        run: |
+          # BuildStream runs *-commands via `sh -c -e`; the Ubuntu SDK's /bin/sh
+          # is dash, so bash-only syntax fails only in CI builds
+          # (build-box64 run 36211466431). Bash logic belongs in ci/**/*.sh.
+          python3 -c 'import yaml' 2>/dev/null || pip install --quiet pyyaml
+          python3 ci/lint/check-bst-inline-sh.py
+
       - name: arch recipe sync
         run: |
           # Simple dual-arch recipes under buildstream/recipes/; generated
