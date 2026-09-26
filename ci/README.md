@@ -73,8 +73,11 @@ Release 与 manifest 字段由 artifact 内生成的 `.env` 文件传递，workf
 ## Remote cache
 
 `ci/setup/configure-remote-cache.sh` writes `~/.config/buildstream.conf` so
-BuildStream uses `https://cas-arm.512.pub` for CAS, element artifacts, source
+BuildStream uses `https://cas.arm.512.pub` for CAS, element artifacts, source
 cache and the action cache behind `remote-apis-socket` (recc compile results).
+That name is the origin A record. Do not switch it to the Cloudflare-proxied
+`cas-arm.512.pub`: orange-cloud stalls buildbox gRPC streams, and pushes stop
+making progress. Each RPC has a 900s timeout and a 30s keepalive.
 Workflows get it through `.github/actions/setup-buildstream` with the
 `BST_REMOTE_CACHE_TOKEN` secret; fork PRs have no secret and build from the
 local cache. On a dev machine run the same script with `BST_REMOTE_CACHE_TOKEN`
