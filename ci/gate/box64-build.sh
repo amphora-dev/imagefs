@@ -17,6 +17,12 @@ FULL="$(awk '
   exit 1
 }
 SHORT="${FULL:0:9}"
+
+# WCP identity includes the patch fingerprint (see box64-wcp.bst
+# install-commands): `<maj>.<min>.<rev>-<commit9>-p<p8>`.
+PATCH_FILE="vendor/box64-patches/pipetto-controller-fix.patch"
+PATCH_SHORT="$(sha256sum "$PATCH_FILE" | awk '{print $1}')"
+PATCH_SHORT="${PATCH_SHORT:0:8}"
 {
   echo "upstream_short=$SHORT"
   echo "upstream_full=$FULL"
@@ -29,7 +35,7 @@ fi
 
 if gh release view box64 --repo "${REPO}" >/dev/null 2>&1; then
   if gh release view box64 --repo "${REPO}" --json assets \
-    --jq '.assets[].name' | grep -q -- "-${SHORT}\\.wcp\$"; then
+    --jq '.assets[].name' | grep -q -- "^Box64-.*-${SHORT}-p${PATCH_SHORT}\\.wcp\$"; then
     echo "should_build=false" >> "$GITHUB_OUTPUT"
     echo "Already published for $SHORT"
     exit 0
