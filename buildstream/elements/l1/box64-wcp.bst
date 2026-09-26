@@ -62,7 +62,7 @@ config:
     # WinlatorContentAssetInstaller.sameProfile keys on type + verName +
     # verCode, so patch-only changes must produce a different versionName.
     patch_full="$(sha256sum .bst/patches/pipetto-controller-fix.patch | awk '{print $1}')"
-    patch_short="${patch_full:0:8}"
+    patch_short="$(printf %s "$patch_full" | cut -c1-8)"
     full_version="$major.$minor.$revision-$commit_short-p$patch_short"
     wcp_name="Box64-$full_version.wcp"
     work=/tmp/box64-wcp
