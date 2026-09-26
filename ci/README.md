@@ -21,6 +21,16 @@ L1 gate（Box64 / wrapper / Wine / DXVK / VKD3D）直接读取对应 `.bst` 中�
 源码 commit。构建器与 gate 因此不会使用不同 ref。更新 upstream 时只修改元素
 source ref，并检查元素内的版本元数据。
 
+## WCP 命名
+
+WCP 产物名 = `profile.json` 的 `versionName`，amphora 端按
+`type + verName + verCode` 判定同一 profile，因此身份字段变化必须体现在文件名里：
+
+- Box64：`Box64-<maj>.<min>.<rev>-<upstream9>-p<p8>.wcp`，`-p<p8>` 是
+  `vendor/box64-patches/pipetto-controller-fix.patch` 的 sha256 前 8 位。
+  补丁变化 → 新 versionName → 设备不会与旧 profile 冲突；
+  `ci/gate/box64-build.sh` 的去重 gate 同时匹配 commit 与补丁指纹。
+
 ## Toolchains
 
 多 API 水位是按产物角色拆开的，不要随意统一。完整说明见

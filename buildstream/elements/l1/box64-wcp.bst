@@ -3,6 +3,9 @@ kind: cmake
 description: |
   Box64 WCP from ptitSeb/box64 main at
   0db8df7757b523e41cf31b6204c47d22b8fb4f08.
+  WCP identity includes the sha256 prefix of the pipetto controller patch
+  (versionName `...-p<p8>`), so patch-only changes produce a distinct
+  versionName and never collide with an already-installed profile.
 
 depends:
 - filename: host/noble-amd64.bst
@@ -55,7 +58,12 @@ config:
     revision="$(awk '/#define BOX64_REVISION/{print $3}' src/box64version.h)"
     commit_full=0db8df7757b523e41cf31b6204c47d22b8fb4f08
     commit_short=0db8df775
-    full_version="$major.$minor.$revision-$commit_short"
+    # Patch fingerprint is part of the WCP identity: amphora's
+    # WinlatorContentAssetInstaller.sameProfile keys on type + verName +
+    # verCode, so patch-only changes must produce a different versionName.
+    patch_full="$(sha256sum .bst/patches/pipetto-controller-fix.patch | awk '{print $1}')"
+    patch_short="${patch_full:0:8}"
+    full_version="$major.$minor.$revision-$commit_short-p$patch_short"
     wcp_name="Box64-$full_version.wcp"
     work=/tmp/box64-wcp
     out="%{install-root}/artifacts"
@@ -89,6 +97,8 @@ config:
     FULL_VERSION=$full_version
     COMMIT_FULL=$commit_full
     COMMIT_SHORT=$commit_short
+    PATCH_FULL=$patch_full
+    PATCH_SHORT=$patch_short
     WCP_NAME=$wcp_name
     SHA256=$sha
     SIZE=$size
