@@ -2,7 +2,7 @@ kind: manual
 
 description: |
   Proton Wine 11 WCP from wip/wineandroid-drop-jni
-  0d7ffcb970eb2d2001d00752558e30644f2f95ca
+  b1c230b99048b6cfb8851b1e9dcc45cf6b4e852d
   (drop JNI bridge; NDK symbols via box64 wrappedandroid).
 
 
@@ -37,8 +37,8 @@ sandbox:
 sources:
 - kind: git
   url: amphora:proton-wine.git
-  ref: 0d7ffcb970eb2d2001d00752558e30644f2f95ca
-  track: wip/wineandroid-drop-jni
+  ref: b1c230b99048b6cfb8851b1e9dcc45cf6b4e852d
+  track: wip/ahb-present-fence
   checkout-submodules: true
 - kind: remote
   url: termux-packages-legacy:pool/main/p/pulseaudio/pulseaudio_13.0-1_x86_64.deb
@@ -58,7 +58,7 @@ environment:
   # WCP identity commit. MUST stay identical to the git source `ref` above
   # (which BuildStream strips of .git, so the build cannot query it).
   # ci/gate/wine-build.sh fails the build when they drift.
-  PROTON_COMMIT: 0d7ffcb970eb2d2001d00752558e30644f2f95ca
+  PROTON_COMMIT: b1c230b99048b6cfb8851b1e9dcc45cf6b4e852d
   OUTPUT_DIR: "%{install-root}/artifacts"
   # Cache-only recc against the sandbox remote-apis-socket. With
   # remote-execution.action-cache-service in the user config, BuildStream backs
