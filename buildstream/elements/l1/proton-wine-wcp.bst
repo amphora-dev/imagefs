@@ -2,8 +2,8 @@ kind: manual
 
 description: |
   Proton Wine 11 WCP from wip/ahb-present-fence
-  b1c230b99048b6cfb8851b1e9dcc45cf6b4e852d
-  (AHB swapchain present with a render-done SYNC_FD; JNI bridge dropped).
+  11064b988071eccc1c79bf05a96e406c20324971
+  (AHB swapchain present fence + acquire release-fence import; JNI bridge dropped).
 
 
 depends:
@@ -37,7 +37,7 @@ sandbox:
 sources:
 - kind: git
   url: amphora:proton-wine.git
-  ref: b1c230b99048b6cfb8851b1e9dcc45cf6b4e852d
+  ref: 11064b988071eccc1c79bf05a96e406c20324971
   track: wip/ahb-present-fence
   checkout-submodules: true
 - kind: remote
@@ -58,7 +58,7 @@ environment:
   # WCP identity commit. MUST stay identical to the git source `ref` above
   # (which BuildStream strips of .git, so the build cannot query it).
   # ci/gate/wine-build.sh fails the build when they drift.
-  PROTON_COMMIT: b1c230b99048b6cfb8851b1e9dcc45cf6b4e852d
+  PROTON_COMMIT: 11064b988071eccc1c79bf05a96e406c20324971
   OUTPUT_DIR: "%{install-root}/artifacts"
   # Cache-only recc against the sandbox remote-apis-socket. With
   # remote-execution.action-cache-service in the user config, BuildStream backs
