@@ -109,6 +109,8 @@ for tool in autoconf autoreconf bison dpkg-deb file flex make meson patch pkg-co
   }
 done
 for tool in \
+  "$TOOLCHAIN/clang" \
+  "$TOOLCHAIN/clang++" \
   "$TOOLCHAIN/$TARGET-clang" \
   "$TOOLCHAIN/$TARGET-clang++" \
   "$TOOLCHAIN/llvm-strip" \
@@ -142,9 +144,12 @@ readelf -dW "$PULSE_DEV_PREFIX/lib/libpulse.so" |
 
 export PATH="$LLVM_MINGW_ROOT/bin:$TOOLCHAIN:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 export LD_LIBRARY_PATH=/opt/host-freetype/lib
-export CC="$TOOLCHAIN/$TARGET-clang"
-export AS="$CC"
-export CXX="$TOOLCHAIN/$TARGET-clang++"
+# $TARGET-clang is a shell script that execs clang --target=$TARGET. recc does
+# not treat a shell script as a compiler, so wrapping that path skips the
+# action cache. Point CC/CXX at the real binaries and pass the same --target.
+export CC="$TOOLCHAIN/clang"
+export CXX="$TOOLCHAIN/clang++"
+export AS="$TOOLCHAIN/$TARGET-clang"
 export AR="$TOOLCHAIN/llvm-ar"
 export LD="$TOOLCHAIN/ld.lld"
 export RANLIB="$TOOLCHAIN/llvm-ranlib"
@@ -154,7 +159,7 @@ export PKG_CONFIG_PATH=
 export PKG_CONFIG_LIBDIR="$DEPS/lib/pkgconfig:$DEPS/share/pkgconfig"
 export ACLOCAL_PATH="$DEPS/lib/aclocal:$DEPS/share/aclocal"
 export CPPFLAGS="-I$DEPS/include --sysroot=$NDK_TOOLCHAIN/sysroot"
-export CFLAGS="-march=x86-64 -mtune=generic -fPIC -DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES -Wno-declaration-after-statement -Wno-implicit-function-declaration -Wno-int-conversion"
+export CFLAGS="--target=$TARGET -march=x86-64 -mtune=generic -fPIC -DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES -Wno-declaration-after-statement -Wno-implicit-function-declaration -Wno-int-conversion"
 export CXXFLAGS="$CFLAGS"
 # NDK r29's Clang driver injects both --pack-dyn-relocs=relr and
 # --use-android-relr-tags for Android targets. Box64 understands standard
