@@ -45,7 +45,9 @@ print(
 )
 PY
 }
-trap report_recc_stats EXIT
+# A failing EXIT trap replaces the script's status under set -e; the count
+# must never fail a build.
+trap 'report_recc_stats || true' EXIT
 
 recc_wrap_compilers() {
   # Cache-only recc against buildbox-casd (RECC_SERVER set by the element).
@@ -144,11 +146,14 @@ readelf -dW "$PULSE_DEV_PREFIX/lib/libpulse.so" |
 
 export PATH="$LLVM_MINGW_ROOT/bin:$TOOLCHAIN:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 export LD_LIBRARY_PATH=/opt/host-freetype/lib
-# $TARGET-clang is a shell script that execs clang --target=$TARGET. recc does
-# not treat a shell script as a compiler, so wrapping that path skips the
-# action cache. Point CC/CXX at the real binaries and pass the same --target.
-export CC="$TOOLCHAIN/clang"
-export CXX="$TOOLCHAIN/clang++"
+# recc recognizes compilers by basename: clang, clang++ and gcc are cached,
+# but a target-prefixed name such as $TARGET-clang is "Not a compiler
+# command". Call the real clang with the --target the NDK wrapper adds.
+# --target goes in CC/CXX, not CFLAGS: Wine links with $(CC) ... $(LDFLAGS)
+# and no $(CFLAGS), so a CFLAGS-only target links against the host glibc
+# (ntdll.so: undefined symbol setprogname).
+export CC="$TOOLCHAIN/clang --target=$TARGET"
+export CXX="$TOOLCHAIN/clang++ --target=$TARGET"
 export AS="$TOOLCHAIN/$TARGET-clang"
 export AR="$TOOLCHAIN/llvm-ar"
 export LD="$TOOLCHAIN/ld.lld"
@@ -159,7 +164,7 @@ export PKG_CONFIG_PATH=
 export PKG_CONFIG_LIBDIR="$DEPS/lib/pkgconfig:$DEPS/share/pkgconfig"
 export ACLOCAL_PATH="$DEPS/lib/aclocal:$DEPS/share/aclocal"
 export CPPFLAGS="-I$DEPS/include --sysroot=$NDK_TOOLCHAIN/sysroot"
-export CFLAGS="--target=$TARGET -march=x86-64 -mtune=generic -fPIC -DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES -Wno-declaration-after-statement -Wno-implicit-function-declaration -Wno-int-conversion"
+export CFLAGS="-march=x86-64 -mtune=generic -fPIC -DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES -Wno-declaration-after-statement -Wno-implicit-function-declaration -Wno-int-conversion"
 export CXXFLAGS="$CFLAGS"
 # NDK r29's Clang driver injects both --pack-dyn-relocs=relr and
 # --use-android-relr-tags for Android targets. Box64 understands standard

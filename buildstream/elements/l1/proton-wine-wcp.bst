@@ -70,6 +70,10 @@ environment:
   # Required: CACHE_ONLY local misses do not UpdateActionResult unless this is set.
   RECC_CACHE_UPLOAD_LOCAL_BUILD: "1"
   RECC_USE_LOCALCAS: "1"
+  # By default recc keys an action only on relative-path inputs. Headers under
+  # /opt/android-x86_64-sysroot, the NDK sysroot and /tmp/termux-pulse-dev are
+  # absolute, so a sysroot bump would replay stale unix .o files. Hash them too.
+  RECC_DEPS_GLOBAL_PATHS: "1"
   # Stabilize action digests / silence empty-platform warning.
   RECC_REMOTE_PLATFORM_OSFamily: linux
   RECC_REMOTE_PLATFORM_ISA: x86_64
