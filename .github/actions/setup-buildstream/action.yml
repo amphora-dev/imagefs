@@ -14,8 +14,11 @@ runs:
   - name: Install sandbox dependencies
     shell: bash
     run: |
+      # The runner image's needrestart hook restarts services after a
+      # libapparmor upgrade. php8.3-fpm is not running here, so that restart
+      # sits until systemd's 90s timeout. List-only mode skips the restart.
       sudo apt-get update
-      sudo apt-get install -y \
+      sudo NEEDRESTART_MODE=l DEBIAN_FRONTEND=noninteractive apt-get install -y \
         apparmor-profiles apparmor-utils bubblewrap fuse3 lzip patch \
         python3-venv xz-utils
       sudo install -m 0644 \
