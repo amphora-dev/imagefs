@@ -73,6 +73,8 @@ environment:
   # Stabilize action digests / silence empty-platform warning.
   RECC_REMOTE_PLATFORM_OSFamily: linux
   RECC_REMOTE_PLATFORM_ISA: x86_64
+  # Stderr stays quiet. build-proton-wcp.sh raises this to info, writes
+  # per-process logs under /tmp/recc-logs, and prints one "recc actions:" line.
   RECC_LOG_LEVEL: warning
 
 config:

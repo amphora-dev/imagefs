@@ -12,6 +12,41 @@ set -euo pipefail
 
 JOBS="${JOBS:-$(nproc)}"
 
+# recc's default warning level hides Action Cache hit / miss lines, and info
+# on stderr would be one line per compile. Keep those lines in per-process
+# files and print a single count when this script exits.
+recc_log_dir=""
+if command -v recc >/dev/null 2>&1 && [ -n "${RECC_SERVER:-}" ]; then
+  recc_log_dir=/tmp/recc-logs
+  mkdir -p "$recc_log_dir"
+  export RECC_LOG_LEVEL=info
+  export RECC_LOG_DIRECTORY="$recc_log_dir"
+fi
+
+report_recc_stats() {
+  [ -n "$recc_log_dir" ] || return 0
+  [ -d "$recc_log_dir" ] || return 0
+  python3 - "$recc_log_dir" <<'PY'
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+hit = miss = updated = not_compiler = 0
+for path in root.rglob("*"):
+    if not path.is_file():
+        continue
+    text = path.read_text(errors="replace")
+    hit += text.count("Action Cache hit for [")
+    miss += text.count("Action not cached and running in cache-only mode")
+    updated += text.count("Action cache updated for [")
+    not_compiler += text.count("Not a compiler command")
+print(
+    f"recc actions: hit={hit} miss={miss} updated={updated} not_compiler={not_compiler}"
+)
+PY
+}
+trap report_recc_stats EXIT
+
 recc_wrap_compilers() {
   # Cache-only recc against buildbox-casd (RECC_SERVER set by the element).
   if ! command -v recc >/dev/null 2>&1; then

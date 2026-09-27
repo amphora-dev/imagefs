@@ -66,6 +66,18 @@ jobs:
       run: |
         rm -rf /tmp/buildstream-proton-wine artifacts
         buildstream/bst build l1/proton-wine-wcp.bst
+        # The sandbox stdout is in the element log, not this step's console.
+        logdir="${XDG_CACHE_HOME:-$HOME/.cache}/buildstream/logs"
+        summary=$(
+          find "$logdir" -type f -path '*proton-wine-wcp*build*.log' -print0 \
+            | xargs -0 -r grep -h 'recc actions:' \
+            | tail -n 1 || true
+        )
+        if [ -n "$summary" ]; then
+          echo "$summary"
+        else
+          echo "recc actions: no summary in $logdir"
+        fi
         buildstream/bst artifact checkout l1/proton-wine-wcp.bst \
           --deps none \
           --directory /tmp/buildstream-proton-wine
