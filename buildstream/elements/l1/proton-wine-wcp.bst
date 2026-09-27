@@ -1,9 +1,9 @@
 kind: manual
 
 description: |
-  Proton Wine 11 WCP from wip/wineandroid-drop-jni
+  Proton Wine 11 WCP from wip/ahb-present-fence
   b1c230b99048b6cfb8851b1e9dcc45cf6b4e852d
-  (drop JNI bridge; NDK symbols via box64 wrappedandroid).
+  (AHB swapchain present with a render-done SYNC_FD; JNI bridge dropped).
 
 
 depends:
