@@ -155,7 +155,7 @@ configure_recc_toolchain_fingerprint() {
   # without changing its reported version.
   # Hybrid-cache benchmark: changing these comments invalidates only the
   # BuildStream element artifact, not any compiler action key.
-  # Pass two measures the restored local snapshot after the remote seed.
+  # Pass three measures a restored snapshot with a local-only recc CAS.
   command -v recc >/dev/null 2>&1 || return 0
   [ -n "${RECC_SERVER:-}" ] || return 0
 

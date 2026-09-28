@@ -82,6 +82,29 @@ jobs:
       with:
         remote-cache-token: ${{ secrets.BST_REMOTE_CACHE_TOKEN }}
 
+    - name: Prefer restored local action cache
+      if: steps.wine-recc-cache-restore.outputs.cache-matched-key != ''
+      run: |
+        # BuildStream 2.7 always treats cache.storage-service as a writable
+        # proxy and revalidates every local AC hit against its upstream. Once a
+        # complete snapshot is restored, keep artifact/source remotes but run
+        # the recc-facing CAS + action cache locally to avoid per-action RTT.
+        token_file="$HOME/.config/bst-remote-cache.token"
+        cat > "$HOME/.config/buildstream.conf" <<EOF
+        artifacts:
+          servers:
+          - url: https://cas.arm.512.pub
+            push: true
+            auth:
+              access-token: $token_file
+        source-caches:
+          servers:
+          - url: https://cas.arm.512.pub
+            push: true
+            auth:
+              access-token: $token_file
+        EOF
+
     - id: gate
       env:
         GH_TOKEN: ${{ github.token }}
