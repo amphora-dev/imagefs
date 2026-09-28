@@ -98,4 +98,6 @@ Cloudflare-proxied `cas-arm.512.pub`: orange-cloud stalls buildbox gRPC streams,
 and pushes stop making progress. Each RPC has a 900s timeout and a 30s
 keepalive. Workflows get credentials through `.github/actions/setup-buildstream`
 with the `BST_REMOTE_CACHE_TOKEN` secret. On a dev machine run the same script
-with `BST_REMOTE_CACHE_TOKEN` set.
+with `BST_REMOTE_CACHE_TOKEN` set. Detailed invariants, benchmark data,
+`not_compiler` classification, and optimization decisions are recorded in
+[`docs/WINE-RECC-CACHE.md`](../docs/WINE-RECC-CACHE.md).

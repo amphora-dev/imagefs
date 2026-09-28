@@ -17,7 +17,10 @@ JOBS="${JOBS:-$(nproc)}"
 
 # recc's default warning level hides Action Cache hit / miss lines, and info
 # on stderr would be one line per compile. Keep those lines in per-process
-# files and print a single count when this script exits.
+# files and print a single count when this script exits. `not_compiler` is
+# expected to include short links, generated .spec.s assembly, and configure
+# probes; it is not a count of missed normal C/C++ compiles. See
+# docs/WINE-RECC-CACHE.md.
 recc_log_dir=""
 if command -v recc >/dev/null 2>&1 && [ -n "${RECC_SERVER:-}" ]; then
   recc_log_dir=/tmp/recc-logs
