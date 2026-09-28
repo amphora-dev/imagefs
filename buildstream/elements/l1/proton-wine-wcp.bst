@@ -1,9 +1,9 @@
 kind: manual
 
 description: |
-  Proton Wine 11 WCP from wip/ahb-present-fence
-  b1c230b99048b6cfb8851b1e9dcc45cf6b4e852d
-  (AHB swapchain present with a render-done SYNC_FD; JNI bridge dropped).
+  Proton Wine 11 WCP from wip/client-window-frame
+  2fd246cfc364a5a6685d132cc085a8896b41e431
+  (win32u keeps the window surface of Vulkan windows on the Amphora host).
 
 
 depends:
@@ -37,8 +37,8 @@ sandbox:
 sources:
 - kind: git
   url: amphora:proton-wine.git
-  ref: b1c230b99048b6cfb8851b1e9dcc45cf6b4e852d
-  track: wip/ahb-present-fence
+  ref: 2fd246cfc364a5a6685d132cc085a8896b41e431
+  track: wip/client-window-frame
   checkout-submodules: true
 - kind: remote
   url: termux-packages-legacy:pool/main/p/pulseaudio/pulseaudio_13.0-1_x86_64.deb
@@ -58,7 +58,7 @@ environment:
   # WCP identity commit. MUST stay identical to the git source `ref` above
   # (which BuildStream strips of .git, so the build cannot query it).
   # ci/gate/wine-build.sh fails the build when they drift.
-  PROTON_COMMIT: b1c230b99048b6cfb8851b1e9dcc45cf6b4e852d
+  PROTON_COMMIT: 2fd246cfc364a5a6685d132cc085a8896b41e431
   OUTPUT_DIR: "%{install-root}/artifacts"
   # Cache-only recc against the sandbox remote-apis-socket. With
   # remote-execution.action-cache-service in the user config, BuildStream backs
