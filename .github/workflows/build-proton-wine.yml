@@ -74,9 +74,10 @@ jobs:
             | tail -n 1 || true
         )
         if [ -n "$summary" ]; then
-          echo "$summary"
+          echo "::notice::$summary"
+          echo "$summary" >> "$GITHUB_STEP_SUMMARY"
         else
-          echo "recc actions: no summary in $logdir"
+          echo "recc actions: element was cached, no build log"
         fi
         buildstream/bst artifact checkout l1/proton-wine-wcp.bst \
           --deps none \
