@@ -108,6 +108,8 @@ configure_recc_toolchain_fingerprint() {
   # their installation paths across upgrades, so include the hashes of every
   # compiler entry point we wrap in a remote-platform property. This makes an
   # NDK, llvm-mingw, or host-GCC update invalidate old action-cache results.
+  # Hash binary contents rather than --version: a toolchain may be rebuilt
+  # without changing its reported version.
   command -v recc >/dev/null 2>&1 || return 0
   [ -n "${RECC_SERVER:-}" ] || return 0
 
