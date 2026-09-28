@@ -155,7 +155,7 @@ for (category, compiler), count in sorted(compilers.items(), key=lambda item: (-
 for shape, count in sorted(rejected_shapes.items(), key=lambda item: (-item[1], item[0]))[:12]:
     compiler, suffixes, language, stdin, rsp = shape
     print(
-        f"recc rejected shape: count={count} compiler={compiler} suffixes={suffixes} "
+        f"recc unsupported shape: count={count} compiler={compiler} suffixes={suffixes} "
         f"language={language} stdin={stdin} rsp={rsp} sample={rejected_samples[shape]}"
     )
 if unmatched:
