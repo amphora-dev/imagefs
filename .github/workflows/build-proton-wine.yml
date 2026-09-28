@@ -81,7 +81,7 @@ jobs:
       run: |
         state="$(buildstream/bst artifact show --deps none l1/proton-wine-wcp.bst)"
         echo "$state"
-        if grep -Eq '(^|[[:space:]])(cached|available)[[:space:]]+l1/proton-wine-wcp\.bst([[:space:]]|$)' <<<"$state"; then
+        if grep -Eq '^[[:space:]]*(cached|available)[[:space:]]+l1/proton-wine-wcp\.bst([[:space:]]|$)' <<<"$state"; then
           echo "available=true" >> "$GITHUB_OUTPUT"
           echo "Exact Wine artifact is cached; skip local action snapshot"
         else
@@ -171,7 +171,7 @@ jobs:
         path: |
           ~/.cache/buildstream/cas
           ~/.cache/buildstream/actioncache
-        key: ${{ steps.wine-recc-cache-restore.outputs.cache-primary-key }}
+        key: wine-recc-local-v3-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
 
     - name: Keep two local Wine action cache snapshots
       if: success() && github.ref == 'refs/heads/main' && steps.wine-recc-cache-save.outcome == 'success'
