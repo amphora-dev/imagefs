@@ -2,6 +2,7 @@
 # Build the pinned Proton Wine source inside a BuildStream sandbox and emit WCP.
 # CI persists cas/actioncache outside the sandbox; keep compiler paths and recc
 # platform properties stable so successive element revisions reuse its actions.
+# The snapshot is downloaded only when the exact element artifact is absent.
 set -euo pipefail
 
 : "${ANDROID_NDK_HOME:?BuildStream must provide ANDROID_NDK_HOME}"
