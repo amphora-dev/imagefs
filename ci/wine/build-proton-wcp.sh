@@ -103,8 +103,46 @@ DESTDIR=/tmp/proton-wine-dest
 PACKAGE_ROOT=/tmp/proton-wine-package
 WINE_PREFIX=/opt/wine
 
+configure_recc_toolchain_fingerprint() {
+  # recc does not hash the invoked compiler binary. Toolchain elements retain
+  # their installation paths across upgrades, so include the hashes of every
+  # compiler entry point we wrap in a remote-platform property. This makes an
+  # NDK, llvm-mingw, or host-GCC update invalidate old action-cache results.
+  command -v recc >/dev/null 2>&1 || return 0
+  [ -n "${RECC_SERVER:-}" ] || return 0
+
+  local -a candidates=(
+    /usr/bin/gcc
+    /usr/bin/g++
+    "$TOOLCHAIN/clang"
+    "$TOOLCHAIN/clang++"
+    "$LLVM_MINGW_ROOT/bin/clang"
+    "$LLVM_MINGW_ROOT/bin/clang++"
+    "$LLVM_MINGW_ROOT/bin/x86_64-w64-mingw32-clang"
+    "$LLVM_MINGW_ROOT/bin/i686-w64-mingw32-clang"
+    "$LLVM_MINGW_ROOT/bin/x86_64-w64-mingw32-clang++"
+    "$LLVM_MINGW_ROOT/bin/i686-w64-mingw32-clang++"
+  )
+  local -a compilers=()
+  local compiler fingerprint
+  for compiler in "${candidates[@]}"; do
+    [ -x "$compiler" ] && compilers+=("$compiler")
+  done
+  if [ "${#compilers[@]}" -eq 0 ]; then
+    echo "no compilers available for recc fingerprint" >&2
+    return 1
+  fi
+  fingerprint="$(sha256sum "${compilers[@]}" | sha256sum | awk '{print $1}')"
+  if [ -z "$fingerprint" ]; then
+    echo "failed to calculate recc toolchain fingerprint" >&2
+    return 1
+  fi
+  export RECC_REMOTE_PLATFORM_toolchain="$fingerprint"
+  echo "recc: toolchain fingerprint=$fingerprint (${#compilers[@]} compiler paths)" >&2
+}
+
 for tool in autoconf autoreconf bison dpkg-deb file flex make meson patch pkg-config \
-            python3 readelf tar zstd; do
+            python3 readelf sha256sum tar zstd; do
   command -v "$tool" >/dev/null || {
     echo "missing build tool: $tool" >&2
     exit 1
@@ -146,6 +184,7 @@ readelf -dW "$PULSE_DEV_PREFIX/lib/libpulse.so" |
 
 export PATH="$LLVM_MINGW_ROOT/bin:$TOOLCHAIN:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 export LD_LIBRARY_PATH=/opt/host-freetype/lib
+configure_recc_toolchain_fingerprint
 # recc recognizes compilers by basename: clang, clang++ and gcc are cached,
 # but a target-prefixed name such as $TARGET-clang is "Not a compiler
 # command". Call the real clang with the --target the NDK wrapper adds.
