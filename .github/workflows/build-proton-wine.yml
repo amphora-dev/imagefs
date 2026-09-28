@@ -36,6 +36,12 @@ on:
 permissions:
   contents: write
 
+# A restored CAS snapshot is not mergeable. Serialize writers so every run
+# starts from, extends, and replaces the latest complete Wine cache lineage.
+concurrency:
+  group: build-proton-wine-recc-cache
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -56,6 +62,21 @@ jobs:
             -w "attempt=$attempt dns=%{time_namelookup}s connect=%{time_connect}s tls_done=%{time_appconnect}s ttfb=%{time_starttransfer}s code=%{http_code}\n" \
             --connect-timeout 10 https://cas.arm.512.pub/
         done
+
+    - name: Restore local Wine action cache
+      id: wine-recc-cache-restore
+      uses: actions/cache/restore@v4
+      with:
+        # CAS blobs and action-result metadata are sufficient for local recc
+        # hits. Sources, logs and BuildStream artifact refs remain remote-only.
+        path: |
+          ~/.cache/buildstream/cas
+          ~/.cache/buildstream/actioncache
+        # GitHub cache entries are immutable; every successful run saves a new
+        # snapshot while restore-keys selects the newest prior one.
+        key: wine-recc-local-v2-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+        restore-keys: |
+          wine-recc-local-v2-${{ runner.os }}-
 
     - uses: ./.github/actions/setup-buildstream
       with:
@@ -116,6 +137,15 @@ jobs:
           --directory /tmp/wine-sysroot
         SYSROOT=/tmp/wine-sysroot bash ci/verify/wine-sysroot.sh
         bash ci/verify/proton-wcp.sh
+
+    - name: Save local Wine action cache
+      if: success() && steps.gate.outputs.should_build == 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: |
+          ~/.cache/buildstream/cas
+          ~/.cache/buildstream/actioncache
+        key: ${{ steps.wine-recc-cache-restore.outputs.cache-primary-key }}
 
     - uses: actions/upload-artifact@v4
       if: steps.gate.outputs.should_build == 'true'

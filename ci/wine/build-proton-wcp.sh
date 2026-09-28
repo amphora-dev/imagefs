@@ -153,6 +153,8 @@ configure_recc_toolchain_fingerprint() {
   # NDK, llvm-mingw, or host-GCC update invalidate old action-cache results.
   # Hash binary contents rather than --version: a toolchain may be rebuilt
   # without changing its reported version.
+  # Hybrid-cache benchmark: changing this comment invalidates only the
+  # BuildStream element artifact, not any compiler action key.
   command -v recc >/dev/null 2>&1 || return 0
   [ -n "${RECC_SERVER:-}" ] || return 0
 
