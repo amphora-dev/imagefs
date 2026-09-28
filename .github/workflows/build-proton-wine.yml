@@ -63,7 +63,25 @@ jobs:
             --connect-timeout 10 https://cas.arm.512.pub/
         done
 
+    - uses: ./.github/actions/setup-buildstream
+      with:
+        remote-cache-token: ${{ secrets.BST_REMOTE_CACHE_TOKEN }}
+
+    - name: Check exact Wine element artifact
+      id: wine-element
+      run: |
+        state="$(buildstream/bst artifact show --deps none l1/proton-wine-wcp.bst)"
+        echo "$state"
+        if grep -Fq 'available l1/proton-wine-wcp.bst' <<<"$state"; then
+          echo "available=true" >> "$GITHUB_OUTPUT"
+          echo "Exact Wine artifact is remote; skip local action snapshot"
+        else
+          echo "available=false" >> "$GITHUB_OUTPUT"
+          echo "Wine artifact is absent; restore local action snapshot"
+        fi
+
     - name: Restore local Wine action cache
+      if: steps.wine-element.outputs.available != 'true'
       id: wine-recc-cache-restore
       uses: actions/cache/restore@v4
       with:
@@ -78,12 +96,8 @@ jobs:
         restore-keys: |
           wine-recc-local-v2-${{ runner.os }}-
 
-    - uses: ./.github/actions/setup-buildstream
-      with:
-        remote-cache-token: ${{ secrets.BST_REMOTE_CACHE_TOKEN }}
-
     - name: Prefer restored local action cache
-      if: steps.wine-recc-cache-restore.outputs.cache-matched-key != ''
+      if: steps.wine-element.outputs.available != 'true' && steps.wine-recc-cache-restore.outputs.cache-matched-key != ''
       run: |
         # BuildStream 2.7 always treats cache.storage-service as a writable
         # proxy and revalidates every local AC hit against its upstream. Once a
@@ -162,7 +176,7 @@ jobs:
         bash ci/verify/proton-wcp.sh
 
     - name: Save local Wine action cache
-      if: success() && steps.gate.outputs.should_build == 'true'
+      if: success() && steps.gate.outputs.should_build == 'true' && steps.wine-element.outputs.available != 'true'
       uses: actions/cache/save@v4
       with:
         path: |
