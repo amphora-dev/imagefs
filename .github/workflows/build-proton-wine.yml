@@ -49,6 +49,16 @@ jobs:
 
     - uses: actions/checkout@v4
 
+    - name: Measure remote cache network latency
+      run: |
+        getent ahostsv4 cas.arm.512.pub | head -1
+        ping -c 10 -W 2 cas.arm.512.pub || true
+        for attempt in 1 2 3 4 5; do
+          curl --noproxy '*' --http2 -sS -o /dev/null \
+            -w "attempt=$attempt remote_ip=%{remote_ip} connect=%{time_connect}s tls=%{time_appconnect}s ttfb=%{time_starttransfer}s total=%{time_total}s code=%{http_code}\n" \
+            --connect-timeout 10 https://cas.arm.512.pub/
+        done
+
     - uses: ./.github/actions/setup-buildstream
       with:
         remote-cache-token: ${{ secrets.BST_REMOTE_CACHE_TOKEN }}
