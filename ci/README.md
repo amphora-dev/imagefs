@@ -75,10 +75,27 @@ Release 与 manifest 字段由 artifact 内生成的 `.env` 文件传递，workf
 `ci/setup/configure-remote-cache.sh` writes `~/.config/buildstream.conf` so
 BuildStream uses `https://cas.arm.512.pub` for CAS, element artifacts, source
 cache and the action cache behind `remote-apis-socket` (recc compile results).
-That name is the origin A record. Do not switch it to the Cloudflare-proxied
-`cas-arm.512.pub`: orange-cloud stalls buildbox gRPC streams, and pushes stop
-making progress. Each RPC has a 900s timeout and a 30s keepalive.
-Workflows get it through `.github/actions/setup-buildstream` with the
-`BST_REMOTE_CACHE_TOKEN` secret; fork PRs have no secret and build from the
-local cache. On a dev machine run the same script with `BST_REMOTE_CACHE_TOKEN`
-set.
+Set `BST_ACTION_CACHE_MODE=local` to keep artifact/source remotes while running
+the recc-facing CAS and action cache locally.
+
+The Wine workflow uses three layers:
+
+1. Query the remote BuildStream artifact index. An exact element hit is pulled
+   directly without downloading a GitHub Actions cache snapshot.
+2. On an element miss, restore `~/.cache/buildstream/{cas,actioncache}` from the
+   newest `wine-recc-local-v3-*` snapshot. A restored snapshot selects local
+   action-cache mode to avoid per-action WAN validation.
+3. If no snapshot exists, keep remote action-cache mode so Phoenix seeds the
+   build; a successful main build then saves the first local snapshot.
+
+GitHub cache entries are immutable, so each real main build saves a unique key
+and the workflow retains the newest two. Wine runs on the same ref are
+serialized because independently updated snapshots cannot be merged. Branch
+runs may restore the default-branch cache but only main can save it.
+
+The cache hostname is the origin A record. Do not switch it to the
+Cloudflare-proxied `cas-arm.512.pub`: orange-cloud stalls buildbox gRPC streams,
+and pushes stop making progress. Each RPC has a 900s timeout and a 30s
+keepalive. Workflows get credentials through `.github/actions/setup-buildstream`
+with the `BST_REMOTE_CACHE_TOKEN` secret. On a dev machine run the same script
+with `BST_REMOTE_CACHE_TOKEN` set.
