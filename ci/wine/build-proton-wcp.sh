@@ -15,6 +15,18 @@ set -euo pipefail
 
 JOBS="${JOBS:-$(nproc)}"
 
+phase_start() {
+  build_phase="$1"
+  build_phase_started="$(date +%s%N)"
+}
+
+phase_end() {
+  local finished elapsed_ms
+  finished="$(date +%s%N)"
+  elapsed_ms=$(( (finished - build_phase_started) / 1000000 ))
+  echo "wine phase: $build_phase elapsed_ms=$elapsed_ms"
+}
+
 # recc's default warning level hides Action Cache hit / miss lines, and info
 # on stderr would be one line per compile. Keep those lines in per-process
 # files and print a single count when this script exits.
@@ -342,11 +354,14 @@ export X_LIBS=
 export GSTREAMER_CFLAGS="-I$DEPS/include/gstreamer-1.0 -I$DEPS/include/glib-2.0 -I$DEPS/lib/glib-2.0/include -I$DEPS/lib/gstreamer-1.0/include"
 export GSTREAMER_LIBS="-L$DEPS/lib -lgstgl-1.0 -lgstapp-1.0 -lgstvideo-1.0 -lgstaudio-1.0 -lglib-2.0 -lgobject-2.0 -lgio-2.0 -lgsttag-1.0 -lgstbase-1.0 -lgstreamer-1.0"
 
+phase_start autogen
 ./autogen.sh
+phase_end
 
 # Require PresentModes USER_DRIVER thunk (win32u advertises FIFO+MAILBOX+IMMEDIATE).
 python3 .bst/ci/wine/check-present-modes-thunk.py
 
+phase_start host_tools
 rm -rf wine-tools
 mkdir wine-tools
 (
@@ -376,10 +391,12 @@ mkdir wine-tools
     --without-wayland
   make -j"$JOBS" __tooldeps__ nls/all
 )
+phase_end
 
 recc_wrap_compilers
 recc_wrap_mingw_clang
 
+phase_start target_configure
 ./configure \
   --enable-archs=x86_64,i386 \
   --host="$TARGET" \
@@ -438,11 +455,18 @@ recc_wrap_mingw_clang
   --without-xshape \
   --without-xshm \
   --without-xxf86vm
+phase_end
 
+phase_start compile
 make -j"$JOBS"
+phase_end
+
+phase_start install
 rm -rf "$DESTDIR" "$PACKAGE_ROOT"
 make -j"$JOBS" DESTDIR="$DESTDIR" install
+phase_end
 
+phase_start package_tree
 installed="$DESTDIR$WINE_PREFIX"
 test -d "$installed/lib/wine/x86_64-unix"
 test -d "$installed/lib/wine/x86_64-windows"
@@ -467,7 +491,9 @@ find "$PACKAGE_ROOT/lib/wine" "$PACKAGE_ROOT/bin" -type f -print0 |
       *PE32*) "$LLVM_MINGW_ROOT/bin/llvm-strip" --strip-unneeded "$binary" 2>/dev/null || true ;;
     esac
   done
+phase_end
 
+phase_start archive
 cp "$PREFIX_PACK" "$PACKAGE_ROOT/prefixPack.txz"
 version="$(awk '/Wine version/{print $3; exit}' VERSION)"
 test -n "$version"
@@ -513,6 +539,7 @@ tar \
   -C "$PACKAGE_ROOT" \
   -cf - bin lib share prefixPack.txz profile.json |
   zstd -T0 -19 -o "$OUTPUT_DIR/$wcp_name"
+phase_end
 (
   cd "$OUTPUT_DIR"
   sha256sum "$wcp_name" > "$wcp_name.sha256sum"
