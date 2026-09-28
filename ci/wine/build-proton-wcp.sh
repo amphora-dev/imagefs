@@ -12,6 +12,43 @@ set -euo pipefail
 
 JOBS="${JOBS:-$(nproc)}"
 
+# recc's default warning level hides Action Cache hit / miss lines, and info
+# on stderr would be one line per compile. Keep those lines in per-process
+# files and print a single count when this script exits.
+recc_log_dir=""
+if command -v recc >/dev/null 2>&1 && [ -n "${RECC_SERVER:-}" ]; then
+  recc_log_dir=/tmp/recc-logs
+  mkdir -p "$recc_log_dir"
+  export RECC_LOG_LEVEL=info
+  export RECC_LOG_DIRECTORY="$recc_log_dir"
+fi
+
+report_recc_stats() {
+  [ -n "$recc_log_dir" ] || return 0
+  [ -d "$recc_log_dir" ] || return 0
+  python3 - "$recc_log_dir" <<'PY'
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+hit = miss = updated = not_compiler = 0
+for path in root.rglob("*"):
+    if not path.is_file():
+        continue
+    text = path.read_text(errors="replace")
+    hit += text.count("Action Cache hit for [")
+    miss += text.count("Action not cached and running in cache-only mode")
+    updated += text.count("Action cache updated for [")
+    not_compiler += text.count("Not a compiler command")
+print(
+    f"recc actions: hit={hit} miss={miss} updated={updated} not_compiler={not_compiler}"
+)
+PY
+}
+# A failing EXIT trap replaces the script's status under set -e; the count
+# must never fail a build.
+trap 'report_recc_stats || true' EXIT
+
 recc_wrap_compilers() {
   # Cache-only recc against buildbox-casd (RECC_SERVER set by the element).
   if ! command -v recc >/dev/null 2>&1; then
@@ -66,14 +103,56 @@ DESTDIR=/tmp/proton-wine-dest
 PACKAGE_ROOT=/tmp/proton-wine-package
 WINE_PREFIX=/opt/wine
 
+configure_recc_toolchain_fingerprint() {
+  # recc does not hash the invoked compiler binary. Toolchain elements retain
+  # their installation paths across upgrades, so include the hashes of every
+  # compiler entry point we wrap in a remote-platform property. This makes an
+  # NDK, llvm-mingw, or host-GCC update invalidate old action-cache results.
+  # Hash binary contents rather than --version: a toolchain may be rebuilt
+  # without changing its reported version.
+  command -v recc >/dev/null 2>&1 || return 0
+  [ -n "${RECC_SERVER:-}" ] || return 0
+
+  local -a candidates=(
+    /usr/bin/gcc
+    /usr/bin/g++
+    "$TOOLCHAIN/clang"
+    "$TOOLCHAIN/clang++"
+    "$LLVM_MINGW_ROOT/bin/clang"
+    "$LLVM_MINGW_ROOT/bin/clang++"
+    "$LLVM_MINGW_ROOT/bin/x86_64-w64-mingw32-clang"
+    "$LLVM_MINGW_ROOT/bin/i686-w64-mingw32-clang"
+    "$LLVM_MINGW_ROOT/bin/x86_64-w64-mingw32-clang++"
+    "$LLVM_MINGW_ROOT/bin/i686-w64-mingw32-clang++"
+  )
+  local -a compilers=()
+  local compiler fingerprint
+  for compiler in "${candidates[@]}"; do
+    [ -x "$compiler" ] && compilers+=("$compiler")
+  done
+  if [ "${#compilers[@]}" -eq 0 ]; then
+    echo "no compilers available for recc fingerprint" >&2
+    return 1
+  fi
+  fingerprint="$(sha256sum "${compilers[@]}" | sha256sum | awk '{print $1}')"
+  if [ -z "$fingerprint" ]; then
+    echo "failed to calculate recc toolchain fingerprint" >&2
+    return 1
+  fi
+  export RECC_REMOTE_PLATFORM_toolchain="$fingerprint"
+  echo "recc: toolchain fingerprint=$fingerprint (${#compilers[@]} compiler paths)" >&2
+}
+
 for tool in autoconf autoreconf bison dpkg-deb file flex make meson patch pkg-config \
-            python3 readelf tar zstd; do
+            python3 readelf sha256sum tar zstd; do
   command -v "$tool" >/dev/null || {
     echo "missing build tool: $tool" >&2
     exit 1
   }
 done
 for tool in \
+  "$TOOLCHAIN/clang" \
+  "$TOOLCHAIN/clang++" \
   "$TOOLCHAIN/$TARGET-clang" \
   "$TOOLCHAIN/$TARGET-clang++" \
   "$TOOLCHAIN/llvm-strip" \
@@ -107,9 +186,16 @@ readelf -dW "$PULSE_DEV_PREFIX/lib/libpulse.so" |
 
 export PATH="$LLVM_MINGW_ROOT/bin:$TOOLCHAIN:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 export LD_LIBRARY_PATH=/opt/host-freetype/lib
-export CC="$TOOLCHAIN/$TARGET-clang"
-export AS="$CC"
-export CXX="$TOOLCHAIN/$TARGET-clang++"
+configure_recc_toolchain_fingerprint
+# recc recognizes compilers by basename: clang, clang++ and gcc are cached,
+# but a target-prefixed name such as $TARGET-clang is "Not a compiler
+# command". Call the real clang with the --target the NDK wrapper adds.
+# --target goes in CC/CXX, not CFLAGS: Wine links with $(CC) ... $(LDFLAGS)
+# and no $(CFLAGS), so a CFLAGS-only target links against the host glibc
+# (ntdll.so: undefined symbol setprogname).
+export CC="$TOOLCHAIN/clang --target=$TARGET"
+export CXX="$TOOLCHAIN/clang++ --target=$TARGET"
+export AS="$TOOLCHAIN/$TARGET-clang"
 export AR="$TOOLCHAIN/llvm-ar"
 export LD="$TOOLCHAIN/ld.lld"
 export RANLIB="$TOOLCHAIN/llvm-ranlib"

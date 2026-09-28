@@ -34,25 +34,25 @@ on:
     - ".github/workflows/build-proton-wine.yml"
 
 permissions:
+  actions: write
   contents: write
+
+# GitHub cache snapshots are immutable and cannot be merged. Serialize runs on
+# the same ref so every main build restores and extends the latest snapshot.
+# Other BuildStream workflows remain independent.
+concurrency:
+  group: build-proton-wine-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     steps:
-    - name: Free disk space
-      run: |
-        sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost \
-          "$AGENT_TOOLSDIRECTORY"
-        df -h
-
     - uses: actions/checkout@v4
 
-    - uses: ./.github/actions/setup-buildstream
-      with:
-        remote-cache-token: ${{ secrets.BST_REMOTE_CACHE_TOKEN }}
-
+    # This gate only reads the pinned commit and GitHub release metadata, so a
+    # no-op, non-forced dispatch can exit before installing BuildStream.
     - id: gate
       env:
         GH_TOKEN: ${{ github.token }}
@@ -61,11 +61,79 @@ jobs:
         REPO: ${{ github.repository }}
       run: bash ci/gate/wine-build.sh
 
+    - name: Free disk space
+      if: steps.gate.outputs.should_build == 'true'
+      run: |
+        sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost \
+          "$AGENT_TOOLSDIRECTORY"
+        df -h
+
+    - uses: ./.github/actions/setup-buildstream
+      if: steps.gate.outputs.should_build == 'true'
+      with:
+        remote-cache-token: ${{ secrets.BST_REMOTE_CACHE_TOKEN }}
+
+    # Query only the artifact index. Do not download the 1.5 GiB local action
+    # snapshot when the exact element artifact can be pulled directly.
+    - name: Check exact Wine element artifact
+      id: wine-element
+      if: steps.gate.outputs.should_build == 'true'
+      run: |
+        state="$(buildstream/bst artifact show --deps none l1/proton-wine-wcp.bst)"
+        echo "$state"
+        if grep -Eq '(^|[[:space:]])(cached|available)[[:space:]]+l1/proton-wine-wcp\.bst([[:space:]]|$)' <<<"$state"; then
+          echo "available=true" >> "$GITHUB_OUTPUT"
+          echo "Exact Wine artifact is cached; skip local action snapshot"
+        else
+          echo "available=false" >> "$GITHUB_OUTPUT"
+          echo "Wine artifact is absent; restore local action snapshot"
+        fi
+
+    - name: Restore local Wine action cache
+      id: wine-recc-cache-restore
+      if: steps.gate.outputs.should_build == 'true' && steps.wine-element.outputs.available != 'true'
+      uses: actions/cache/restore@v4
+      with:
+        # Action-result metadata references output blobs in CAS; cache both as
+        # one archive. Sources, logs and artifact refs stay remote-only.
+        path: |
+          ~/.cache/buildstream/cas
+          ~/.cache/buildstream/actioncache
+        # Cache entries are immutable. Use a unique save key and restore the
+        # newest prior snapshot via the stable prefix.
+        key: wine-recc-local-v3-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+        restore-keys: |
+          wine-recc-local-v3-${{ runner.os }}-
+
+    - name: Prefer restored local action cache
+      if: steps.gate.outputs.should_build == 'true' && steps.wine-element.outputs.available != 'true' && steps.wine-recc-cache-restore.outputs.cache-matched-key != ''
+      env:
+        BST_ACTION_CACHE_MODE: local
+        BST_REMOTE_CACHE_REQUIRED: true
+        BST_REMOTE_CACHE_TOKEN: ${{ secrets.BST_REMOTE_CACHE_TOKEN }}
+      run: bash ci/setup/configure-remote-cache.sh
+
     - name: Build Proton Wine WCP
+      id: wine-build
       if: steps.gate.outputs.should_build == 'true'
       run: |
         rm -rf /tmp/buildstream-proton-wine artifacts
         buildstream/bst build l1/proton-wine-wcp.bst
+        # The sandbox stdout is in the element log, not this step's console.
+        logdir="${XDG_CACHE_HOME:-$HOME/.cache}/buildstream/logs"
+        summary=$(
+          find "$logdir" -type f -path '*proton-wine-wcp*build*.log' -print0 \
+            | xargs -0 -r grep -h 'recc actions:' \
+            | tail -n 1 || true
+        )
+        if [ -n "$summary" ]; then
+          echo "::notice::$summary"
+          echo "$summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "recc-built=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "recc actions: element was cached, no build log"
+          echo "recc-built=false" >> "$GITHUB_OUTPUT"
+        fi
         buildstream/bst artifact checkout l1/proton-wine-wcp.bst \
           --deps none \
           --directory /tmp/buildstream-proton-wine
@@ -92,6 +160,36 @@ jobs:
           --directory /tmp/wine-sysroot
         SYSROOT=/tmp/wine-sysroot bash ci/verify/wine-sysroot.sh
         bash ci/verify/proton-wcp.sh
+
+    # Only trusted main builds advance the canonical snapshot lineage. Manual
+    # branch runs may restore main's cache but cannot create competing snapshots.
+    - name: Save local Wine action cache
+      id: wine-recc-cache-save
+      if: success() && github.ref == 'refs/heads/main' && steps.wine-build.outputs.recc-built == 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: |
+          ~/.cache/buildstream/cas
+          ~/.cache/buildstream/actioncache
+        key: ${{ steps.wine-recc-cache-restore.outputs.cache-primary-key }}
+
+    - name: Keep two local Wine action cache snapshots
+      if: success() && github.ref == 'refs/heads/main' && steps.wine-recc-cache-save.outcome == 'success'
+      env:
+        CACHE_PREFIX: wine-recc-local-v3-${{ runner.os }}-
+        GH_REPO: ${{ github.repository }}
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        gh cache list \
+          --ref refs/heads/main \
+          --key "$CACHE_PREFIX" \
+          --limit 100 \
+          --json id,createdAt \
+          --jq 'sort_by(.createdAt) | reverse | .[2:][]?.id' \
+          | while read -r cache_id; do
+              [ -n "$cache_id" ] || continue
+              gh api --method DELETE "repos/$GH_REPO/actions/caches/$cache_id"
+            done
 
     - uses: actions/upload-artifact@v4
       if: steps.gate.outputs.should_build == 'true'

@@ -11,9 +11,18 @@ set -euo pipefail
 
 url="${BST_REMOTE_CACHE_URL:-https://cas.arm.512.pub}"
 token="${BST_REMOTE_CACHE_TOKEN:-}"
+action_cache_mode="${BST_ACTION_CACHE_MODE:-remote}"
 conf_dir="${XDG_CONFIG_HOME:-$HOME/.config}"
 conf="$conf_dir/buildstream.conf"
 token_file="$conf_dir/bst-remote-cache.token"
+
+case "$action_cache_mode" in
+    local|remote) ;;
+    *)
+        echo "BST_ACTION_CACHE_MODE must be 'local' or 'remote': $action_cache_mode" >&2
+        exit 1
+        ;;
+esac
 
 if [ -z "$token" ]; then
     if [ "${BST_REMOTE_CACHE_REQUIRED:-false}" = true ]; then
@@ -29,7 +38,14 @@ mkdir -p "$conf_dir"
 
 # Per-RPC ceiling. A stalled stream fails here instead of holding the job
 # until the workflow timeout. keepalive lets casd notice a dead connection.
-cat > "$conf" << EOF
+#
+# In local action-cache mode, artifacts and sources still use the shared
+# server, but BuildStream starts casd without a storage/action-cache upstream.
+# This lets recc serve a restored local snapshot without validating every hit
+# over the WAN.
+{
+    if [ "$action_cache_mode" = remote ]; then
+        cat << EOF
 cache:
   storage-service:
     url: $url
@@ -38,6 +54,10 @@ cache:
     connection-config:
       request-timeout: 900
       keepalive-time: 30
+EOF
+    fi
+
+    cat << EOF
 artifacts:
   servers:
   - url: $url
@@ -56,6 +76,10 @@ source-caches:
     connection-config:
       request-timeout: 900
       keepalive-time: 30
+EOF
+
+    if [ "$action_cache_mode" = remote ]; then
+        cat << EOF
 remote-execution:
   action-cache-service:
     url: $url
@@ -66,5 +90,7 @@ remote-execution:
       request-timeout: 900
       keepalive-time: 30
 EOF
+    fi
+} > "$conf"
 
-echo "BuildStream remote cache: $url -> $conf"
+echo "BuildStream remote cache: $url (action-cache=$action_cache_mode) -> $conf"
