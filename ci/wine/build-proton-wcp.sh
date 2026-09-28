@@ -82,6 +82,8 @@ trace_dir = pathlib.Path(sys.argv[2])
 counts = collections.Counter()
 seconds = collections.Counter()
 compilers = collections.Counter()
+rejected_shapes = collections.Counter()
+rejected_samples = {}
 unmatched = 0
 
 
@@ -120,7 +122,23 @@ for argv_path in trace_dir.glob("*.argv"):
         continue
     category = classify(args)
     counts[category] += 1
-    compilers[(category, pathlib.PurePosixPath(args[0]).name)] += 1
+    compiler = pathlib.PurePosixPath(args[0]).name
+    compilers[(category, compiler)] += 1
+    if category == "compile_rejected":
+        suffixes = sorted({pathlib.PurePosixPath(arg).suffix or "<none>" for arg in args[1:] if not arg.startswith("-")})
+        language = "<none>"
+        for index, arg in enumerate(args[:-1]):
+            if arg == "-x":
+                language = args[index + 1]
+        shape = (
+            compiler,
+            ",".join(suffixes) or "<none>",
+            language,
+            "yes" if "-" in args[1:] else "no",
+            "yes" if any(arg.startswith("@") for arg in args[1:]) else "no",
+        )
+        rejected_shapes[shape] += 1
+        rejected_samples.setdefault(shape, " ".join(args[:12]))
     meta_path = trace_dir / f"{pid}.meta"
     if meta_path.exists():
         meta = [part.decode(errors="replace") for part in meta_path.read_bytes().split(b"\0") if part]
@@ -134,6 +152,12 @@ for category in sorted(counts):
     print(f"recc unsupported: {category} count={counts[category]} elapsed={seconds[category]:.1f}s")
 for (category, compiler), count in sorted(compilers.items(), key=lambda item: (-item[1], item[0])):
     print(f"recc unsupported compiler: category={category} compiler={compiler} count={count}")
+for shape, count in sorted(rejected_shapes.items(), key=lambda item: (-item[1], item[0]))[:12]:
+    compiler, suffixes, language, stdin, rsp = shape
+    print(
+        f"recc rejected shape: count={count} compiler={compiler} suffixes={suffixes} "
+        f"language={language} stdin={stdin} rsp={rsp} sample={rejected_samples[shape]}"
+    )
 if unmatched:
     print(f"recc unsupported: unmatched={unmatched}")
 PY
