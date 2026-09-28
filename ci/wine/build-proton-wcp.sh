@@ -19,11 +19,32 @@ JOBS="${JOBS:-$(nproc)}"
 # on stderr would be one line per compile. Keep those lines in per-process
 # files and print a single count when this script exits.
 recc_log_dir=""
+recc_trace_dir=""
+recc_command="recc"
 if command -v recc >/dev/null 2>&1 && [ -n "${RECC_SERVER:-}" ]; then
   recc_log_dir=/tmp/recc-logs
-  mkdir -p "$recc_log_dir"
+  recc_trace_dir=/tmp/recc-trace
+  mkdir -p "$recc_log_dir" "$recc_trace_dir"
   export RECC_LOG_LEVEL=info
   export RECC_LOG_DIRECTORY="$recc_log_dir"
+  export RECC_TRACE_DIRECTORY="$recc_trace_dir"
+  recc_command=/tmp/recc-trace-wrapper
+  cat > "$recc_command" <<'EOF'
+#!/usr/bin/env bash
+# Benchmark-only wrapper: retain argv and elapsed time under the recc child PID
+# so the EXIT reporter can correlate it with recc's per-process log.
+set +e
+start="${EPOCHREALTIME:-0}"
+recc "$@" &
+pid=$!
+printf '%s\0' "$@" > "$RECC_TRACE_DIRECTORY/$pid.argv"
+wait "$pid"
+status=$?
+end="${EPOCHREALTIME:-0}"
+printf '%s\0%s\0%s\0' "$start" "$end" "$status" > "$RECC_TRACE_DIRECTORY/$pid.meta"
+exit "$status"
+EOF
+  chmod +x "$recc_command"
 fi
 
 report_recc_stats() {
@@ -48,9 +69,79 @@ print(
 )
 PY
 }
+report_recc_unsupported() {
+  [ -n "$recc_log_dir" ] || return 0
+  [ -n "$recc_trace_dir" ] || return 0
+  python3 - "$recc_log_dir" "$recc_trace_dir" <<'PY'
+import collections
+import pathlib
+import sys
+
+log_dir = pathlib.Path(sys.argv[1])
+trace_dir = pathlib.Path(sys.argv[2])
+counts = collections.Counter()
+seconds = collections.Counter()
+compilers = collections.Counter()
+unmatched = 0
+
+
+def classify(args):
+    options = set(args[1:])
+    if "-c" in options:
+        return "compile_rejected"
+    if "-E" in options or any(arg.startswith("-E") and arg != "-Winvalid" for arg in args[1:]):
+        return "preprocess"
+    if "-S" in options:
+        return "assembly_output"
+    if any(
+        arg in {"--version", "-v", "-dumpversion", "-dumpfullversion", "-dumpmachine"}
+        or arg.startswith("-print-")
+        for arg in args[1:]
+    ):
+        return "compiler_query"
+    if any(
+        arg == "-shared"
+        or arg.startswith("-Wl,")
+        or pathlib.PurePosixPath(arg).suffix in {".o", ".obj", ".a", ".so", ".dll"}
+        for arg in args[1:]
+    ):
+        return "link"
+    return "configure_or_other"
+
+
+for argv_path in trace_dir.glob("*.argv"):
+    pid = argv_path.stem
+    logs = list(log_dir.glob(f"*.{pid}"))
+    if not logs or not any("Not a compiler command" in p.read_text(errors="replace") for p in logs):
+        continue
+    args = [part.decode(errors="replace") for part in argv_path.read_bytes().split(b"\0") if part]
+    if not args:
+        unmatched += 1
+        continue
+    category = classify(args)
+    counts[category] += 1
+    compilers[(category, pathlib.PurePosixPath(args[0]).name)] += 1
+    meta_path = trace_dir / f"{pid}.meta"
+    if meta_path.exists():
+        meta = [part.decode(errors="replace") for part in meta_path.read_bytes().split(b"\0") if part]
+        if len(meta) >= 2:
+            try:
+                seconds[category] += max(0.0, float(meta[1]) - float(meta[0]))
+            except ValueError:
+                pass
+
+for category in sorted(counts):
+    print(f"recc unsupported: {category} count={counts[category]} elapsed={seconds[category]:.1f}s")
+for (category, compiler), count in sorted(compilers.items(), key=lambda item: (-item[1], item[0])):
+    print(f"recc unsupported compiler: category={category} compiler={compiler} count={count}")
+if unmatched:
+    print(f"recc unsupported: unmatched={unmatched}")
+PY
+}
+
 # A failing EXIT trap replaces the script's status under set -e; the count
 # must never fail a build.
-trap 'report_recc_stats || true' EXIT
+trap 'report_recc_stats || true; report_recc_unsupported || true' EXIT
 
 recc_wrap_compilers() {
   # Cache-only recc against buildbox-casd (RECC_SERVER set by the element).
@@ -61,8 +152,8 @@ recc_wrap_compilers() {
     return 0
   fi
   echo "recc: wrapping CC/CXX (server=${RECC_SERVER}, cache_only=${RECC_CACHE_ONLY:-0}, upload_local=${RECC_CACHE_UPLOAD_LOCAL_BUILD:-0})" >&2
-  CC="recc ${CC}"
-  CXX="recc ${CXX}"
+  CC="$recc_command ${CC}"
+  CXX="$recc_command ${CXX}"
   export CC CXX
 }
 
@@ -86,7 +177,7 @@ recc_wrap_mingw_clang() {
     fi
     cat >"$wrap_dir/$name" <<EOF
 #!/usr/bin/env bash
-exec recc $(printf '%q' "$real") "\$@"
+exec $(printf '%q' "$recc_command") $(printf '%q' "$real") "\$@"
 EOF
     chmod +x "$wrap_dir/$name"
   done

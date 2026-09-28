@@ -134,6 +134,9 @@ jobs:
           echo "recc actions: element was cached, no build log"
           echo "recc-built=false" >> "$GITHUB_OUTPUT"
         fi
+        # Benchmark only: expose unsupported-command classification.
+        find "$logdir" -type f -path '*proton-wine-wcp*build*.log' -print0 \
+          | xargs -0 -r grep -h '^recc unsupported' || true
         buildstream/bst artifact checkout l1/proton-wine-wcp.bst \
           --deps none \
           --directory /tmp/buildstream-proton-wine
