@@ -49,6 +49,14 @@ jobs:
 
     - uses: actions/checkout@v4
 
+    - name: Measure remote cache network latency
+      run: |
+        for attempt in 1 2 3 4 5; do
+          curl --noproxy '*' --http2 -sS -o /dev/null \
+            -w "attempt=$attempt dns=%{time_namelookup}s connect=%{time_connect}s tls_done=%{time_appconnect}s ttfb=%{time_starttransfer}s code=%{http_code}\n" \
+            --connect-timeout 10 https://cas.arm.512.pub/
+        done
+
     - uses: ./.github/actions/setup-buildstream
       with:
         remote-cache-token: ${{ secrets.BST_REMOTE_CACHE_TOKEN }}
@@ -79,6 +87,9 @@ jobs:
         else
           echo "recc actions: element was cached, no build log"
         fi
+        # Benchmark only: per-phase recc timings from the element log.
+        find "$logdir" -type f -path '*proton-wine-wcp*build*.log' -print0 \
+          | xargs -0 -r grep -h -E '^recc (phase|counter):' || true
         buildstream/bst artifact checkout l1/proton-wine-wcp.bst \
           --deps none \
           --directory /tmp/buildstream-proton-wine

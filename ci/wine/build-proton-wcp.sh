@@ -21,7 +21,50 @@ if command -v recc >/dev/null 2>&1 && [ -n "${RECC_SERVER:-}" ]; then
   mkdir -p "$recc_log_dir"
   export RECC_LOG_LEVEL=info
   export RECC_LOG_DIRECTORY="$recc_log_dir"
+  # Benchmark only: per-phase recc timings (statsd lines, one file, append).
+  export RECC_ENABLE_METRICS=1
+  export RECC_METRICS_FILE=/tmp/recc-metrics.statsd
+  : > "$RECC_METRICS_FILE"
 fi
+
+report_recc_phases() {
+  [ -n "${RECC_METRICS_FILE:-}" ] || return 0
+  [ -f "$RECC_METRICS_FILE" ] || return 0
+  python3 - "$RECC_METRICS_FILE" "${JOBS:-}" <<'PY'
+import re
+import statistics
+import sys
+from collections import defaultdict
+
+durations = defaultdict(list)
+counters = defaultdict(int)
+line_re = re.compile(r"^([^:|]+):([-+]?\d+)\|(ms|c)")
+with open(sys.argv[1], errors="replace") as f:
+    for line in f:
+        m = line_re.match(line.strip())
+        if not m:
+            continue
+        name, value, kind = m.group(1), int(m.group(2)), m.group(3)
+        if kind == "ms":
+            durations[name].append(value)
+        else:
+            counters[name] += value
+
+jobs = int(sys.argv[2]) if sys.argv[2].isdigit() else 0
+for name in sorted(durations):
+    values = sorted(durations[name])
+    total = sum(values)
+    p95 = values[min(len(values) - 1, int(len(values) * 0.95))]
+    per_job = f" wall_if_{jobs}_parallel={total / jobs / 1000:.0f}s" if jobs else ""
+    print(
+        f"recc phase: {name} n={len(values)} sum={total / 1000:.0f}s "
+        f"mean={statistics.mean(values):.1f}ms p50={statistics.median(values):.0f}ms "
+        f"p95={p95}ms{per_job}"
+    )
+for name in sorted(counters):
+    print(f"recc counter: {name}={counters[name]}")
+PY
+}
 
 report_recc_stats() {
   [ -n "$recc_log_dir" ] || return 0
@@ -47,7 +90,7 @@ PY
 }
 # A failing EXIT trap replaces the script's status under set -e; the count
 # must never fail a build.
-trap 'report_recc_stats || true' EXIT
+trap 'report_recc_stats || true; report_recc_phases || true' EXIT
 
 recc_wrap_compilers() {
   # Cache-only recc against buildbox-casd (RECC_SERVER set by the element).
