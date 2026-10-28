@@ -1,9 +1,10 @@
 kind: manual
 
 description: |
-  Proton Wine 11 WCP from wip/client-window-frame
-  2fd246cfc364a5a6685d132cc085a8896b41e431
-  (win32u keeps the window surface of Vulkan windows on the Amphora host).
+  Proton Wine 11 WCP from wip/execmod-order
+  a177c89b75b3797882fe0938d962caf25e3a317e
+  (ntdll protects relocation-free executable sections before relocating,
+  avoiding SELinux execmod anon-remap copies).
 
 
 depends:
@@ -37,8 +38,8 @@ sandbox:
 sources:
 - kind: git
   url: amphora:proton-wine.git
-  ref: 2fd246cfc364a5a6685d132cc085a8896b41e431
-  track: wip/client-window-frame
+  ref: a177c89b75b3797882fe0938d962caf25e3a317e
+  track: wip/execmod-order
   checkout-submodules: true
 - kind: remote
   url: termux-packages-legacy:pool/main/p/pulseaudio/pulseaudio_13.0-1_x86_64.deb
@@ -58,7 +59,7 @@ environment:
   # WCP identity commit. MUST stay identical to the git source `ref` above
   # (which BuildStream strips of .git, so the build cannot query it).
   # ci/gate/wine-build.sh fails the build when they drift.
-  PROTON_COMMIT: 2fd246cfc364a5a6685d132cc085a8896b41e431
+  PROTON_COMMIT: a177c89b75b3797882fe0938d962caf25e3a317e
   OUTPUT_DIR: "%{install-root}/artifacts"
   # Cache-only recc against the sandbox remote-apis-socket. With
   # remote-execution.action-cache-service in the user config, BuildStream backs
