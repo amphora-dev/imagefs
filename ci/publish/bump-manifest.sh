@@ -121,7 +121,7 @@ else:
         old_ver = int(str(entry.get("version", "0")))
         entry["version"] = str(old_ver + 1)
         print(f"bumped rootfs pin v{old_ver} -> v{old_ver + 1} sha={sha} size={size}")
-    elif component in ("box64", "wine", "dxvk", "vkd3d"):
+    elif component in ("box64", "wine", "dxvk", "dxvk_d3d89", "vkd3d"):
         # WCP pins: install path is contents/<contentType>/<verName>-<verCode>/.
         # verName/verCode must mirror the package's profile.json so Amphora's
         # isInstalled + reconcileToPin stay idempotent across rebuilds.
@@ -133,6 +133,7 @@ else:
                 "box64": "Box64",
                 "wine": "Proton",
                 "dxvk": "DXVK",
+                "dxvk_d3d89": "DXVK",
                 "vkd3d": "VKD3D",
             }
             ctype = defaults.get(component)

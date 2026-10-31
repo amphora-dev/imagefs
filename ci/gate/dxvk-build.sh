@@ -4,10 +4,13 @@
 #
 # Env:
 #   FORCE, EVENT_NAME, REPO, GH_TOKEN
+#   ELEMENT      (default buildstream/elements/l1/dxvk-wcp.bst)
+#   RELEASE_TAG  (default dxvk)
 set -euo pipefail
 : "${GITHUB_OUTPUT:?GITHUB_OUTPUT required}"
 
-ELEMENT="buildstream/elements/l1/dxvk-wcp.bst"
+ELEMENT="${ELEMENT:-buildstream/elements/l1/dxvk-wcp.bst}"
+RELEASE_TAG="${RELEASE_TAG:-dxvk}"
 FULL="$(awk '
   /url: dxvk:dxvk.git/ { dxvk=1; next }
   dxvk && $1 == "ref:" { print $2; exit }
@@ -27,8 +30,8 @@ if [ "${FORCE}" = "true" ] || [ "${EVENT_NAME}" = "push" ]; then
   exit 0
 fi
 
-if gh release view dxvk --repo "${REPO}" >/dev/null 2>&1; then
-  if gh release view dxvk --repo "${REPO}" --json assets \
+if gh release view "${RELEASE_TAG}" --repo "${REPO}" >/dev/null 2>&1; then
+  if gh release view "${RELEASE_TAG}" --repo "${REPO}" --json assets \
     --jq '.assets[].name' | grep -q -- "-${SHORT}\\.wcp\$"; then
     echo "should_build=false" >> "$GITHUB_OUTPUT"
     echo "Already published for $SHORT"

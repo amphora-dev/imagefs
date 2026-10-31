@@ -40,6 +40,12 @@ WCP 产物名 = `profile.json` 的 `versionName`，amphora 端按
   补丁变化 → 新 versionName → 设备不会与旧 profile 冲突；
   `ci/gate/box64-build.sh` 的去重 gate 同时匹配 commit 与补丁指纹。
 
+- DXVK：`Dxvk-<version>[-gplasync]-<commit9>.wcp`。`-gplasync` 只在元素 stage 了
+  `vendor/dxvk-patches/dxvk-gplasync-master.patch` 时出现。两个元素共用
+  `ci/dxvk/build-dxvk-wcp.sh`：`l1/dxvk-wcp.bst`（3.0.2 gplasync，Release `dxvk`，
+  manifest `dxvk`）和 `l1/dxvk-d3d89-wcp.bst`（2.6.2，Release `dxvk-d3d89`，manifest
+  `dxvk_d3d89`，Amphora 只把它的 d3d8/d3d9 链进 Qualcomm 驱动的会话）。
+
 - Proton Wine：`Proton-<wine version>-<commit9>-x86_64.wcp`，commit 取自元素
   `PROTON_COMMIT`；它必须与 sources 的 git `ref` 一致（BuildStream stage 不保留
   `.git`，无法在沙箱内查询），`ci/gate/wine-build.sh` 校验两者，不一致即失败。
@@ -61,7 +67,7 @@ Host SDK 和 NDK 均由 `buildstream-sdk.bst` junction 提供，不读取 GitHub
 
 ## Publish
 
-- 固定 Release tags：`amphora`、`box64`、`wrapper`、`wine`、`dxvk`、`vkd3d`
+- 固定 Release tags：`amphora`、`box64`、`wrapper`、`wine`、`dxvk`、`dxvk-d3d89`、`vkd3d`
 - `fixed-release.sh` 上传或替换当前产物
 - `prune-assets.sh` 删除同一固定 tag 下的旧 L1 assets
 - `bump-manifest` action 更新 `amphora-dev/content_manifest`

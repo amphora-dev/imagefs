@@ -1,0 +1,127 @@
+# Build the d3d8/d3d9 DXVK WCP (DXVK 2.6.2) → Release tag `dxvk-d3d89`
+# → content_manifest.dxvk_d3d89. Same builder as build-dxvk.yml, own element,
+# own release tag (prune-assets on `dxvk` would delete it otherwise).
+# Contracts: ci/README.md
+name: build-dxvk-d3d89
+
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Build even if this DXVK commit was already published"
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    paths:
+      - "ci/gate/dxvk-build.sh"
+      - "ci/dxvk/**"
+      - "ci/verify/dxvk-wcp.sh"
+      - "buildstream/elements/l1/dxvk-d3d89-wcp.bst"
+      - "buildstream/elements/host/glslang.bst"
+      - "buildstream/elements/buildstream-sdk.bst"
+      - "project.conf"
+      - "ci/setup/install-buildstream.sh"
+      - "ci/setup/configure-remote-cache.sh"
+      - ".github/actions/setup-buildstream/**"
+      - ".github/workflows/build-dxvk-d3d89.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-buildstream
+        with:
+          remote-cache-token: ${{ secrets.BST_REMOTE_CACHE_TOKEN }}
+
+      - id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force || false }}
+          EVENT_NAME: ${{ github.event_name }}
+          REPO: ${{ github.repository }}
+          ELEMENT: buildstream/elements/l1/dxvk-d3d89-wcp.bst
+          RELEASE_TAG: dxvk-d3d89
+        run: bash ci/gate/dxvk-build.sh
+
+      - name: Build DXVK d3d8/9 WCP
+        if: steps.gate.outputs.should_build == 'true'
+        run: |
+          rm -rf /tmp/buildstream-dxvk-d3d89 artifacts
+          buildstream/bst build l1/dxvk-d3d89-wcp.bst
+          buildstream/bst artifact checkout l1/dxvk-d3d89-wcp.bst \
+            --deps none \
+            --directory /tmp/buildstream-dxvk-d3d89
+          mkdir -p artifacts
+          cp /tmp/buildstream-dxvk-d3d89/artifacts/* artifacts/
+          # shellcheck disable=SC1091
+          source artifacts/dxvk-wcp.env
+          {
+            echo "WCP_NAME=$WCP_NAME"
+            echo "FULL_VERSION=$FULL_VERSION"
+            echo "SHA256=$SHA256"
+            echo "SIZE=$SIZE"
+            echo "COMMIT_FULL=$COMMIT_FULL"
+          } >> "$GITHUB_ENV"
+
+      - name: Verify DXVK WCP
+        if: steps.gate.outputs.should_build == 'true'
+        run: bash ci/verify/dxvk-wcp.sh
+
+      - uses: actions/upload-artifact@v4
+        if: steps.gate.outputs.should_build == 'true'
+        with:
+          name: dxvk-d3d89-wcp
+          path: artifacts/Dxvk-*
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish Release dxvk-d3d89
+        if: steps.gate.outputs.should_build == 'true' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TARGET_REF: ${{ github.sha }}
+        run: |
+          BODY=$(cat <<EOF
+          DXVK \`${{ env.FULL_VERSION }}\` (d3d8/d3d9 on the Qualcomm driver)
+          https://github.com/doitsujin/dxvk/commit/${{ env.COMMIT_FULL }}
+          x86_64 + i686 PE.
+          EOF
+          )
+          bash ci/publish/fixed-release.sh \
+            --tag dxvk-d3d89 \
+            --title dxvk-d3d89 \
+            --body "$BODY" \
+            -- "artifacts/${{ env.WCP_NAME }}" "artifacts/${{ env.WCP_NAME }}.sha256sum"
+
+      - name: Prune old DXVK d3d8/9 assets
+        if: steps.gate.outputs.should_build == 'true' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          bash ci/publish/prune-assets.sh \
+            --tag dxvk-d3d89 \
+            --match 'Dxvk-*' \
+            --keep "${{ env.WCP_NAME }}" "${{ env.WCP_NAME }}.sha256sum"
+
+      - name: Pin content_manifest dxvk_d3d89
+        if: steps.gate.outputs.should_build == 'true' && github.ref == 'refs/heads/main'
+        uses: ./.github/actions/bump-manifest
+        with:
+          component: dxvk_d3d89
+          sha256: ${{ env.SHA256 }}
+          size: ${{ env.SIZE }}
+          asset_path: ${{ env.WCP_NAME }}
+          ver_name: ${{ env.FULL_VERSION }}
+          remote_url: https://github.com/${{ github.repository }}/releases/download/dxvk-d3d89/${{ env.WCP_NAME }}
+          kind: WCP
+          content_type: DXVK
+          token: ${{ secrets.AMPHORA_REPO_TOKEN }}

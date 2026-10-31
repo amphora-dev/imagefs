@@ -41,8 +41,12 @@ done
 
 export PATH="$GLSLANG_ROOT/bin:$LLVM_MINGW_ROOT/bin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
+# The gplasync patch is staged only by elements that want it; its presence is
+# part of the WCP identity (versionName / file name).
+variant=""
 if [ -f .bst/patches/dxvk-gplasync-master.patch ]; then
   patch -p1 < .bst/patches/dxvk-gplasync-master.patch
+  variant="-gplasync"
 fi
 
 mkdir -p "$BUILD_ROOT"
@@ -100,7 +104,7 @@ ninja -C "$BUILD_ROOT/build64" -j "$JOBS"
 ninja -C "$BUILD_ROOT/build32" -j "$JOBS"
 
 commit_short="${DXVK_COMMIT:0:9}"
-full_version="${DXVK_VERSION}-gplasync-${commit_short}"
+full_version="${DXVK_VERSION}${variant}-${commit_short}"
 wcp_name="Dxvk-${full_version}.wcp"
 
 rm -rf "$PACKAGE_ROOT"
