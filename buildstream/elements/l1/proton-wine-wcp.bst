@@ -1,10 +1,11 @@
 kind: manual
 
 description: |
-  Proton Wine 11 WCP from wip/execmod-order
-  a177c89b75b3797882fe0938d962caf25e3a317e
-  (ntdll protects relocation-free executable sections before relocating,
-  avoiding SELinux execmod anon-remap copies).
+  Proton Wine 11 WCP from wip/frame-rate
+  433573d69a7fb3455db6d2f5d87ffc4367fcd3bc
+  (win32u reports the AHB swapchain's present modes over wsi-sc op 9 in
+  Amphora sessions and no longer remaps IMMEDIATE/MAILBOX to FIFO;
+  wineandroid hides VK_KHR_present_wait, which the AHB swapchain lacks).
 
 
 depends:
@@ -38,8 +39,8 @@ sandbox:
 sources:
 - kind: git
   url: amphora:proton-wine.git
-  ref: a177c89b75b3797882fe0938d962caf25e3a317e
-  track: wip/execmod-order
+  ref: 433573d69a7fb3455db6d2f5d87ffc4367fcd3bc
+  track: wip/frame-rate
   checkout-submodules: true
 - kind: remote
   url: termux-packages-legacy:pool/main/p/pulseaudio/pulseaudio_13.0-1_x86_64.deb
@@ -59,7 +60,7 @@ environment:
   # WCP identity commit. MUST stay identical to the git source `ref` above
   # (which BuildStream strips of .git, so the build cannot query it).
   # ci/gate/wine-build.sh fails the build when they drift.
-  PROTON_COMMIT: a177c89b75b3797882fe0938d962caf25e3a317e
+  PROTON_COMMIT: 433573d69a7fb3455db6d2f5d87ffc4367fcd3bc
   OUTPUT_DIR: "%{install-root}/artifacts"
   # Cache-only recc against the sandbox remote-apis-socket. With
   # remote-execution.action-cache-service in the user config, BuildStream backs
