@@ -19,12 +19,21 @@ runs:
       # sits until systemd's 90s timeout. List-only mode skips the restart.
       sudo apt-get update
       sudo NEEDRESTART_MODE=l DEBIAN_FRONTEND=noninteractive apt-get install -y \
-        apparmor-profiles apparmor-utils bubblewrap fuse3 lzip patch \
+        apparmor-utils bubblewrap fuse3 lzip patch \
         python3-venv xz-utils
-      sudo install -m 0644 \
-        /usr/share/apparmor/extra-profiles/bwrap-userns-restrict \
-        /etc/apparmor.d/bwrap-userns-restrict
-      sudo apparmor_parser -r /etc/apparmor.d/bwrap-userns-restrict
+      # Ubuntu 24.04 denies unprivileged user namespaces unless the binary's
+      # AppArmor profile grants `userns`. apparmor-profiles 26.04 dropped the
+      # extra-profiles/bwrap-userns-restrict file this step used to install,
+      # so write the profile here instead of depending on that package.
+      sudo tee /etc/apparmor.d/amphora-bwrap >/dev/null <<'EOF'
+      abi <abi/4.0>,
+      include <tunables/global>
+
+      profile amphora-bwrap /usr/bin/bwrap flags=(unconfined) {
+        userns,
+      }
+      EOF
+      sudo apparmor_parser -r /etc/apparmor.d/amphora-bwrap
 
   - uses: actions/cache@v4
     with:
