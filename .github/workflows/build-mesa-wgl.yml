@@ -1,0 +1,123 @@
+# Build Mesa 26.2.0 WGL (opengl32.dll + libgallium_wgl.dll, zink + softpipe,
+# x86_64 + i686 PE) → Release tag `mesa-wgl` → content_manifest
+# runtimeAssets[] graphics_driver/mesa-wgl.tzst. Amphora links the DLLs into
+# every prefix. Contracts: ci/README.md
+name: build-mesa-wgl
+
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Build even if this mesa-wgl asset was already published"
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    paths:
+      - "ci/gate/mesa-wgl-build.sh"
+      - "ci/mesa-wgl/**"
+      - "ci/verify/mesa-wgl.sh"
+      - "buildstream/elements/l1/mesa-wgl.bst"
+      - "buildstream/elements/buildstream-sdk.bst"
+      - "project.conf"
+      - "ci/setup/install-buildstream.sh"
+      - "ci/setup/configure-remote-cache.sh"
+      - ".github/actions/setup-buildstream/**"
+      - ".github/workflows/build-mesa-wgl.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-buildstream
+        with:
+          remote-cache-token: ${{ secrets.BST_REMOTE_CACHE_TOKEN }}
+
+      - id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force || false }}
+          EVENT_NAME: ${{ github.event_name }}
+          REPO: ${{ github.repository }}
+        run: bash ci/gate/mesa-wgl-build.sh
+
+      - name: Build Mesa WGL
+        if: steps.gate.outputs.should_build == 'true'
+        run: |
+          rm -rf /tmp/buildstream-mesa-wgl artifacts
+          buildstream/bst build l1/mesa-wgl.bst
+          buildstream/bst artifact checkout l1/mesa-wgl.bst \
+            --deps none \
+            --directory /tmp/buildstream-mesa-wgl
+          mkdir -p artifacts
+          cp /tmp/buildstream-mesa-wgl/artifacts/* artifacts/
+          # shellcheck disable=SC1091
+          source artifacts/mesa-wgl.env
+          test "$TZST_NAME" = "${{ steps.gate.outputs.tzst_name }}"
+          {
+            echo "TZST_NAME=$TZST_NAME"
+            echo "FULL_VERSION=$FULL_VERSION"
+            echo "MESA_VERSION=$MESA_VERSION"
+            echo "MESA_TARBALL_SHA256=$MESA_TARBALL_SHA256"
+            echo "SHA256=$SHA256"
+            echo "SIZE=$SIZE"
+          } >> "$GITHUB_ENV"
+
+      - name: Verify Mesa WGL
+        if: steps.gate.outputs.should_build == 'true'
+        run: bash ci/verify/mesa-wgl.sh
+
+      - uses: actions/upload-artifact@v4
+        if: steps.gate.outputs.should_build == 'true'
+        with:
+          name: mesa-wgl-tzst
+          path: artifacts/mesa-wgl-*
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish Release mesa-wgl
+        if: steps.gate.outputs.should_build == 'true' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TARGET_REF: ${{ github.sha }}
+        run: |
+          BODY=$(cat <<EOF
+          Mesa \`${{ env.MESA_VERSION }}\` WGL (\`${{ env.FULL_VERSION }}\`)
+          https://archive.mesa3d.org/mesa-${{ env.MESA_VERSION }}.tar.xz (sha256 ${{ env.MESA_TARBALL_SHA256 }})
+          zink + softpipe, x86_64 + i686 PE. Amphora runtime asset graphics_driver/mesa-wgl.tzst.
+          EOF
+          )
+          bash ci/publish/fixed-release.sh \
+            --tag mesa-wgl \
+            --title mesa-wgl \
+            --body "$BODY" \
+            -- "artifacts/${{ env.TZST_NAME }}" "artifacts/${{ env.TZST_NAME }}.sha256sum"
+
+      - name: Prune old Mesa WGL assets
+        if: steps.gate.outputs.should_build == 'true' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          bash ci/publish/prune-assets.sh \
+            --tag mesa-wgl \
+            --match 'mesa-wgl-*' \
+            --keep "${{ env.TZST_NAME }}" "${{ env.TZST_NAME }}.sha256sum"
+
+      - name: Pin content_manifest mesa-wgl.tzst
+        if: steps.gate.outputs.should_build == 'true' && github.ref == 'refs/heads/main'
+        uses: ./.github/actions/bump-manifest
+        with:
+          runtime_asset: graphics_driver/mesa-wgl.tzst
+          sha256: ${{ env.SHA256 }}
+          size: ${{ env.SIZE }}
+          ver_name: ${{ env.FULL_VERSION }}
+          remote_url: https://github.com/${{ github.repository }}/releases/download/mesa-wgl/${{ env.TZST_NAME }}
+          token: ${{ secrets.AMPHORA_REPO_TOKEN }}

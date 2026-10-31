@@ -9,12 +9,13 @@ package dependencies 都是 artifact key 的显式输入。
 ci/
   setup/install-buildstream.sh
   setup/configure-remote-cache.sh           # remote cache → ~/.config/buildstream.conf
-  gate/{imagefs-publish,box64-build,wrapper-build,wine-build,dxvk-build,vkd3d-build}.sh
+  gate/{imagefs-publish,box64-build,wrapper-build,wine-build,dxvk-build,vkd3d-build,mesa-wgl-build}.sh
   publish/{fixed-release,prune-assets,bump-manifest}.sh
-  verify/{imagefs-artifact,wine-deps,dxvk-wcp,vkd3d-wcp}.sh
+  verify/{imagefs-artifact,wine-deps,dxvk-wcp,vkd3d-wcp,mesa-wgl}.sh
   wrapper/build-tzst.sh
   dxvk/build-dxvk-wcp.sh
   vkd3d/build-vkd3d-wcp.sh
+  mesa-wgl/build-mesa-wgl.sh
 ```
 
 L1 gate（Box64 / wrapper / Wine / DXVK / VKD3D）直接读取对应 `.bst` 中固定的
@@ -46,6 +47,15 @@ WCP 产物名 = `profile.json` 的 `versionName`，amphora 端按
   manifest `dxvk`）和 `l1/dxvk-d3d89-wcp.bst`（2.6.2，Release `dxvk-d3d89`，manifest
   `dxvk_d3d89`，Amphora 只把它的 d3d8/d3d9 链进 Qualcomm 驱动的会话）。
 
+- Mesa WGL：不是 WCP，而是 runtimeAssets[] 的 `graphics_driver/mesa-wgl.tzst`
+  （Mesa 的 Windows `opengl32.dll` + `libgallium_wgl.dll`，zink + softpipe，
+  x86_64 + i686 PE；Amphora 把它链进每个 prefix，`opengl32=n,b`）。产物名
+  `mesa-wgl-<mesa version>-s<s8>.tzst`，`-s<s8>` 是
+  `ci/mesa-wgl/build-mesa-wgl.sh` 的 sha256 前 8 位：源码固定为元素里的 Mesa
+  tarball，所有 meson 参数都写在这个脚本里，所以脚本内容就是构建身份；
+  `ci/gate/mesa-wgl-build.sh` 用同一算法去重，并校验元素的 tar source 与
+  `MESA_VERSION` / `MESA_TARBALL_SHA256` 一致。
+
 - Proton Wine：`Proton-<wine version>-<commit9>-x86_64.wcp`，commit 取自元素
   `PROTON_COMMIT`；它必须与 sources 的 git `ref` 一致（BuildStream stage 不保留
   `.git`，无法在沙箱内查询），`ci/gate/wine-build.sh` 校验两者，不一致即失败。
@@ -67,7 +77,7 @@ Host SDK 和 NDK 均由 `buildstream-sdk.bst` junction 提供，不读取 GitHub
 
 ## Publish
 
-- 固定 Release tags：`amphora`、`box64`、`wrapper`、`wine`、`dxvk`、`dxvk-d3d89`、`vkd3d`
+- 固定 Release tags：`amphora`、`box64`、`wrapper`、`wine`、`dxvk`、`dxvk-d3d89`、`vkd3d`、`mesa-wgl`
 - `fixed-release.sh` 上传或替换当前产物
 - `prune-assets.sh` 删除同一固定 tag 下的旧 L1 assets
 - `bump-manifest` action 更新 `amphora-dev/content_manifest`
