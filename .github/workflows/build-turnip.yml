@@ -1,0 +1,126 @@
+# Build Mesa 26.2.6 Turnip (freedreno Vulkan, KGSL, Android aarch64) as an
+# adrenotools package → Release tag `turnip` → content_manifest
+# runtimeAssets[] adrenotools/turnip.zip. Amphora installs it when the user
+# picks Turnip. Contracts: ci/README.md
+name: build-turnip
+
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Build even if this turnip asset was already published"
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    paths:
+      - "ci/gate/turnip-build.sh"
+      - "ci/turnip/**"
+      - "ci/verify/turnip.sh"
+      - "vendor/turnip-patches/**"
+      - "buildstream/elements/l1/turnip.bst"
+      - "buildstream/elements/host/glslang.bst"
+      - "buildstream/elements/buildstream-sdk.bst"
+      - "project.conf"
+      - "ci/setup/install-buildstream.sh"
+      - "ci/setup/configure-remote-cache.sh"
+      - ".github/actions/setup-buildstream/**"
+      - ".github/workflows/build-turnip.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-buildstream
+        with:
+          remote-cache-token: ${{ secrets.BST_REMOTE_CACHE_TOKEN }}
+
+      - id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force || false }}
+          EVENT_NAME: ${{ github.event_name }}
+          REPO: ${{ github.repository }}
+        run: bash ci/gate/turnip-build.sh
+
+      - name: Build Turnip
+        if: steps.gate.outputs.should_build == 'true'
+        run: |
+          rm -rf /tmp/buildstream-turnip artifacts
+          buildstream/bst build l1/turnip.bst
+          buildstream/bst artifact checkout l1/turnip.bst \
+            --deps none \
+            --directory /tmp/buildstream-turnip
+          mkdir -p artifacts
+          cp /tmp/buildstream-turnip/artifacts/* artifacts/
+          # shellcheck disable=SC1091
+          source artifacts/turnip.env
+          test "$ZIP_NAME" = "${{ steps.gate.outputs.zip_name }}"
+          {
+            echo "ZIP_NAME=$ZIP_NAME"
+            echo "FULL_VERSION=$FULL_VERSION"
+            echo "MESA_VERSION=$MESA_VERSION"
+            echo "MESA_TARBALL_SHA256=$MESA_TARBALL_SHA256"
+            echo "SHA256=$SHA256"
+            echo "SIZE=$SIZE"
+          } >> "$GITHUB_ENV"
+
+      - name: Verify Turnip
+        if: steps.gate.outputs.should_build == 'true'
+        run: bash ci/verify/turnip.sh
+
+      - uses: actions/upload-artifact@v4
+        if: steps.gate.outputs.should_build == 'true'
+        with:
+          name: turnip-zip
+          path: artifacts/turnip-*
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish Release turnip
+        if: steps.gate.outputs.should_build == 'true' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TARGET_REF: ${{ github.sha }}
+        run: |
+          BODY=$(cat <<EOF
+          Mesa \`${{ env.MESA_VERSION }}\` Turnip (\`${{ env.FULL_VERSION }}\`), KGSL, Android aarch64
+          https://archive.mesa3d.org/mesa-${{ env.MESA_VERSION }}.tar.xz (sha256 ${{ env.MESA_TARBALL_SHA256 }})
+          Patches: vendor/turnip-patches/README.md
+          Amphora runtime asset adrenotools/turnip.zip, adrenotools package (meta.json + libvulkan_freedreno.so).
+          EOF
+          )
+          bash ci/publish/fixed-release.sh \
+            --tag turnip \
+            --title turnip \
+            --body "$BODY" \
+            -- "artifacts/${{ env.ZIP_NAME }}" "artifacts/${{ env.ZIP_NAME }}.sha256sum"
+
+      - name: Prune old Turnip assets
+        if: steps.gate.outputs.should_build == 'true' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          bash ci/publish/prune-assets.sh \
+            --tag turnip \
+            --match 'turnip-*' \
+            --keep "${{ env.ZIP_NAME }}" "${{ env.ZIP_NAME }}.sha256sum"
+
+      - name: Pin content_manifest turnip.zip
+        if: steps.gate.outputs.should_build == 'true' && github.ref == 'refs/heads/main'
+        uses: ./.github/actions/bump-manifest
+        with:
+          runtime_asset: adrenotools/turnip.zip
+          sha256: ${{ env.SHA256 }}
+          size: ${{ env.SIZE }}
+          ver_name: ${{ env.FULL_VERSION }}
+          remote_url: https://github.com/${{ github.repository }}/releases/download/turnip/${{ env.ZIP_NAME }}
+          token: ${{ secrets.AMPHORA_REPO_TOKEN }}

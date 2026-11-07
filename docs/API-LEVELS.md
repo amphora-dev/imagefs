@@ -9,7 +9,7 @@ imagefs 同时使用两个 NDK API 水位。这不是疏忽，而是按产物角
 | API | Triple / profile | 产物 | 为什么是这个数 |
 |-----|------------------|------|----------------|
 | **26** | `aarch64-linux-android26` · `meson-aarch64-android26.ini` | imagefs 主图（rootfs 包） | 与 Amphora app `minSdk=26` 对齐；rootfs 必须能在 Android 8+ 设备上跑 |
-| **30** | `aarch64-linux-android30` · `x86_64-linux-android30` · `meson-mesa-api30.ini` · `meson-x86_64-android30.ini` · `meson-mesa-x86_64-api30.ini` · `WRAPPER_API=30` | Mesa GL + Vulkan wrapper ICD；Box64 WCP；Proton Wine Unix ELF / 开发 sysroot | `memfd_create` 等 libc 入口；Amphora Bionic/Linux Mesa 画像（`-D__AMPHORA__`）；Wine 另加 flexible 16KB page **linker flags**（与 API 数字无关） |
+| **30** | `aarch64-linux-android30` · `x86_64-linux-android30` · `meson-mesa-api30.ini` · `meson-x86_64-android30.ini` · `meson-mesa-x86_64-api30.ini` · `WRAPPER_API=30` | Mesa GL + Vulkan wrapper ICD；Turnip `libvulkan_freedreno.so`（L1，真 Android 构建，`platform-sdk-version=30`）；Box64 WCP；Proton Wine Unix ELF / 开发 sysroot | `memfd_create` 等 libc 入口；Amphora Bionic/Linux Mesa 画像（`-D__AMPHORA__`）；Wine 另加 flexible 16KB page **linker flags**（与 API 数字无关） |
 
 Host 工具链一律来自 `buildstream-sdk` junction 的 NDK r29，不读 runner 预装 NDK。
 
@@ -23,6 +23,7 @@ Amphora app (minSdk 26, targetSdk 28)
 │  imagefs packages …………… API 26                │
 │  mesa-gl (in imagefs) …… API 30 Amphora profile│
 │  wrapper.tzst (L1) ……… API 30 + imagefs sysroot│
+│  turnip.zip (L1) ……… API 30 real Android build │
 │  box64 WCP (L1) …………… API 30                  │
 └───────────────────────────────────────────────┘
 
@@ -42,6 +43,17 @@ API 26 的 NDK libc 没有可靠的 `memfd_create` 封装；wrapper patch
 `0001-anon-file-use-memfd-create` 明确要求 `WRAPPER_API>=30`。降级会回到
 `SYS_memfd_create` / 缺常量的老坑。Box64 / Wine 同样以 API 30 为编译目标。
 
+### Turnip 不用 `meson-mesa-api30.ini`
+`l1/turnip.bst` 用同一个 API-30 clang（`aarch64-linux-android30-clang`），但 cross file
+由 `ci/turnip/build-turnip.sh` 自己写：`system = 'android'`、`-Dplatforms=android`、
+`-Dandroid-stub=true`、`-Dplatform-sdk-version=30`、`-static-libstdc++`，不挂 imagefs
+sysroot。`meson-mesa-api30.ini` 是 Bionic/Linux 画像（`system = 'linux'`、
+`-D__AMPHORA__ -D__TERMUX__`、`-landroid-shmem -lc++_shared`、rpath `/usr/lib`），给 imagefs
+里的 userland 用；Turnip 由 adrenotools 在只看得到 `/system` 库和驱动目录的 linker
+namespace 里加载，所以必须是真 Android 构建，NEEDED 只能是 `/system` 公共库。30 不会抬高
+任何地板：Turnip 只经 wrapper ICD 加载，wrapper 本身已是 `WRAPPER_API=30`；≥ 29 也让 Mesa
+发 ELF TLS（`-fno-emulated-tls`），`ci/verify/turnip.sh` 校验没有 `__emutls_`。
+
 ### 16KB page ≠ API 水位
 Wine x86_64 ELF 的 flexible 16KB page 来自
 `-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES` 与 `-Wl,-z,max-page-size=16384`
@@ -53,7 +65,7 @@ Wine x86_64 ELF 的 flexible 16KB page 来自
 | 水位 | 主要锚点 |
 |------|----------|
 | 26 | `project.conf` `target-triple`；`buildstream/recipes/**` 默认 |
-| 30 | `buildstream-sdk` `meson-mesa-api30.ini` / `meson-x86_64-android30.ini` / `meson-mesa-x86_64-api30.ini`；`ci/wrapper/build-tzst.sh` `WRAPPER_API`；`graphics/mesa-gl.bst`；`l1/box64-wcp.bst`；`sync-arch-elements.py` / wine elements；`ci/wine/build-proton-wcp.sh` |
+| 30 | `buildstream-sdk` `meson-mesa-api30.ini` / `meson-x86_64-android30.ini` / `meson-mesa-x86_64-api30.ini`；`ci/wrapper/build-tzst.sh` `WRAPPER_API`；`graphics/mesa-gl.bst`；`l1/turnip.bst` / `ci/turnip/build-turnip.sh`（API-30 clang + `platform-sdk-version=30`）；`l1/box64-wcp.bst`；`sync-arch-elements.py` / wine elements；`ci/wine/build-proton-wcp.sh` |
 
 ## 变更检查单
 
