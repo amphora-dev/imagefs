@@ -9,13 +9,14 @@ package dependencies 都是 artifact key 的显式输入。
 ci/
   setup/install-buildstream.sh
   setup/configure-remote-cache.sh           # remote cache → ~/.config/buildstream.conf
-  gate/{imagefs-publish,box64-build,wrapper-build,wine-build,dxvk-build,vkd3d-build,mesa-wgl-build}.sh
+  gate/{imagefs-publish,box64-build,wrapper-build,wine-build,dxvk-build,vkd3d-build,mesa-wgl-build,turnip-build}.sh
   publish/{fixed-release,prune-assets,bump-manifest}.sh
-  verify/{imagefs-artifact,wine-deps,dxvk-wcp,vkd3d-wcp,mesa-wgl}.sh
+  verify/{imagefs-artifact,wine-deps,dxvk-wcp,vkd3d-wcp,mesa-wgl,turnip}.sh
   wrapper/build-tzst.sh
   dxvk/build-dxvk-wcp.sh
   vkd3d/build-vkd3d-wcp.sh
   mesa-wgl/build-mesa-wgl.sh
+  turnip/build-turnip.sh
 ```
 
 L1 gate（Box64 / wrapper / Wine / DXVK / VKD3D）直接读取对应 `.bst` 中固定的
@@ -56,6 +57,17 @@ WCP 产物名 = `profile.json` 的 `versionName`，amphora 端按
   `ci/gate/mesa-wgl-build.sh` 用同一算法去重，并校验元素的 tar source 与
   `MESA_VERSION` / `MESA_TARBALL_SHA256` 一致。
 
+- Turnip：同样不是 WCP，而是 runtimeAssets[] 的 `adrenotools/turnip.zip`（adrenotools
+  驱动包：`libvulkan_freedreno.so` + `meta.json` + `LICENSE-mesa.rst`，Amphora 解压到
+  `contents/adrenotools/turnip/`）。产物名 `turnip-<mesa version>-s<s8>.zip`，`-s<s8>` 是
+  `ci/turnip/build-turnip.sh` 与 `vendor/turnip-patches/*.patch`（`LC_ALL=C` 顺序）拼接后
+  的 sha256 前 8 位：脚本含全部 meson 参数，补丁是唯一的源码改动，两者合起来就是构建
+  身份。Mesa 版本独立于 mesa-gl / mesa-wgl。`ci/gate/turnip-build.sh` 用同一算法去重，
+  并做同样的 tar source 校验；`ci/verify/turnip.sh` 在上传前 fail-closed 检查 zip 布局、
+  `meta.json` 与 ELF（AArch64 DYN、SONAME、NEEDED 白名单、导出 `HMI`、无 RPATH/RUNPATH、
+  有 PT_TLS 且无 emutls、无 TEXTREL、LOAD 对齐 ≥ 16 KB）。meson 用 `-Dandroid-strict=false`：
+  驱动由 adrenotools 加载而非系统 HAL，不按 CTS 白名单隐藏高于 `platform-sdk-version` 的 `VK_KHR_*`。
+
 - Proton Wine：`Proton-<wine version>-<commit9>-x86_64.wcp`，commit 取自元素
   `PROTON_COMMIT`；它必须与 sources 的 git `ref` 一致（BuildStream stage 不保留
   `.git`，无法在沙箱内查询），`ci/gate/wine-build.sh` 校验两者，不一致即失败。
@@ -68,7 +80,7 @@ WCP 产物名 = `profile.json` 的 `versionName`，amphora 端按
 | API | 产物 |
 |-----|------|
 | 26 | imagefs package graph（AArch64 Bionic，minSdk 地板） |
-| 30 | Mesa GL + Vulkan wrapper（Amphora Bionic/Linux 画像） |
+| 30 | Mesa GL + Vulkan wrapper（Amphora Bionic/Linux 画像）；Turnip（真 Android 构建） |
 | 31 | Box64 WCP（独立 L1） |
 | 35 | Proton Wine x86_64 Unix ELF + LLVM-MinGW PE |
 
@@ -77,7 +89,7 @@ Host SDK 和 NDK 均由 `buildstream-sdk.bst` junction 提供，不读取 GitHub
 
 ## Publish
 
-- 固定 Release tags：`amphora`、`box64`、`wrapper`、`wine`、`dxvk`、`dxvk-d3d89`、`vkd3d`、`mesa-wgl`
+- 固定 Release tags：`amphora`、`box64`、`wrapper`、`wine`、`dxvk`、`dxvk-d3d89`、`vkd3d`、`mesa-wgl`、`turnip`
 - `fixed-release.sh` 上传或替换当前产物
 - `prune-assets.sh` 删除同一固定 tag 下的旧 L1 assets
 - `bump-manifest` action 更新 `amphora-dev/content_manifest`
